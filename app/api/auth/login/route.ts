@@ -24,13 +24,18 @@ export async function POST(req: Request) {
 
   const { token } = await r.json();
 
-  /* 3️⃣  Set cookie + redirect */
-  const res = NextResponse.redirect('/dashboard');  // ← same-origin redirect
+  /* ----- 2  build absolute URL using Host header ----- */
+  const host   = req.headers.get('host')!;                     // e.g. console-production.up.railway.app
+  const proto  = req.headers.get('x-forwarded-proto') ?? 'https';
+  const target = new URL(`/dashboard`, `${proto}://${host}`);
+
+  /* ----- 3  set cookie + redirect ----- */
+  const res = NextResponse.redirect(target, { status: 303 });  // 303 = “See Other”
   res.cookies.set('session', token, {
     httpOnly: true,
-    secure: true,
+    secure  : proto === 'https',
     sameSite: 'lax',
-    path: '/',
+    path    : '/',
   });
   return res;
 }
