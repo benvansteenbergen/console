@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const res = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ emailOrLdapLoginId: email, password: password }),
   });
 
   if (!res.ok) {
