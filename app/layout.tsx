@@ -1,4 +1,5 @@
 // apps/console/app/layout.tsx
+import '@/globals.css';          // ✅ must come BEFORE the font import
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
