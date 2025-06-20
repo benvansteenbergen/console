@@ -1,25 +1,36 @@
+// app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const { emailOrLdapLoginId, password } = await req.json();
+  /* 1️⃣  Extract fields from the HTML form */
+  const form = await req.formData();
+  const emailOrLdapLoginId = form.get('emailOrLdapLoginId') as string | null;
+  const password           = form.get('password')            as string | null;
 
-  const res = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
+  if (!emailOrLdapLoginId || !password) {
+    return NextResponse.json({ error: 'missing-fields' }, { status: 400 });
+  }
+
+  /* 2️⃣  Forward to n8n */
+  const r = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ emailOrLdapLoginId, password }),
   });
-  if (!res.ok) return NextResponse.json({ error: 'invalid' }, { status: 401 });
 
-  const { token } = await res.json();                 // or use API key
+  if (!r.ok) {
+    return NextResponse.json({ error: 'invalid' }, { status: 401 });
+  }
 
-  const response = NextResponse.redirect(
-    new URL('/dashboard', req.url),                   // 303 → /dashboard
-  );
-  response.cookies.set('session', token, {            // write cookie here
+  const { token } = await r.json();
+
+  /* 3️⃣  Set cookie + redirect */
+  const res = NextResponse.redirect(new URL('/dashboard', req.url));
+  res.cookies.set('session', token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     path: '/',
   });
-  return response;
+  return res;
 }
