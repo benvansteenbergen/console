@@ -15,7 +15,8 @@ export default defineConfig([
       react: { version: "detect" },   // silences “React version not specified” warning
     },
   },
+  {
   rules: {
     "react/react-in-jsx-scope": "off",
-  },
+  }},
 ]);
