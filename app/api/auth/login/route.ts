@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const res = NextResponse.redirect(target, { status: 303 });  // 303 = “See Other”
   res.cookies.set('session', token, {
     httpOnly: true,
-    secure  : proto === 'https',
+    secure: process.env.NODE_ENV === 'production', // <-- only secure in prod
     sameSite: 'lax',
     path    : '/',
   });
