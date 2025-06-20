@@ -1,8 +1,7 @@
-// postcss.config.js
+// postcss.config.js  (repo root)
 module.exports = {
   plugins: {
-    /** use the new plugin name ⬇︎ */
-    '@tailwindcss/postcss': {},
+    tailwindcss: {},     // <- classic key, **no @tailwindcss/postcss**
     autoprefixer: {},
   },
 };
