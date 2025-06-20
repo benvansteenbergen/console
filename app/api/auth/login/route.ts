@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const { token } = await r.json();
 
   /* 3️⃣  Set cookie + redirect */
-  const res = NextResponse.redirect(new URL('/dashboard', req.url));
+  const res = NextResponse.redirect('/dashboard');  // ← same-origin redirect
   res.cookies.set('session', token, {
     httpOnly: true,
     secure: true,
