@@ -1,5 +1,3 @@
-// apps/console/app/api/auth/login/route.ts
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -15,13 +13,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid' }, { status: 401 });
   }
 
-  const { token } = await res.json();           // n8n returns its own JWT
-  cookies().set('session', token, {
+  const { token } = await res.json();
+
+  /** create the response first… */
+  const response = NextResponse.json({ ok: true });
+
+  /** …then write the cookie on the *response* cookie store */
+  response.cookies.set('session', token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     path: '/',
   });
 
-  return NextResponse.json({ ok: true });
+  return response;
 }
