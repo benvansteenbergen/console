@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
-function redirectToLogin(code: string) {
-  return NextResponse.redirect('/login?error='+code, 303);
+function redirectToLogin(req, code: string) {
+  return NextResponse.redirect(new URL('/login?error='+code, req.url), { status: 303 });
 }
 
 export async function POST(req: Request) {
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const password = form.get('password');
 
   if (!email || !password) {
-    return redirectToLogin('missing-fields');
+    return redirectToLogin(req,'missing-fields');
   }
 
   const apiRes = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
@@ -22,19 +22,19 @@ export async function POST(req: Request) {
   });
 
   if (!apiRes.ok) {
-    return redirectToLogin('invalid-credentials');
+    return redirectToLogin(req, 'invalid-credentials');
   }
 
   const setCookie = apiRes.headers.get('set-cookie');
   const { 'n8n-auth': n8nJwt } = parse(setCookie ?? '');
 
   if (!n8nJwt) {
-    return redirectToLogin('token-missing');
+    return redirectToLogin(req,'token-missing');
   }
 
   // TODO: optionally decode & verify the JWT here
 
-  const res = NextResponse.redirect('/dashboard',303);
+  const res = NextResponse.redirect(new URL('/dashboard', req.url), { status: 303 });
   res.cookies.set({
     name   : 'session',
     value  : n8nJwt,
