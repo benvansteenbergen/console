@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -10,8 +10,12 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export default function Login() {
-  const params = useSearchParams();
-  const error  = params.get('error');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setError(params.get('error'));
+  }, []);
 
   return (
       <div className="flex h-screen">
@@ -33,14 +37,12 @@ export default function Login() {
             Login to the Wingsuite Console
           </h1>
 
-          {/* ----- Error banner (appears only when ?error=...) ----- */}
           {error && (
               <p className="mt-4 w-full max-w-sm rounded-md bg-red-100 p-3 text-sm text-red-700">
                 {ERROR_MESSAGES[error] ?? 'Onbekende fout. Probeer opnieuw.'}
               </p>
           )}
 
-          {/* HTML form posts directly to the route handler */}
           <form
               action="/api/auth/login"
               method="POST"
