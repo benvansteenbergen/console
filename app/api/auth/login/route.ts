@@ -2,13 +2,19 @@
 import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
+function redirectToLogin(req: Request, code: string) {
+  const url = new URL('/login', req.url);
+  url.searchParams.set('error', code);
+  return NextResponse.redirect(url, { status: 303 });
+}
+
 export async function POST(req: Request) {
   const form = await req.formData();
   const email = form.get('emailOrLdapLoginId');
   const password = form.get('password');
 
   if (!email || !password) {
-    return NextResponse.json({ error: 'missing-fields' }, { status: 400 });
+    return redirectToLogin(req, 'missing-fields');
   }
 
   const apiRes = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
@@ -18,14 +24,14 @@ export async function POST(req: Request) {
   });
 
   if (!apiRes.ok) {
-    return NextResponse.json({ error: 'invalid-credentials' }, { status: 401 });
+    return redirectToLogin(req, 'invalid-credentials');
   }
 
   const setCookie = apiRes.headers.get('set-cookie');
   const { 'n8n-auth': n8nJwt } = parse(setCookie ?? '');
 
   if (!n8nJwt) {
-    return NextResponse.json({ error: 'token-missing' }, { status: 502 });
+    return redirectToLogin(req, 'token-missing');
   }
 
   // TODO: optionally decode & verify the JWT here
