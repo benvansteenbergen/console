@@ -2,10 +2,8 @@
 import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
-function redirectToLogin(req: Request, code: string) {
-  const url = new URL('/login', req.url);
-  url.searchParams.set('error', code);
-  return NextResponse.redirect(url, { status: 303 });
+function redirectToLogin(req, code: string) {
+  return NextResponse.redirect(new URL('/login?error='+code, req.url), { status: 303 });
 }
 
 export async function POST(req: Request) {
@@ -14,7 +12,7 @@ export async function POST(req: Request) {
   const password = form.get('password');
 
   if (!email || !password) {
-    return redirectToLogin(req, 'missing-fields');
+    return redirectToLogin(req,'missing-fields');
   }
 
   const apiRes = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
@@ -31,7 +29,7 @@ export async function POST(req: Request) {
   const { 'n8n-auth': n8nJwt } = parse(setCookie ?? '');
 
   if (!n8nJwt) {
-    return redirectToLogin(req, 'token-missing');
+    return redirectToLogin(req,'token-missing');
   }
 
   // TODO: optionally decode & verify the JWT here
