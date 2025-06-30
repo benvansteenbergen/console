@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
 function redirectToLogin(code: string) {
-  return NextResponse.redirect(`/login?error=${code}`, 303);
+  return NextResponse.redirect(`${process.env.CONSOLE_BASE_URL}/login?error=${code}`, 303);
 }
 
 export async function POST(req: Request) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
   // TODO: optionally decode & verify the JWT here
 
-  const res = NextResponse.redirect('/dashboard', 303);
+  const res = NextResponse.redirect(`${process.env.CONSOLE_BASE_URL}/dashboard`, 303);
   res.cookies.set({
     name   : 'session',
     value  : n8nJwt,
