@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
-function redirectToLogin(req, code: string) {
-  return NextResponse.redirect(new URL('/login?error='+code, req.url), { status: 303 });
+function redirectToLogin(code: string) {
+  return NextResponse.redirect('/login?error='+code, 303);
 }
 
 export async function POST(req: Request) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
   // TODO: optionally decode & verify the JWT here
 
-  const res = NextResponse.redirect(new URL('/dashboard', req.url), { status: 303 });
+  const res = NextResponse.redirect('/dashboard',303);
   res.cookies.set({
     name   : 'session',
     value  : n8nJwt,
