@@ -36,9 +36,17 @@ export async function GET() {
         return new Response('Upstream error', {status: 502});
     }
 
-    const raw: N8nExecution[] = await upstream.json();
+    const raw: N8nExecution[] = (await upstream.json()).data ?? [];
+    /**
+     * If the structure is { data: [...] }
+     *   -> executions = upstreamJson.data
+     * else (older n8n versions) it’s already an array.
+     */
+    const executions = Array.isArray(raw)
+        ? raw
+        : raw.data ?? [];
 
-    const mapped: Exec[] = raw.map((ex) => ({
+    const mapped: Exec[] = executions.map((ex) => ({
         id: ex.id,
         workflowName: ex.workflow?.name ?? `Workflow ${ex.workflowId}`,
         status: ex.finished
