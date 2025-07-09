@@ -20,8 +20,11 @@ interface Exec {
 }
 
 export async function GET() {
-    const jwt = cookies().get('session')?.value;
-    if (!jwt) return new Response('Not logged in', {status: 401});
+    // ①  Await the promise
+    const cookieStore = await cookies();          // <- now a real object
+    const jwt = cookieStore.get('session')?.value;
+
+    if (!jwt) return new Response('Not logged in', { status: 401 });
 
     const upstream = await fetch(
         `${process.env.N8N_BASE_URL}/rest/executions?order=DESC&limit=10`,
