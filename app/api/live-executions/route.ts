@@ -1,31 +1,57 @@
 import { cookies } from 'next/headers';
 
-interface N8nExecution {
+    interface N8nExecution {
     id: number;
     workflowId: number;
     workflow?: { name?: string };
     status: 'success' | 'error' | 'waiting' | 'running';
     finished: boolean;
-    executionTime?: number;   // ms
-    startedAt: string;        // ISO
+    executionTime?: number; // ms
+    startedAt: string;      // ISO
 }
 
 interface Exec {
     id: number;
     workflowName: string;
     status: 'success' | 'error' | 'running';
-    started: string;       // ISO
-    durationMs: number;    // 0 while still running
+    started: string;
+    durationMs: number;
 }
 
-/** n8n returns either an array (older versions) or { data: [...] } */
-type Upstream = N8nExecution[] | { data: N8nExecution[] };
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Type guards for the three upstream shapes                                */
+/* ────────────────────────────────────────────────────────────────────────── */
+type UpstreamData   = { data: N8nExecution[] };
+type UpstreamNested = { data: { results: N8nExecution[] } };
+
+function isData(obj: unknown): obj is UpstreamData {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        Array.isArray((obj as UpstreamData).data)
+    );
+}
+
+function isNested(obj: unknown): obj is UpstreamNested {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        typeof (obj as UpstreamNested).data === 'object' &&
+        (obj as UpstreamNested).data !== null &&
+        Array.isArray((obj as UpstreamNested).data.results)
+    );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
 
 export async function GET() {
+    // 👈 await here
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
-    if (!jwt) return new Response('Not logged in', { status: 401 });
 
+    if (!jwt) {
+        return new Response('Not logged in', { status: 401 });
+    }
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/rest/executions?order=DESC&limit=10`,
         { headers: { cookie: `n8n-auth=${jwt};` } },
@@ -36,18 +62,28 @@ export async function GET() {
         return new Response('Upstream error', { status: 502 });
     }
 
-    const upstreamJson: Upstream = await res.json();
+    const upstreamJson: unknown = await res.json();
 
-    // ------------ SAFE: TypeScript now knows .data may exist -------------
-    const executions =
-        Array.isArray(upstreamJson) ? upstreamJson : upstreamJson.data ?? [];
+    let executions: N8nExecution[] = [];
+
+    if (Array.isArray(upstreamJson)) {
+        executions = upstreamJson;
+    } else if (isData(upstreamJson)) {
+        executions = upstreamJson.data;
+    } else if (isNested(upstreamJson)) {
+        executions = upstreamJson.data.results;
+    } else {
+        console.error('Unexpected upstream shape', upstreamJson);
+    }
 
     const mapped: Exec[] = executions.map((ex) => ({
-        id: ex.id,
+        id         : ex.id,
         workflowName: ex.workflow?.name ?? `Workflow ${ex.workflowId}`,
-        status: ex.finished ? (ex.status === 'success' ? 'success' : 'error') : 'running',
-        started: ex.startedAt,
-        durationMs: ex.executionTime ?? 0,
+        status     : ex.finished
+            ? ex.status === 'success' ? 'success' : 'error'
+            : 'running',
+        started    : ex.startedAt,
+        durationMs : ex.executionTime ?? 0,
     }));
 
     return Response.json(mapped);
