@@ -1,15 +1,15 @@
 import { cookies } from 'next/headers';
 
-    interface N8nExecution {
+interface N8nExecution {
     id: number;
     workflowId: number;
     workflow?: { name?: string };
     status: 'success' | 'error' | 'waiting' | 'running';
-    finished: boolean;
-    executionTime?: number; // ms
-    startedAt: string;      // ISO
+    finished: boolean;          // older n8n; may be missing
+    executionTime?: number;     // ms (older n8n)
+    startedAt: string;          // ISO
+    stoppedAt?: string | null;  // ← add this line
 }
-
 interface Exec {
     id: number;
     workflowName: string;
@@ -78,7 +78,7 @@ export async function GET() {
 
     const mapped: Exec[] = executions.map((ex) => ({
         id: ex.id,
-        workflowName: ex.workflowName ?? `Workflow ${ex.workflowId}`,
+        workflowName: ex.workflow?.name ?? `Workflow ${ex.workflowId}`,
         status:
             ex.status === 'running'
                 ? 'running'
