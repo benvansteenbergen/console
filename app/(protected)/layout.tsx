@@ -11,6 +11,9 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
         <a href="https://workflow.wingsuite.io" target="_blank" rel="noreferrer">
           Open n8n ↗
         </a>
+          <a href="/executions" className="hover:underline">
+          Executions
+        </a>
       </aside>
       <main className="flex-1 overflow-auto p-8">{children}</main>
     </div>
