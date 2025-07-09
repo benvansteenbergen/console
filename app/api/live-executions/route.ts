@@ -77,13 +77,18 @@ export async function GET() {
     }
 
     const mapped: Exec[] = executions.map((ex) => ({
-        id         : ex.id,
-        workflowName: ex.workflow?.name ?? `Workflow ${ex.workflowId}`,
-        status     : ex.finished
-            ? ex.status === 'success' ? 'success' : 'error'
-            : 'running',
-        started    : ex.startedAt,
-        durationMs : ex.executionTime ?? 0,
+        id: ex.id,
+        workflowName: ex.workflowName ?? `Workflow ${ex.workflowId}`,
+        status:
+            ex.status === 'running'
+                ? 'running'
+                : ex.status === 'error'
+                    ? 'error'
+                    : 'success',                 // assume anything else is success
+        started: ex.startedAt,
+        durationMs: ex.stoppedAt
+            ? Date.parse(ex.stoppedAt) - Date.parse(ex.startedAt)
+            : 0,
     }));
 
     return Response.json(mapped);
