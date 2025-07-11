@@ -14,7 +14,6 @@ export async function POST(req: Request) {
   if (!email || !password) {
     return redirectToLogin('missing-fields');
   }
-
   const apiRes = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
     method : 'POST',
     headers: { 'Content-Type': 'application/json' },
