@@ -1,6 +1,6 @@
 // app/api/content-storage/route.ts
 import { cookies } from 'next/headers';
-import { useSearchParams } from 'next/navigation'
+import { NextRequest } from "next/server";
 
 // in-memory cache
 const CACHE: Record<string, { expires: number; payload: FolderStat[] }> = {};
@@ -18,10 +18,10 @@ export interface FolderStat {
     unseen: number;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     /* grab token from session cookie */
     const token = (await cookies()).get('session')?.value;
-    const searchParams = useSearchParams();
+    const { searchParams } = new URL(req.url);
     const folder = searchParams.get("folder") ?? "";
 
     if (!token) return new Response('Unauthorized', { status: 401 });
