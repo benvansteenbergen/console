@@ -30,14 +30,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         refreshInterval: 5 * 60_000, // 5‑minute re‑validation
     });
 
-    if (error?.message === 'unauth') {
-        // redirect once – avoids endless loop
+    // Treat both HTTP 401 and valid:false payloads as unauthenticated
+    const unauthPayload = data && data.valid === 'false';
+    const unauthError   = error?.message === 'unauth';
+    const unauth        = unauthError || unauthPayload;
+
+    if (unauth) {
+        // Redirect client‑side once, prevent endless loop during SSR
         if (typeof window !== 'undefined') router.push('/login');
     }
 
     const value: SessionState = {
         loading: isLoading,
-        unauth: !!error,
+        unauth,
         data,
     };
 
