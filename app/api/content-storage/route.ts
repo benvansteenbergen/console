@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         // upstream is shape { items: [...] } OR { Blogpost: { items: [...] } }
         const items =
             Array.isArray(raw[folder].items)
-                ? raw[folder].items
+                ? raw[folder]?.items
                 : raw[folder]?.items ?? Object.values(raw)[0]?.items ?? [];
 
         return Response.json({ items });
