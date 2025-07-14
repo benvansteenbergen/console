@@ -1,19 +1,14 @@
 // app/(protected)/content/[folder]/page.tsx
-import { cookies } from "next/headers";
 import FolderGrid, { DriveFile } from "@/components/FolderGrid";
 
 export default async function Page(props: unknown) {
     const { params } = props as { params: { folder: string } };
     const folderName = decodeURIComponent(params.folder);
 
-    /* ---------- auth ---------- */
-    const cookieStore = await cookies();
-    const jwt = cookieStore.get('session')?.value;
-
     /* ---------- data ---------- */
     const res = await fetch(
         `${process.env.CONSOLE_BASE_URL}/api/content-storage?folder=${encodeURIComponent(folderName)}`,
-        { headers: { cookie: `auth=${jwt};` }, cache: "no-store" },
+        { credentials: 'include' }
     );
 
     if (!res.ok) throw new Error("Failed to load folder content");
