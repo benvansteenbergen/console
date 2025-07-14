@@ -5,9 +5,10 @@ export async function GET() {
     const jwt = cookieStore.get('session')?.value;
 
     if (!jwt) return new Response('Unauthorized', { status: 401 });
-
     const res = await fetch(`${process.env.N8N_BASE_URL}/webhook/portal-userinfo`, {
-        headers: { cookie: `n8n-auth=${jwt};` },
+        "headers": {
+            "cookie": `auth=${jwt};`
+        },
     });
 
     if (!res.ok) return new Response('Expired', { status: 401 });
