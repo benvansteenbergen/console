@@ -31,8 +31,6 @@ export async function POST(req: Request) {
     return redirectToLogin('token-missing');
   }
 
-  // TODO: optionally decode & verify the JWT here
-
   const res = NextResponse.redirect(`${process.env.CONSOLE_BASE_URL}/dashboard`, 303);
   res.cookies.set({
     name   : 'session',

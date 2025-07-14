@@ -1,64 +1,76 @@
 'use client';
-// ---------------------------------------------------------------------------
-// ⚡️  Wingsuite – Client Dashboard (Tailwind-only version)
-// ---------------------------------------------------------------------------
-// ESLint no-irregular-whitespace fix: replaced all non-ASCII spaces/dashes.
-// ---------------------------------------------------------------------------
+import useSWR from 'swr';
+import Link from 'next/link';
+
+/* --------------------------------------------------------------------
+   Helper types
+-------------------------------------------------------------------- */
+interface FolderStat {
+  folder: string;
+  unseen: number;
+}
+
+const fetcher = (url: string) =>
+    fetch(url, { credentials: 'include' }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    });
+
+const toSlug = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+/* --------------------------------------------------------------------
+   Demo placeholder data (credits, personas, automations) – swap later
+-------------------------------------------------------------------- */
+const creditsLeft = 2705;
+const creditTotal = 3000;
+
+const agentPersonas = [
+  {
+    id: 'june',
+    name: 'June',
+    role: 'Senior Content Writer',
+    chatUrl: 'https://workflow.wingsuite.io/webhook/june',
+  },
+  {
+    id: 'eva',
+    name: 'Eva',
+    role: 'Spelling Check / Feedback',
+    chatUrl: 'https://workflow.wingsuite.io/webhook/eva',
+  },
+];
+
+const automations = [
+  {
+    id: 'meta-gen',
+    name: 'Product Meta Group Generator',
+    schedule: 'Once per day',
+    lastRun: '2025-01-01 03:00',
+    avgCost: '$0.03',
+    totalCost: '$13.59',
+  },
+];
 
 export default function Dashboard() {
-  /* ----------------------------------------------------------------------- */
-  /*  Demo placeholders – swap with SWR / fetch hooks later                   */
-  /* ----------------------------------------------------------------------- */
-  const creditsLeft = 2705; // ← pull from /api/credits
-  const creditTotal = 3000;
+  /* live content-storage stats */
+  const {
+    data: stats = [],
+    error: storageError,
+    isLoading: storageLoading,
+  } = useSWR<FolderStat[]>('/api/content-storage', fetcher, {
+    refreshInterval: 60_000,
+  });
 
-  const agentPersonas = [
-    {
-      id: 'june',
-      name: 'June',
-      role: 'Senior Content Writer',
-      chatUrl: 'https://workflow.wingsuite.io/webhook/june', // ← replace
-    },
-    {
-      id: 'eva',
-      name: 'Eva',
-      role: 'Spelling Check / Feedback',
-      chatUrl: 'https://workflow.wingsuite.io/webhook/eva', // ← replace
-    },
-  ];
-
-  const storages = [
-    { id: 'blog', label: 'Blogposts', items: 10 },
-    { id: 'linkedin', label: 'LinkedIn', items: 2 },
-    { id: 'news', label: 'Newsletters', items: 0 },
-  ];
-
-  const automations = [
-    {
-      id: 'meta-gen',
-      name: 'Product Meta Group Generator',
-      schedule: 'Once per day',
-      lastRun: '2025-01-01 03:00',
-      avgCost: '$0.03',
-      totalCost: '$13.59',
-    },
-  ];
-
-  const apis: { id: string; name: string }[] = [];
-
-  /* ----------------------------------------------------------------------- */
-  /*  Helpers                                                                */
-  /* ----------------------------------------------------------------------- */
   const Panel = ({ children }: { children: React.ReactNode }) => (
       <div className="rounded-lg border bg-white shadow-sm">{children}</div>
   );
 
-  /* ----------------------------------------------------------------------- */
-  /*  JSX                                                                    */
-  /* ----------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  JSX                                                               */
+  /* ------------------------------------------------------------------ */
   return (
       <section className="mx-auto w-full max-w-6xl space-y-10 px-6 py-10">
-        {/* Heading + Credits banner */}
+        {/* Credits banner */}
         <Panel>
           <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
             <h1 className="col-span-2 text-3xl font-bold text-blue-900">
@@ -113,20 +125,47 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content Storage */}
+        {/* Content Storage (dynamic) */}
         <div>
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
             Content Storage (Google Drive)
           </h2>
+          {storageError && (
+              <p className="rounded bg-red-50 p-4 text-sm text-red-700">
+                Could not load storage data.
+              </p>
+          )}
           <div className="grid grid-cols-3 gap-6 border-x border-b bg-blue-100 p-6">
-            {storages.map((s) => (
-                <Panel key={s.id}>
-                  <div className="flex flex-col items-center gap-1 p-6 text-center">
-                    <p className="font-medium">{s.label}</p>
-                    <p className="text-xs text-gray-500">({s.items} items)</p>
-                  </div>
-                </Panel>
-            ))}
+            {/* Skeleton during first load */}
+            {storageLoading && stats.length === 0 &&
+                Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                        key={i}
+                        className="h-24 animate-pulse rounded-lg border bg-gray-100"
+                    />
+                ))}
+
+            {/* Real tiles */}
+            {!storageLoading &&
+                stats.map(({ folder, unseen }) => (
+                    <Panel key={folder}>
+                      <Link
+                          href={`/storage/${toSlug(folder)}`}
+                          className="relative flex flex-col items-center gap-1 p-6 text-center"
+                      >
+                        <span className="font-medium">{folder}</span>
+                        <span className="text-xs text-gray-500">
+                    {unseen} unseen file{unseen === 1 ? '' : 's'}
+                  </span>
+
+                        {unseen > 0 && (
+                            <span className="absolute -top-2 -right-2 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
+                      +{unseen}
+                    </span>
+                        )}
+                      </Link>
+                    </Panel>
+                ))}
           </div>
         </div>
 
@@ -165,7 +204,7 @@ export default function Dashboard() {
             APIs
           </h2>
           <div className="border-x border-b bg-blue-100 p-6 text-center text-sm text-gray-500">
-            {apis.length === 0 ? 'No API endpoints yet…' : 'TODO: list APIs'}
+            No API endpoints yet…
           </div>
         </div>
       </section>
