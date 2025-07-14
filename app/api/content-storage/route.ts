@@ -39,6 +39,17 @@ export async function GET(req: NextRequest) {
     if (!res.ok)  return new Response('upstream error', { status: 502 });
     /* ──────── map [{ <folder>: {newFiles} }] ➜ { folder, unseen }[] ──────── */
     const raw: UpstreamPayload[] = await res.json();
+
+    if (folder) {
+        // upstream is shape { items: [...] } OR { Blogpost: { items: [...] } }
+        const items =
+            Array.isArray(raw[folder].items)
+                ? raw[folder].items
+                : raw[folder]?.items ?? Object.values(raw)[0]?.items ?? [];
+
+        return Response.json({ items });
+    }
+
     const flat: FolderStat[] = raw.map((obj) => {
         const [key] = Object.keys(obj);
         return { folder: key, unseen: obj[key].newFiles };
