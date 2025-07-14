@@ -20,7 +20,7 @@ export interface FolderStat {
 export async function GET() {
     /* grab token from session cookie */
     const token = (await cookies()).get('session')?.value;
-    if (!token) return new Response('unauth', { status: 401 });
+    if (!token) return new Response('Unauthorized', { status: 401 });
 
     const cacheKey = token.slice(-16);
     const hit = CACHE[cacheKey];
@@ -29,12 +29,9 @@ export async function GET() {
     /* proxy to n8n webhook */
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/webhook/content-storage`,
-        { headers: { cookie: `n8n-auth=${token};` } },
+        { headers: { cookie: `auth=${token};` } },
     );
-
-    if (res.status === 401) return new Response('unauth', { status: 401 });
     if (!res.ok)  return new Response('upstream error', { status: 502 });
-
     /* ──────── map [{ <folder>: {newFiles} }] ➜ { folder, unseen }[] ──────── */
     const raw: UpstreamPayload[] = await res.json();
     const flat: FolderStat[] = raw.map((obj) => {

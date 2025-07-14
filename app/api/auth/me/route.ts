@@ -11,7 +11,7 @@ export async function GET() {
         },
     });
 
-    if (!res.ok) return new Response('Expired', { status: 401 });
+    if (!res.ok) return new Response('upstream error', { status: 502 });
 
     const json = await res.json();           // { client, role, email }
     return Response.json(json);
