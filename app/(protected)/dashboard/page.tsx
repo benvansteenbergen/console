@@ -155,7 +155,7 @@ export default function Dashboard() {
                       >
                         <span className="font-medium">{folder}</span>
                         <span className="text-xs text-gray-500">
-                    {unseen} unseen file{unseen === 1 ? '' : 's'}
+                    {unseen} new file{unseen === 1 ? '' : 's'}
                   </span>
 
                         {unseen > 0 && (
