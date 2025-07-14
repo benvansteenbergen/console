@@ -7,7 +7,7 @@ export default async function Page(props: unknown) {
 
     /* ---------- data ---------- */
     const res = await fetch(
-        `${process.env.CONSOLE_BASE_URL}/api/content-storage?folder=${encodeURIComponent(folderName)}`,
+        `/api/content-storage?folder=${encodeURIComponent(folderName)}`,
         { credentials: 'include' }
     );
 
