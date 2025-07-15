@@ -150,7 +150,7 @@ export default function Dashboard() {
                 stats.map(({ folder, unseen }) => (
                     <Panel key={folder}>
                       <Link
-                          href={`/storage/${toSlug(folder)}`}
+                          href={`/content/${toSlug(folder)}`}
                           className="relative flex flex-col items-center gap-1 p-6 text-center"
                       >
                         <span className="font-medium">{folder}</span>

@@ -32,7 +32,7 @@ export default async function Page(props: unknown) {
     return (
         <main className="flex flex-1 flex-col p-6 space-y-6">
             <div className="text-sm text-slate-500">
-                <a href="/" className="font-medium text-sky-700 hover:underline">
+                <a href="/dashboard" className="font-medium text-sky-700 hover:underline">
                     Content
                 </a>
                 <span className="mx-1">&gt;</span>
