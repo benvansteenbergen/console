@@ -37,9 +37,9 @@ export async function GET(req: NextRequest) {
         { headers: { cookie: `auth=${token};` } },
     );
     if (!res.ok)  return new Response('upstream error', { status: 502 });
-    /* ──────── map [{ <folder>: {newFiles} }] ➜ { folder, unseen }[] ──────── */
+
     const raw: UpstreamPayload[] = await res.json();
-    console.log(raw);
+
     if (folder) {
         // upstream is shape { items: [...] } OR { Blogpost: { items: [...] } }
         const items =
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
                 ? raw[folder]?.items
                 : raw[folder]?.items ?? Object.values(raw)[0]?.items ?? [];
 
-        return Response.json({ items });
+        return Response.json(items);
     }
 
     const flat: FolderStat[] = raw.map((obj) => {
