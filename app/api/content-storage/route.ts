@@ -16,6 +16,7 @@ type UpstreamPayload = { [folderName: string]: UpstreamFolder };
 export interface FolderStat {
     folder: string;
     unseen: number;
+    items: unknown[];
 }
 
 export async function GET(req: NextRequest) {
@@ -39,20 +40,9 @@ export async function GET(req: NextRequest) {
     if (!res.ok)  return new Response('upstream error', { status: 502 });
 
     const raw: UpstreamPayload[] = await res.json();
-
-    if (folder) {
-        // upstream is shape { items: [...] } OR { Blogpost: { items: [...] } }
-        const items =
-            Array.isArray(raw[folder].items)
-                ? raw[folder]?.items
-                : raw[folder]?.items ?? Object.values(raw)[0]?.items ?? [];
-
-        return Response.json(items);
-    }
-
     const flat: FolderStat[] = raw.map((obj) => {
         const [key] = Object.keys(obj);
-        return { folder: key, unseen: obj[key].newFiles };
+        return { folder: key, unseen: obj[key].newFiles, items: obj[key].items };
     });
 
     CACHE[cacheKey] = { expires: Date.now() + TTL, payload: flat };
