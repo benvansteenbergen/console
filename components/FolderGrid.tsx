@@ -22,8 +22,17 @@ const DOWNLOAD_FORMATS = [
     { fmt: "txt", label: "TXT" },
 ];
 
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+const fetcher = async (url: string): Promise<DriveFile[]> => {
+    const raw = await fetch(url).then(r => r.json());
 
+    // When /api/content-storage returns [{ folder, unseen, items }]
+    if (Array.isArray(raw) && raw.length && "items" in raw[0]) {
+        return (raw[0]).items as DriveFile[];
+    }
+
+    // When it already returns DriveFile[]
+    return raw as DriveFile[];
+};
 export default function FolderGrid({ folder, initialItems }: GridProps) {
     const { data = initialItems } = useSWR<DriveFile[]>(
         `/api/content-storage?folder=${encodeURIComponent(folder)}`,
