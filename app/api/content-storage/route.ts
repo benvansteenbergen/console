@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     if (!res.ok)  return new Response('upstream error', { status: 502 });
     /* ──────── map [{ <folder>: {newFiles} }] ➜ { folder, unseen }[] ──────── */
     const raw: UpstreamPayload[] = await res.json();
-
+    console.log(raw);
     if (folder) {
         // upstream is shape { items: [...] } OR { Blogpost: { items: [...] } }
         const items =
