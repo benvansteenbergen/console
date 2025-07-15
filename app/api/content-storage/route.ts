@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const folder = searchParams.get("folder") ?? "";
 
     if (!token) return new Response('Unauthorized', { status: 401 });
-    
+
     const cacheKey = `${token.slice(-16)}:${folder.toLowerCase() || "all"}`;
     const hit = CACHE[cacheKey];
     if (hit && hit.expires > Date.now()) return Response.json(hit.payload);

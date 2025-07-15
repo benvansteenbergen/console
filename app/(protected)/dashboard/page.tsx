@@ -8,6 +8,7 @@ import Link from 'next/link';
 interface FolderStat {
   folder: string;
   unseen: number;
+  items: unknown[];
 }
 
 const fetcher = (url: string) =>
@@ -147,7 +148,7 @@ export default function Dashboard() {
 
             {/* Real tiles */}
             {!storageLoading &&
-                stats.map(({ folder, unseen }) => (
+                stats.map(({ folder, unseen, items }) => (
                     <Panel key={folder}>
                       <Link
                           href={`/content/${toSlug(folder)}`}
@@ -155,7 +156,7 @@ export default function Dashboard() {
                       >
                         <span className="font-medium">{folder}</span>
                         <span className="text-xs text-gray-500">
-                    {unseen} new file{unseen === 1 ? '' : 's'}
+                    {items.length ?? 0} file{items.length > 1 ? '' : 's'}
                   </span>
 
                         {unseen > 0 && (
