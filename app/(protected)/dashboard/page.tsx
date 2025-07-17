@@ -1,6 +1,7 @@
 'use client';
 import useSWR from 'swr';
 import Link from 'next/link';
+import RecentExecutions from '@/components/RecentExecutions';
 
 /* --------------------------------------------------------------------
    Helper types
@@ -125,6 +126,8 @@ export default function Dashboard() {
             </Panel>
           </div>
         </div>
+        {/* + Recent executions */}
+        <RecentExecutions className="max-w-4xl" />
 
         {/* Content Storage (dynamic) */}
         <div>
@@ -156,7 +159,7 @@ export default function Dashboard() {
                       >
                         <span className="font-medium">{folder}</span>
                         <span className="text-xs text-gray-500">
-                    {items.length ?? 0} file{items.length > 1 ? '' : 's'}
+                    {items.length ?? 0} file{items.length === 1 ? '' : 's'}
                   </span>
 
                         {unseen > 0 && (

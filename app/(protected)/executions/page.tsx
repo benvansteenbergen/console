@@ -14,6 +14,7 @@ interface Exec {
     status: 'success' | 'error' | 'running';
     started: string; // ISO string
     durationMs: number; // 0 if still running
+    mode: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -45,7 +46,7 @@ export default function Executions() {
                             <th className="px-4 py-2">Status</th>
                             <th className="px-4 py-2">Started</th>
                             <th className="px-4 py-2 text-right">Run time</th>
-                            <th className="px-4 py-2 text-right">Exec. ID</th>
+                            <th className="px-4 py-2 text-right">Trigger</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -75,7 +76,7 @@ export default function Executions() {
                                         ? '—'
                                         : `${(ex.durationMs / 1000).toFixed(2)}s`}
                                 </td>
-                                <td className="px-4 py-2 text-right">{ex.id}</td>
+                                <td className="px-4 py-2 text-right">{ex.mode}</td>
                             </tr>
                         ))}
                         </tbody>
