@@ -34,13 +34,16 @@ export async function GET(props: unknown) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!params.id){
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     /* Proxy to n8n with includeData=true */
     const n8nUrl =
-        `${process.env.N8N_BASE_URL}/rest/executions/${params.id}` +
-        `?includeData=true`;
+        `${process.env.N8N_BASE_URL}/rest/executions/${params.id}`;
 
     const upstream = await fetch(n8nUrl, {
-        headers: { cookie: `auth=${jwt};` },
+        headers: { cookie: `n8n-auth=${jwt};` },
         cache: "no-store",
     });
 
