@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const upstream = await fetch(
         `${process.env.N8N_BASE_URL}/rest/executions/${id}?includeData=true`,
         {
-            headers: { cookie: `auth=${jwt};` },
+            headers: { cookie: `n8n-auth=${jwt};` },
             cache: "no-store",
         },
     );
