@@ -18,11 +18,10 @@ interface TraceStep {
 }
 
 /* GET /api/live-executions/[id] --------------------------------------- */
-export async function GET(
-    _req: Request,                          // ① Request object
-    { params }: { params: { id: string } }, // ② ctx with route params
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }
 ) {
     /* auth */
+    const { id } = await params;
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
 
@@ -31,7 +30,7 @@ export async function GET(
 
     /* proxy to n8n (includeData=true so customData is present) */
     const upstream = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/executions/${params.id}?includeData=true`,
+        `${process.env.N8N_BASE_URL}/rest/executions/${id}?includeData=true`,
         {
             headers: { cookie: `auth=${jwt};` },
             cache: "no-store",
