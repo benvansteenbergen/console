@@ -23,7 +23,7 @@ interface TraceStep {
 /* --------------------------------------------------------------------- */
 /*  GET /api/live-executions/:id                                         */
 /* --------------------------------------------------------------------- */
-export async function GET(props: unknown) {
+export default async function GET(props: unknown) {
 
     const { params } = props as { params: { id: string } };
     /* Auth (reuse cookie pattern) */
