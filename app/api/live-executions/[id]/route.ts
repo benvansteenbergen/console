@@ -3,15 +3,6 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 /* helper interfaces --------------------------------------------------- */
-interface N8nExecResponse {
-    data: {
-        id: string;
-        status: "success" | "error" | "running";
-        startedAt: string;
-        stoppedAt: string | null;
-        customData: Record<string, string>;
-    };
-}
 /* GET /api/live-executions/[id] --------------------------------------- */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }
 ) {
@@ -38,12 +29,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
     const raw = (await upstream.json())
-    const first = (Array.isArray(raw) ? raw[0] : raw) as N8nExecResponse;
 
     /* flatten customData → trace array */
 
     /* response */
     return NextResponse.json({
-        first
+        raw
     });
 }
