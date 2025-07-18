@@ -40,7 +40,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const raw = (await upstream.json()) as N8nExecResponse;
+    const raw = (await upstream.json()).data as N8nExecResponse;
 
     /* flatten customData → trace array */
     const trace: TraceStep[] = Object.entries(raw.customData ?? {}).map(
