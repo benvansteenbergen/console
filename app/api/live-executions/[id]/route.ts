@@ -10,10 +10,6 @@ interface N8nExecResponse {
     stoppedAt: string | null;
     customData: Record<string, string>;
 }
-interface TraceStep {
-    label: string;
-    summary: string;
-}
 
 /* GET /api/live-executions/[id] --------------------------------------- */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }
@@ -42,17 +38,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const raw = (await upstream.json()).data as N8nExecResponse;
 
-    /* flatten customData → trace array */
-    const trace: TraceStep[] = Object.entries(raw.customData ?? {}).map(
-        ([label, summary]) => ({ label, summary }),
-    );
-
-    /* response */
-    return NextResponse.json({
-        id: raw.id,
-        status: raw.status,
-        startedAt: raw.startedAt,
-        stoppedAt: raw.stoppedAt,
-        trace,
-    });
+    return NextResponse.json(raw);
 }
