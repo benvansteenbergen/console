@@ -4,11 +4,17 @@ import { NextResponse } from "next/server";
 
 /* helper interfaces --------------------------------------------------- */
 interface N8nExecResponse {
-    id: string;
-    status: "success" | "error" | "running";
-    startedAt: string;
-    stoppedAt: string | null;
-    customData: Record<string, string>;
+    data: {
+        id: string;
+        status: "success" | "error" | "running";
+        startedAt: string;
+        stoppedAt: string | null;
+        customData: Record<string, string>;
+    };
+}
+interface TraceStep {
+    label: string;
+    summary: string;
 }
 
 /* GET /api/live-executions/[id] --------------------------------------- */
@@ -36,7 +42,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const raw = (await upstream.json()).data as N8nExecResponse;
+    const raw = (await upstream.json())
+    const first = (Array.isArray(raw) ? raw[0] : raw) as N8nExecResponse;
 
-    return NextResponse.json(raw);
+    /* flatten customData → trace array */
+    const trace: TraceStep[] = Object.entries(first.data.customData ?? {}).map(
+        ([label, summary]) => ({ label, summary }),
+    );
+
+    /* response */
+    return NextResponse.json({
+        id: raw.data.id,
+        status: raw.data.status,
+        startedAt: raw.data.startedAt,
+        stoppedAt: raw.data.stoppedAt,
+        trace,
+    });
 }
