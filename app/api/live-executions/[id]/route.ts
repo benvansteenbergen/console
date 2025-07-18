@@ -9,7 +9,7 @@ interface N8nExecResponse {
         status: "success" | "error" | "running";
         startedAt: string;
         stoppedAt: string | null;
-        customData?: Record<string, string>;
+        customData: unknown[];
     };
 }
 interface TraceStep {
