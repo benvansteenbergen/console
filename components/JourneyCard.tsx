@@ -3,16 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 
-/* ---------- types coming from /trace ---------- */
+/* ---------- typing ---------- */
 interface TraceStep {
-    label: string;   // "Writer: June"
-    summary: string; // "Wrote a 300-word post …"
-    ts: string;      // ISO
+    label: string;
+    summary: string;
+    ts?: string;           // optional (API may omit it)
 }
 
-/* ---------- helpers ---------- */
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+/* ---------- fetcher normalises both shapes ---------- */
+const fetcher = async (url: string): Promise<TraceStep[]> => {
+    const raw = await fetch(url).then(r => r.json());
 
+    if (Array.isArray(raw)) return raw;          // already an array
+    if (Array.isArray(raw.trace)) return raw.trace;
+
+    return [];                                   // fallback
+};
+
+/* ---------- little typewriter hook ---------- */
 function useTypewriter(text: string, speed = 16) {
     const [out, setOut] = useState("");
     useEffect(() => {
@@ -28,8 +36,9 @@ function useTypewriter(text: string, speed = 16) {
 
 /* ---------- one animated row ---------- */
 function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
-    /* phases: dots → typed */
-    const [phase, setPhase] = useState<"dots" | "typed">(fresh ? "dots" : "typed");
+    const [phase, setPhase] = useState<"dots" | "typed">(
+        fresh ? "dots" : "typed",
+    );
     const typed = useTypewriter(step.summary, 14);
 
     useEffect(() => {
@@ -40,12 +49,12 @@ function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
     }, [fresh]);
 
     return (
-        <li className="mb-6 relative pl-4">
+        <li className="relative mb-6 pl-4">
             <span className="absolute -left-2 top-1 h-4 w-4 rounded-full bg-sky-600" />
             <p className="font-medium">{step.label}</p>
-            <p className="text-sm text-slate-600 min-h-[1rem]">
+            <p className="min-h-[1rem] text-sm text-slate-600">
                 {phase === "dots" ? (
-                    <span className="animate-pulse inline-block w-4 text-center">…</span>
+                    <span className="inline-block w-4 animate-pulse text-center">…</span>
                 ) : (
                     typed
                 )}
@@ -56,36 +65,51 @@ function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
 
 /* ---------- main card ---------- */
 export default function JourneyCard({ execId }: { execId: string }) {
+    /* poll until we detect a “finished” step */
     const { data: trace = [] } = useSWR<TraceStep[]>(
         `/api/live-executions/${execId}`,
         fetcher,
-        { refreshInterval: 2000 }
+        {
+            refreshInterval: (latestTrace?: TraceStep[]) => {
+                const last = latestTrace?.at(-1)?.label.toLowerCase() ?? "";
+                return last.startsWith("saving") || last.startsWith("finished")
+                    ? 0
+                    : 2000; // keep polling
+            },
+        },
     );
 
-    /* detect which steps are new this tick */
+    /* new-step detection */
     const prevRef = useRef<string[]>([]);
-    const rows = trace
-        .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
-        .map((step) => ({
-            step,
-            fresh: !prevRef.current.includes(step.ts),
-        }));
+    const rows = trace.map((step, idx) => {
+        /* fall back to index if ts missing */
+        const key = step.ts ?? `idx-${idx}`;
+        const fresh = !prevRef.current.includes(key);
+        return { step, fresh, key };
+    });
 
     useEffect(() => {
-        prevRef.current = trace.map((s) => s.ts);
-    }, [trace]);
+        prevRef.current = rows.map((r) => r.key);
+    }, [rows]);
+
+    const doneLabel =
+        trace.at(-1)?.label.toLowerCase() ?? /* empty array */ "";
 
     return (
         <ol className="relative border-l pl-4">
-            {rows.map(({ step, fresh }) => (
-                <StepRow key={step.ts} step={step} fresh={fresh} />
+            {rows.map(({ step, fresh, key }) => (
+                <StepRow key={key} step={step} fresh={fresh} />
             ))}
 
-            {/* pending spinner while workflow still running */}
-            {!trace.at(-1)?.label.startsWith("Saving") && (
+            {/* always show while nothing yet, or still running */}
+            {(trace.length === 0 ||
+                (!doneLabel.startsWith("saving") &&
+                    !doneLabel.startsWith("finished"))) && (
                 <li className="mb-2 pl-4">
-                    <span className="absolute -left-2 top-1 h-4 w-4 rounded-full border border-slate-300 animate-pulse" />
-                    <p className="font-medium text-slate-400">waiting for next step…</p>
+                    <span className="absolute -left-2 top-1 h-4 w-4 animate-pulse rounded-full border border-slate-300" />
+                    <p className="font-medium text-slate-400">
+                        Waiting for next step…
+                    </p>
                 </li>
             )}
         </ol>
