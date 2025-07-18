@@ -2,9 +2,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-/* --------------------------------------------------------------------- */
-/*  Helper interfaces                                                    */
-/* --------------------------------------------------------------------- */
+/* helper interfaces --------------------------------------------------- */
 interface N8nExecResponse {
     data: {
         id: string;
@@ -14,59 +12,50 @@ interface N8nExecResponse {
         customData?: Record<string, string>;
     };
 }
-
 interface TraceStep {
     label: string;
     summary: string;
 }
 
-/* --------------------------------------------------------------------- */
-/*  GET /api/live-executions/:id                                         */
-/* --------------------------------------------------------------------- */
-export default async function GET(props: unknown) {
-
-    const { params } = props as { params: { id: string } };
-    /* Auth (reuse cookie pattern) */
+/* GET /api/live-executions/[id] --------------------------------------- */
+export async function GET(
+    _req: Request,                          // ① Request object
+    { params }: { params: { id: string } }, // ② ctx with route params
+) {
+    /* auth */
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
 
-    if (!jwt) {
+    if (!jwt)
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    if (!params.id){
+    /* proxy to n8n (includeData=true so customData is present) */
+    const upstream = await fetch(
+        `${process.env.N8N_BASE_URL}/rest/executions/${params.id}?includeData=true`,
+        {
+            headers: { cookie: `auth=${jwt};` },
+            cache: "no-store",
+        },
+    );
+
+    if (upstream.status === 404)
         return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    /* Proxy to n8n with includeData=true */
-    const n8nUrl =
-        `${process.env.N8N_BASE_URL}/rest/executions/${params.id}`;
-
-    const upstream = await fetch(n8nUrl, {
-        headers: { cookie: `n8n-auth=${jwt};` },
-        cache: "no-store",
-    });
-
-    if (upstream.status === 404) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    if (!upstream.ok) {
+    if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
-    }
 
     const raw = (await upstream.json()) as N8nExecResponse;
 
-    /* Flatten customData → ordered trace array */
+    /* flatten customData → trace array */
     const trace: TraceStep[] = Object.entries(raw.data.customData ?? {}).map(
         ([label, summary]) => ({ label, summary }),
     );
 
-    /* Shape response */
+    /* response */
     return NextResponse.json({
         id: raw.data.id,
         status: raw.data.status,
         startedAt: raw.data.startedAt,
         stoppedAt: raw.data.stoppedAt,
-        trace,             // [{ label, summary }, …]
+        trace,
     });
 }
