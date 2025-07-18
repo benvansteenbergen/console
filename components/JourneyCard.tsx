@@ -57,7 +57,7 @@ function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
 /* ---------- main card ---------- */
 export default function JourneyCard({ execId }: { execId: string }) {
     const { data: trace = [] } = useSWR<TraceStep[]>(
-        `/api/executions/${execId}/trace`,
+        `/api/executions/${execId}`,
         fetcher,
         { refreshInterval: 2000 }
     );
