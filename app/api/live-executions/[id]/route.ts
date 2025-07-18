@@ -4,13 +4,11 @@ import { NextResponse } from "next/server";
 
 /* helper interfaces --------------------------------------------------- */
 interface N8nExecResponse {
-    data: {
-        id: string;
-        status: "success" | "error" | "running";
-        startedAt: string;
-        stoppedAt: string | null;
-        customData: Record<string, string>;
-    };
+    id: string;
+    status: "success" | "error" | "running";
+    startedAt: string;
+    stoppedAt: string | null;
+    customData: Record<string, string>;
 }
 interface TraceStep {
     label: string;
@@ -45,16 +43,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const raw = (await upstream.json()) as N8nExecResponse;
 
     /* flatten customData → trace array */
-    const trace: TraceStep[] = Object.entries(raw.data?.customData ?? {}).map(
+    const trace: TraceStep[] = Object.entries(raw.customData ?? {}).map(
         ([label, summary]) => ({ label, summary }),
     );
 
     /* response */
     return NextResponse.json({
-        id: raw.data.id,
-        status: raw.data.status,
-        startedAt: raw.data.startedAt,
-        stoppedAt: raw.data.stoppedAt,
+        id: raw.id,
+        status: raw.status,
+        startedAt: raw.startedAt,
+        stoppedAt: raw.stoppedAt,
         trace,
     });
 }
