@@ -14,16 +14,23 @@ export default async function Page(props: unknown) {
     /* ---- (optional) existence check on n8n ------------------------------- */
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/rest/executions/${execId}`,
-        { headers: { cookie: `auth=${jwt};` }, next: { revalidate: 0 } },
+        { headers: { cookie: `n8n-auth=${jwt};` }, next: { revalidate: 0 } },
     );
 
-    if (!res.ok) throw new Error("upstream error");
-
-    /* ---- render ----------------------------------------------------------- */
-    return (
-        <main className="flex flex-1 flex-col p-6 space-y-8">
-            <h1 className="text-2xl font-semibold">Execution progress</h1>
-            <JourneyCard execId={execId} />
-        </main>
-    );
+    if (!res.ok) {
+        return (
+            <main className="flex flex-1 flex-col p-6 space-y-8">
+                <h1 className="text-2xl font-semibold">Request not found</h1>
+                <span>Sorry but we could not find the requested process.</span>
+            </main>
+        );
+    } else {
+        /* ---- render ----------------------------------------------------------- */
+        return (
+            <main className="flex flex-1 flex-col p-6 space-y-8">
+                <h1 className="text-2xl font-semibold">Busy, processing your request</h1>
+                <JourneyCard execId={execId}/>
+            </main>
+        );
+    }
 }
