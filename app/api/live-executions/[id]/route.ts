@@ -9,7 +9,7 @@ interface N8nExecResponse {
         status: "success" | "error" | "running";
         startedAt: string;
         stoppedAt: string | null;
-        customData: unknown[];
+        customData?: Record<string, string>;
     };
 }
 interface TraceStep {
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     /* proxy to n8n (includeData=true so customData is present) */
     const upstream = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/executions/${id}?includeData=true`,
+        `${process.env.N8N_BASE_URL}/rest/executions/${id}`,
         {
             headers: { cookie: `n8n-auth=${jwt};` },
             cache: "no-store",
