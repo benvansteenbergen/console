@@ -42,7 +42,7 @@ export default function RecentExecutions({
 
     return (
         <section className={clsx("space-y-4", className)}>
-            {showTitle && <h2 className="text-xl font-semibold">Recent Executions</h2>}
+            {showTitle && <h2 className="text-xl font-semibold">Recent </h2>}
 
             {/* skeleton while loading ------------------------------------------------ */}
             {!data ? (
