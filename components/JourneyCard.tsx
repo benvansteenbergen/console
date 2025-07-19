@@ -97,28 +97,30 @@ export default function JourneyCard({ execId }: { execId: string }) {
     const rows = trace.map((step, idx) => {
         const key = step.ts ?? `idx-${idx}`;
         const fresh = !prevRef.current.includes(key);
-        return { step, key, fresh };
+        return { step, key, fresh, idx };
     });
     useEffect(() => {
         prevRef.current = rows.map((r) => r.key);
     }, [rows]);
 
+    /* ---------- reorder: Start first, Finished last ---------- */
+    rows.sort((a, b) => {
+        const aLabel = a.step.label.toLowerCase();
+        const bLabel = b.step.label.toLowerCase();
+
+        if (aLabel.startsWith("start")) return -1;
+        if (bLabel.startsWith("start")) return 1;
+
+        if (aLabel.startsWith("finished")) return 1;
+        if (bLabel.startsWith("finished")) return -1;
+
+        return a.idx - b.idx; // preserve natural order otherwise
+    });
+
     /* ---------- UI ------------------------------------------------------- */
     return (
         <div className="space-y-4">
             {/* title with spinner / check */}
-            <div className="flex items-center gap-2">
-                {running && (
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" />
-                )}
-                {finished && (
-                    <span className="inline-block h-4 w-4 text-green-600">✔</span>
-                )}
-                <h2 className="text-lg font-semibold">
-                    {running ? "Workflow running…" : "Workflow finished"}
-                </h2>
-            </div>
-
             <ol className="relative border-l pl-4">
                 {rows.map(({ step, fresh, key }) => (
                     <StepRow key={key} step={step} fresh={fresh} />
@@ -134,6 +136,17 @@ export default function JourneyCard({ execId }: { execId: string }) {
                     </li>
                 )}
             </ol>
+            <div className="flex items-center gap-2">
+                {running && (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" />
+                )}
+                {finished && (
+                    <span className="inline-block h-4 w-4 text-green-600">✔</span>
+                )}
+                <h2 className="text-lg font-semibold">
+                    {running ? "Workflow running…" : "Workflow finished"}
+                </h2>
+            </div>
         </div>
     );
 }
