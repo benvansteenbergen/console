@@ -3,24 +3,37 @@
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 
-/* ---------- typing ---------- */
+/* ---------- types returned by /api/live-executions/[id] --------------- */
 interface TraceStep {
     label: string;
     summary: string;
-    ts?: string;           // optional (API may omit it)
+    ts?: string;
+}
+interface ExecData {
+    status: "running" | "success" | "error";
+    trace: TraceStep[];
 }
 
-/* ---------- fetcher normalises both shapes ---------- */
-const fetcher = async (url: string): Promise<TraceStep[]> => {
+/* ---------- fetcher: accepts both old & new shapes -------------------- */
+const fetcher = async (url: string): Promise<ExecData> => {
     const raw = await fetch(url).then(r => r.json());
 
-    if (Array.isArray(raw)) return raw;          // already an array
-    if (Array.isArray(raw.trace)) return raw.trace;
+    /* new API shape { status, trace:[…] } */
+    if ("status" in raw && Array.isArray(raw.trace)) {
+        return raw as ExecData;
+    }
 
-    return [];                                   // fallback
+    /* old shape just an array or { trace:[…] } */
+    const trace: TraceStep[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw.trace)
+            ? raw.trace
+            : [];
+
+    return { status: "running", trace };
 };
 
-/* ---------- little typewriter hook ---------- */
+/* ---------- tiny type‑writer hook ------------------------------------- */
 function useTypewriter(text: string, speed = 16) {
     const [out, setOut] = useState("");
     useEffect(() => {
@@ -34,7 +47,7 @@ function useTypewriter(text: string, speed = 16) {
     return out;
 }
 
-/* ---------- one animated row ---------- */
+/* ---------- one animated row ------------------------------------------ */
 function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
     const [phase, setPhase] = useState<"dots" | "typed">(
         fresh ? "dots" : "typed",
@@ -63,55 +76,64 @@ function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
     );
 }
 
-/* ---------- main card ---------- */
+/* ---------- main JourneyCard ----------------------------------------- */
 export default function JourneyCard({ execId }: { execId: string }) {
-    /* poll until we detect a “finished” step */
-    const { data: trace = [] } = useSWR<TraceStep[]>(
+    const { data } = useSWR<ExecData>(
         `/api/live-executions/${execId}`,
         fetcher,
         {
-            refreshInterval: (latestTrace?: TraceStep[]) => {
-                const last = latestTrace?.at(-1)?.label.toLowerCase() ?? "";
-                return last.startsWith("saving") || last.startsWith("finished")
-                    ? 0
-                    : 2000; // keep polling
-            },
+            /* stop polling once status !== running */
+            refreshInterval: (latest?: ExecData) =>
+                latest?.status === "running" ? 2000 : 0,
         },
     );
 
-    /* new-step detection */
+    const trace = data?.trace ?? [];
+    const running = data?.status === "running";
+    const finished = data?.status === "success";
+
+    /* detect “fresh” rows -------------------------------------------------- */
     const prevRef = useRef<string[]>([]);
     const rows = trace.map((step, idx) => {
-        /* fall back to index if ts missing */
         const key = step.ts ?? `idx-${idx}`;
         const fresh = !prevRef.current.includes(key);
-        return { step, fresh, key };
+        return { step, key, fresh };
     });
-
     useEffect(() => {
         prevRef.current = rows.map((r) => r.key);
     }, [rows]);
 
-    const doneLabel =
-        trace.at(-1)?.label.toLowerCase() ?? /* empty array */ "";
-
+    /* ---------- UI ------------------------------------------------------- */
     return (
-        <ol className="relative border-l pl-4">
-            {rows.map(({ step, fresh, key }) => (
-                <StepRow key={key} step={step} fresh={fresh} />
-            ))}
+        <div className="space-y-4">
+            {/* title with spinner / check */}
+            <div className="flex items-center gap-2">
+                {running && (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" />
+                )}
+                {finished && (
+                    <span className="inline-block h-4 w-4 text-green-600">✔</span>
+                )}
+                <h2 className="text-lg font-semibold">
+                    {running ? "Workflow running…" : "Workflow finished"}
+                </h2>
+            </div>
 
-            {/* always show while nothing yet, or still running */}
-            {(trace.length === 0 ||
-                (!doneLabel.startsWith("saving") &&
-                    !doneLabel.startsWith("finished"))) && (
-                <li className="mb-2 pl-4">
-                    <span className="absolute -left-2 top-1 h-4 w-4 animate-pulse rounded-full border border-slate-300" />
-                    <p className="font-medium text-slate-400">
-                        Waiting for next step…
-                    </p>
-                </li>
-            )}
-        </ol>
+            <ol className="relative border-l pl-4">
+                {rows.map(({ step, fresh, key }) => (
+                    <StepRow key={key} step={step} fresh={fresh} />
+                ))}
+
+                {/* waiting row only while still running */}
+                {running && (
+                    <li className="mb-2 pl-4">
+                        <span className="absolute -left-2 top-1 h-4 w-4 animate-pulse rounded-full border border-slate-300" />
+                        <p className="font-medium text-slate-400">
+                            Waiting for next step…
+                        </p>
+                    </li>
+                )}
+            </ol>
+        </div>
     );
 }

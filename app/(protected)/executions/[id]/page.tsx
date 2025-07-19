@@ -28,7 +28,7 @@ export default async function Page(props: unknown) {
         /* ---- render ----------------------------------------------------------- */
         return (
             <main className="flex flex-1 flex-col p-6 space-y-8">
-                <h1 className="text-2xl font-semibold">Busy, processing your request</h1>
+                <h1 className="text-2xl font-semibold">Workflow Steps</h1>
                 <JourneyCard execId={execId}/>
             </main>
         );
