@@ -28,12 +28,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const raw = (await upstream.json())
+    const raw = await upstream.json();
 
-    /* flatten customData → trace array */
+    /* works for both { data:{…} } and flat { … } */
+    const exec = raw.data ?? raw;
+    const trace = Object.entries(exec.customData ?? {}).map(
+        ([label, summary]) => ({ label, summary }),
+    );
 
-    /* response */
     return NextResponse.json({
-        raw
+        id: exec.id,
+        status: exec.status,
+        startedAt: exec.startedAt,
+        stoppedAt: exec.stoppedAt,
+        trace,                          // always an array, possibly empty
     });
 }
