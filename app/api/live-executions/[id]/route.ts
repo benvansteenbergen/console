@@ -2,18 +2,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-/* helper interfaces --------------------------------------------------- */
-interface N8nExecResponse {
-    id: string;
-    status: "success" | "error" | "running";
-    startedAt: string;
-    stoppedAt: string | null;
-    customData: Record<string, string>;
-}
-interface TraceStep {
-    label: string;
-    summary: string;
-}
 
 /* GET /api/live-executions/[id] --------------------------------------- */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }
@@ -40,19 +28,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const raw = (await upstream.json()).data as N8nExecResponse;
+    const raw = await upstream.json();
 
-    /* flatten customData → trace array */
-    const trace: TraceStep[] = Object.entries(raw.customData ?? {}).map(
+    /* works for both { data:{…} } and flat { … } */
+    const exec = raw.data ?? raw;
+    const trace = Object.entries(exec.customData ?? {}).map(
         ([label, summary]) => ({ label, summary }),
     );
 
-    /* response */
     return NextResponse.json({
-        id: raw.id,
-        status: raw.status,
-        startedAt: raw.startedAt,
-        stoppedAt: raw.stoppedAt,
-        trace,
+        id: exec.id,
+        status: exec.status,
+        startedAt: exec.startedAt,
+        stoppedAt: exec.stoppedAt,
+        trace,                          // always an array, possibly empty
     });
 }
