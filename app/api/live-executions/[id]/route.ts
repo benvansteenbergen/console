@@ -3,6 +3,20 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 /* helper interfaces --------------------------------------------------- */
+interface N8nExecResponse {
+    data: {
+        id: string;
+        status: "success" | "error" | "running";
+        startedAt: string;
+        stoppedAt: string | null;
+        customData: Record<string, string>;
+    };
+}
+interface TraceStep {
+    label: string;
+    summary: string;
+}
+
 /* GET /api/live-executions/[id] --------------------------------------- */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }
 ) {
@@ -16,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     /* proxy to n8n (includeData=true so customData is present) */
     const upstream = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/executions/${id}`,
+        `${process.env.N8N_BASE_URL}/rest/executions/${id}?includeData=true`,
         {
             headers: { cookie: `n8n-auth=${jwt};` },
             cache: "no-store",
@@ -28,19 +42,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const raw = await upstream.json();
+    const raw = (await upstream.json()) as N8nExecResponse;
 
-    /* works for both { data:{…} } and flat { … } */
-    const exec = raw.data ?? raw;
-    const trace = Object.entries(exec.customData ?? {}).map(
+    /* flatten customData → trace array */
+    const trace: TraceStep[] = Object.entries(raw.data?.customData ?? {}).map(
         ([label, summary]) => ({ label, summary }),
     );
 
+    /* response */
     return NextResponse.json({
-        id: exec.id,
-        status: exec.status,
-        startedAt: exec.startedAt,
-        stoppedAt: exec.stoppedAt,
-        trace,                          // always an array, possibly empty
+        id: raw.data.id,
+        status: raw.data.status,
+        startedAt: raw.data.startedAt,
+        stoppedAt: raw.data.stoppedAt,
+        trace,
     });
 }
