@@ -1,5 +1,6 @@
 // app/(protected)/executions/[id]/page.tsx
 import { cookies } from "next/headers";
+import Link from "next/link";
 import JourneyCard from "@/components/JourneyCard";
 
 export default async function Page(props: unknown) {
@@ -22,6 +23,12 @@ export default async function Page(props: unknown) {
             <main className="flex flex-1 flex-col p-6 space-y-8">
                 <h1 className="text-2xl font-semibold">Request not found</h1>
                 <span>Sorry but we could not find the requested process.</span>
+                <Link
+                    href="/dashboard"
+                    className="inline-flex w-max items-center gap-1 text-sm font-medium text-sky-700 hover:underline"
+                >
+                    ← Back to dashboard
+                </Link>
             </main>
         );
     } else {
@@ -30,6 +37,12 @@ export default async function Page(props: unknown) {
             <main className="flex flex-1 flex-col p-6 space-y-8">
                 <h1 className="text-2xl font-semibold">Workflow Steps</h1>
                 <JourneyCard execId={execId}/>
+                <Link
+                    href="/dashboard"
+                    className="inline-flex w-max items-center gap-1 text-sm font-medium text-sky-700 hover:underline"
+                >
+                    ← Back to dashboard
+                </Link>
             </main>
         );
     }
