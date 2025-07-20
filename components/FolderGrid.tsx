@@ -47,7 +47,8 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
             {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew }) => (
-                <div key={id} className="relative group">
+                <div key={id} className="group flex flex-col items-center">
+                    <div className="relative">
                     <Image
                         src={thumbnailLink}
                         alt={name}
@@ -91,6 +92,11 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
               NEW
             </span>
                     ) : null}
+                </div>
+                {/* file title --------------------------------------------------- */}
+                <p className="mt-1 max-w-[160px] truncate text-center text-xs font-medium text-slate-700">
+                {name}
+                </p>
                 </div>
             ))}
         </div>
