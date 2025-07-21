@@ -43,13 +43,13 @@ export default function ContentFormGrid({ className, showTitle = true }: Props) 
 
             {/* skeleton ----------------------------------------------------- */}
             {!data ? (
-                <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-6 p-6 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, i) => (
                         <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-6 p-6 lg:grid-cols-4">
                     {data.map((f) => (
                         <Card key={f.id}>
                             <p className="text-center text-lg font-semibold">{f.name}</p>

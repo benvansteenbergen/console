@@ -26,7 +26,7 @@ const toSlug = (name: string) =>
 /* --------------------------------------------------------------------
    Demo placeholder data (credits, personas, automations) – swap later
 -------------------------------------------------------------------- */
-const creditsLeft = 2705;
+//const creditsLeft = 2705;
 const creditTotal = 3000;
 
 /*
@@ -68,9 +68,9 @@ export default function Dashboard() {
               Welcome to Wingsuite
             </h1>
             <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
-              <p className="text-xs font-medium text-gray-500">Credits left this month</p>
+              <p className="text-xs font-medium text-gray-500">Credits not activated (trial)</p>
               <p className="text-lg font-semibold text-blue-700">
-                {creditsLeft.toLocaleString()} / {creditTotal.toLocaleString()}
+                {creditTotal.toLocaleString()}
               </p>
               <button className="rounded-md border px-3 py-1 text-xs hover:bg-gray-50">
                 Buy more
