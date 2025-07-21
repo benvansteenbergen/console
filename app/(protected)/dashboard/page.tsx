@@ -83,7 +83,7 @@ export default function Dashboard() {
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
             What do you want to create?
           </h2>
-            <ContentFormGrid />
+            <ContentFormGrid showTitle={false} />
         </div>
           {/* Content Writers */}
         <div>
