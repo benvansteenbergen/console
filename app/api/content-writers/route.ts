@@ -25,7 +25,7 @@ export async function GET() {
     if (!jwt)
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    const params = encodeURIComponent("{\"tags\":\"chat\", \"active\":false, \"isArchived\":false}");
+    const params = encodeURIComponent("{\"active\":true, \"isArchived\":false}");
     /* n8n filters by tag=agent */
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/rest/workflows?filter=${params}`,
