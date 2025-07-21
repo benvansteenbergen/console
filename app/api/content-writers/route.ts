@@ -27,7 +27,7 @@ export async function GET() {
 
     /* n8n filters by tag=agent */
     const res = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/workflows?tags=chat&isArchived=false&active=true&excludePinnedData=true`,
+        `${process.env.N8N_BASE_URL}/api/v1/workflows?filter={"tags":"chat", "active":false, "isArchived":false}`,
         { headers: { cookie: `n8n-auth=${jwt};` }, cache: "no-store" },
     );
     if (!res.ok)
