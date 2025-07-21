@@ -2,6 +2,7 @@
 import useSWR from 'swr';
 import Link from 'next/link';
 import RecentExecutions from '@/components/RecentExecutions';
+import ContentWriterGrid from "@/components/ContentwriterGrid";
 
 /* --------------------------------------------------------------------
    Helper types
@@ -32,21 +33,6 @@ const contentTypes = [
     id: 'blogpost',
     name: 'Blogpost',
     formUrl: 'https://workflow.wingsuite.io/webhook/blogpost/n8n-form',
-  },
-];
-
-const agentPersonas = [
-  {
-    id: 'june',
-    name: 'June',
-    role: 'Senior Content Writer',
-    chatUrl: 'https://workflow.wingsuite.io/webhook/june',
-  },
-  {
-    id: 'eva',
-    name: 'Eva',
-    role: 'Spelling Check / Feedback',
-    chatUrl: 'https://workflow.wingsuite.io/webhook/eva',
   },
 ];
 
@@ -129,38 +115,9 @@ export default function Dashboard() {
             {/* + Add contenttype */}
         <div>
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
-            Available Agent Personas
+          Content Writers
           </h2>
-          <div className="grid grid-cols-2 gap-6 border-x border-b bg-blue-100 p-6 lg:grid-cols-4">
-            {agentPersonas.map((p) => (
-                <Panel key={p.id}>
-                  <div className="flex flex-col items-center gap-4 p-6">
-                    <div className="space-y-1 text-center">
-                      <p className="text-lg font-semibold">{p.name}</p>
-                      <p className="text-xs text-gray-500">{p.role}</p>
-                    </div>
-                    <button
-                        className="w-full rounded-md border px-3 py-1 text-xs hover:bg-gray-50"
-                        onClick={() =>
-                            window.open(
-                                p.chatUrl,
-                                'agentChat',
-                                'noopener,width=480,height=640'
-                            )
-                        }
-                    >
-                      Chat
-                    </button>
-                  </div>
-                </Panel>
-            ))}
-            {/* + Add persona */}
-            <Panel>
-              <div className="flex h-full w-full cursor-pointer items-center justify-center p-6 text-4xl text-gray-400 hover:text-gray-600">
-                +
-              </div>
-            </Panel>
-          </div>
+          <ContentWriterGrid />
         </div>
         {/* + Recent executions */}
         <RecentExecutions className="max-w-4xl" />
