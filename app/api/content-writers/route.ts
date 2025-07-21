@@ -28,7 +28,7 @@ export async function GET() {
     const params = encodeURIComponent("{\"tags\":\"chat\", \"active\":false, \"isArchived\":false}");
     /* n8n filters by tag=agent */
     const res = await fetch(
-        `${process.env.N8N_BASE_URL}/api/v1/workflows?filter=${params}`,
+        `${process.env.N8N_BASE_URL}/rest/workflows?filter=${params}`,
         { headers: { cookie: `n8n-auth=${jwt};` }, cache: "no-store" },
     );
     if (!res.ok)
