@@ -92,53 +92,51 @@ export default function Dashboard() {
           </h2>
           <ContentWriterGrid />
         </div>
-        {/* + Recent executions */}
-        <RecentExecutions className="max-w-4xl" />
+          {/* Content Storage (dynamic) */}
+          <div>
+              <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
+                  Content Storage (Google Drive)
+              </h2>
+              {storageError && (
+                  <p className="rounded bg-red-50 p-4 text-sm text-red-700">
+                      Could not load storage data.
+                  </p>
+              )}
+              <div className="grid grid-cols-3 gap-6 border-x border-b bg-blue-100 p-6">
+                  {/* Skeleton during first load */}
+                  {storageLoading && stats.length === 0 &&
+                      Array.from({ length: 3 }).map((_, i) => (
+                          <div
+                              key={i}
+                              className="h-24 animate-pulse rounded-lg border bg-gray-100"
+                          />
+                      ))}
 
-        {/* Content Storage (dynamic) */}
-        <div>
-          <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
-            Content Storage (Google Drive)
-          </h2>
-          {storageError && (
-              <p className="rounded bg-red-50 p-4 text-sm text-red-700">
-                Could not load storage data.
-              </p>
-          )}
-          <div className="grid grid-cols-3 gap-6 border-x border-b bg-blue-100 p-6">
-            {/* Skeleton during first load */}
-            {storageLoading && stats.length === 0 &&
-                Array.from({ length: 3 }).map((_, i) => (
-                    <div
-                        key={i}
-                        className="h-24 animate-pulse rounded-lg border bg-gray-100"
-                    />
-                ))}
-
-            {/* Real tiles */}
-            {!storageLoading &&
-                stats.map(({ folder, unseen, items }) => (
-                    <Panel key={folder}>
-                      <Link
-                          href={`/content/${toSlug(folder)}`}
-                          className="relative flex flex-col items-center gap-1 p-6 text-center"
-                      >
-                        <span className="font-medium">{folder}</span>
-                        <span className="text-xs text-gray-500">
+                  {/* Real tiles */}
+                  {!storageLoading &&
+                      stats.map(({ folder, unseen, items }) => (
+                          <Panel key={folder}>
+                              <Link
+                                  href={`/content/${toSlug(folder)}`}
+                                  className="relative flex flex-col items-center gap-1 p-6 text-center"
+                              >
+                                  <span className="font-medium">{folder}</span>
+                                  <span className="text-xs text-gray-500">
                     {items.length ?? 0} file{items.length === 1 ? '' : 's'}
                   </span>
 
-                        {unseen > 0 && (
-                            <span className="absolute -top-2 -right-2 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
+                                  {unseen > 0 && (
+                                      <span className="absolute -top-2 -right-2 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
                       +{unseen}
                     </span>
-                        )}
-                      </Link>
-                    </Panel>
-                ))}
+                                  )}
+                              </Link>
+                          </Panel>
+                      ))}
+              </div>
           </div>
-        </div>
-
+        {/* + Recent executions */}
+        <RecentExecutions limit={5} className="max-w-4xl" />
         {/* Automations */}
         <div>
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
