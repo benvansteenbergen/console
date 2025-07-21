@@ -23,11 +23,7 @@ interface Props {
     showTitle?: boolean;     // hide title if you embed in a card that already has one
 }
 
-export default function RecentExecutions({
-                                             limit = 10,
-                                             className,
-                                             showTitle = true,
-                                         }: Props) {
+export default function RecentExecutions({limit = 10, className, showTitle = true,}: Props) {
     const { data, error } = useSWR<Exec[]>(
         `/api/live-executions?limit=${limit}`,
         fetcher,
