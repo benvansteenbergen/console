@@ -27,13 +27,13 @@ export async function GET() {
 
     /* n8n filters by tag=agent */
     const res = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/workflows?tags=chat`,
+        `${process.env.N8N_BASE_URL}/rest/workflows?tags=chat&isArchived=false`,
         { headers: { cookie: `n8n-auth=${jwt};` }, cache: "no-store" },
     );
     if (!res.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const rows = (await res.json()) as N8nWorkflow[];
+    const rows = (await res.json()).data as N8nWorkflow[];
 
     const writers = rows.map((w) => ({
         id: w.id,
