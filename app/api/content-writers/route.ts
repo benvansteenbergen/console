@@ -44,7 +44,7 @@ export async function GET() {
             `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
                 w.name,
             )}`,
-        chatUrl: `${process.env.N8N_BASE_URL}/webhook/${w.id}`,
+        chatUrl: `${process.env.N8N_BASE_URL}/webhook/${w.id}/chat`,
     }));
 
     return NextResponse.json(writers);
