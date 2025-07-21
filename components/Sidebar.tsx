@@ -19,7 +19,7 @@ export default function Sidebar() {
 
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
-        {href: "/executions", label: "Executions", icon: ClockIcon},
+        {href: "/executions", label: "Logboek", icon: ClockIcon},
         {
             href: "https://workflow.wingsuite.io",
             label: "Open n8n ↗",
