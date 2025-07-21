@@ -28,7 +28,7 @@ export async function GET() {
     /* n8n filters by tag=agent */
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/rest/workflows?tags=chat`,
-        { headers: { cookie: `auth=${jwt};` }, cache: "no-store" },
+        { headers: { cookie: `n8n-auth=${jwt};` }, cache: "no-store" },
     );
     if (!res.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
