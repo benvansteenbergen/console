@@ -4,6 +4,7 @@
 
 import useSWR from "swr";
 import clsx from "clsx";
+import Link from "next/link";
 
 export interface Exec {
     id: number;
@@ -69,7 +70,7 @@ export default function RecentExecutions({
                                 key={ex.id}
                                 className="border-t text-gray-700 hover:bg-gray-50"
                             >
-                                <td className="px-4 py-2">{ex.workflowName}</td>
+                                <td className="px-4 py-2"><Link href={"/executions/"+ex.id}>{ex.workflowName}</Link></td>
                                 <td className="px-4 py-2">
                                     {ex.status === "success" && (
                                         <span className="inline-flex items-center gap-1 text-green-600">
