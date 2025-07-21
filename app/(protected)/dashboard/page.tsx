@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import RecentExecutions from '@/components/RecentExecutions';
 import ContentWriterGrid from "@/components/ContentwriterGrid";
+import ContentFormGrid from "@/components/ContentformGrid";
 
 /* --------------------------------------------------------------------
    Helper types
@@ -27,14 +28,6 @@ const toSlug = (name: string) =>
 -------------------------------------------------------------------- */
 const creditsLeft = 2705;
 const creditTotal = 3000;
-
-const contentTypes = [
-  {
-    id: 'blogpost',
-    name: 'Blogpost',
-    formUrl: 'https://workflow.wingsuite.io/webhook/blogpost/n8n-form',
-  },
-];
 
 /*
 const automations = [
@@ -90,31 +83,9 @@ export default function Dashboard() {
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
             What do you want to create?
           </h2>
-          <div className="grid grid-cols-2 gap-6 border-x border-b bg-blue-100 p-6 lg:grid-cols-4">
-            {contentTypes.map((p) => (
-                <Panel key={p.id}>
-                  <div className="flex flex-col items-center gap-4 p-6">
-                    <div className="space-y-1 text-center">
-                      <p className="text-lg font-semibold">{p.name}</p>
-                    </div>
-                    <button
-                        className="w-full rounded-md border px-3 py-1 text-xs hover:bg-gray-50"
-                        onClick={() =>
-                            window.open(
-                                p.formUrl,
-                                'form',
-                                'noopener,width=480,height=640'
-                            )
-                        }
-                    >
-                      New
-                    </button>
-                  </div>
-                </Panel>
-            ))}
-          </div>
+            <ContentFormGrid />
         </div>
-            {/* + Add contenttype */}
+          {/* Content Writers */}
         <div>
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
           Content Writers

@@ -34,18 +34,13 @@ export async function GET() {
 
     const rows = (await res.json())  as N8nWorkflow[];
 
-    const writers = rows
-        .filter((w) => w.type === "chat")
+    const forms = rows
+        .filter((w) => w.type === "form")
         .map((w) => ({
         id: w.id,
         name: w.name,
-        avatar:
-            w.avatar ??
-            `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(
-                w.name,
-            )}`,
-        chatUrl: `${w.url}`,
+        formUrl: `${w.url}`,
     }));
 
-    return NextResponse.json(writers);
+    return NextResponse.json(forms);
 }
