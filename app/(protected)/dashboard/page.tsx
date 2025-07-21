@@ -36,6 +36,7 @@ const contentTypes = [
   },
 ];
 
+/*
 const automations = [
   {
     id: 'meta-gen',
@@ -46,6 +47,7 @@ const automations = [
     totalCost: '$13.59',
   },
 ];
+*/
 
 export default function Dashboard() {
   /* live content-storage stats */
@@ -178,6 +180,7 @@ export default function Dashboard() {
               <span className="text-center">Last run</span>
               <span className="col-span-2 text-center">Avg / Lifetime cost</span>
             </div>
+            { /*
             {automations.map((a) => (
                 <div
                     key={a.id}
@@ -191,7 +194,7 @@ export default function Dashboard() {
               </span>
                   <span className="text-center">{a.totalCost}</span>
                 </div>
-            ))}
+            ))} */ }
           </div>
         </div>
 
