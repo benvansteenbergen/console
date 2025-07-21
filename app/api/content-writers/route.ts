@@ -41,7 +41,7 @@ export async function GET() {
         name: w.name,
         avatar:
             w.meta?.avatarUrl ??
-            `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+            `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(
                 w.name,
             )}`,
         chatUrl: `${process.env.N8N_BASE_URL}/webhook/${w.id}/chat`,
