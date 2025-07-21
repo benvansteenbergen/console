@@ -32,7 +32,7 @@ export async function GET() {
     if (!res.ok)
         return NextResponse.json({ error: "upstream error" }, { status: 502 });
 
-    const rows = (await res.json()).data as N8nWorkflow[];
+    const rows = (await res.json()) as N8nWorkflow[];
 
     const writers = rows
         .filter((w) => w.type === "chat")
