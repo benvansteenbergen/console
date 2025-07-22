@@ -21,8 +21,8 @@ export default function Sidebar() {
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
         {
-            href: "https://workflow.wingsuite.io",
-            label: "Open n8n ↗",
+            href: "https://console.wingsuite.io/login",
+            label: "Logout ↗",
             icon: ArrowTopRightOnSquareIcon,
             external: true,
         },
