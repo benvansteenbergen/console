@@ -55,7 +55,7 @@ export async function GET() {
         return new Response('Unauthorized', { status: 401 });
     }
     const res = await fetch(
-        `${process.env.N8N_BASE_URL}/rest/executions?order=DESC&limit=10`,
+        `${process.env.N8N_BASE_URL}/rest/executions?order=DESC&limit=5`,
         { headers: { cookie: `n8n-auth=${jwt};` } },
     );
 
