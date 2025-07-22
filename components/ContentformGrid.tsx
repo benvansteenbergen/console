@@ -30,7 +30,7 @@ export default function ContentFormGrid({ className, showTitle = true }: Props) 
 
     if (error)
         return (
-            <p className={clsx("text-red-600", className)}>
+            <p className={clsx("p-4 text-red-600", className)}>
                 Failed to load content‑form list.
             </p>
         );
