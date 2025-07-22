@@ -65,7 +65,7 @@ export default function Dashboard() {
         <Panel>
           <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
             <h1 className="col-span-2 text-3xl font-bold text-blue-900">
-              Welcome to Wingsuite
+                Ready for take-off?
             </h1>
             <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
               <p className="text-xs font-medium text-gray-500">Credits not activated (trial)</p>
