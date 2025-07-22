@@ -12,3 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
+export const metadata = {
+    icons: {
+        icon:      "/favicon.ico",         // 32×32 + legacy .ico
+        shortcut:  "/favicon-16x16.png",      // optional
+        apple:     "/apple-icon.png",
+    },
+};
