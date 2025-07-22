@@ -54,7 +54,7 @@ export default function Sidebar() {
             >
                 {/* header */}
                 <div className="flex items-center justify-between px-4 py-4">
-                    <span className="text-lg font-bold">Wingsuite</span>
+                    <img src="/logo.svg" alt="Wingsuite" width={200} height={48} />
                     <button
                         className="rounded-md p-1 text-gray-700 hover:bg-gray-100 md:hidden"
                         onClick={() => setOpen(false)}
