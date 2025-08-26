@@ -23,24 +23,12 @@ const fetcher = (url: string) =>
 const toSlug = (name: string) =>
     name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-/* --------------------------------------------------------------------
-   Demo placeholder data (credits, personas, automations) – swap later
--------------------------------------------------------------------- */
-//const creditsLeft = 2705;
-const creditTotal = 3000;
-
-/*
-const automations = [
-  {
-    id: 'meta-gen',
-    name: 'Product Meta Group Generator',
-    schedule: 'Once per day',
-    lastRun: '2025-01-01 03:00',
-    avgCost: '$0.03',
-    totalCost: '$13.59',
-  },
-];
-*/
+interface Credits {
+    plan: string;
+    credits_used: number;
+    plan_credits: number;
+    over_limit: boolean;
+}
 
 export default function Dashboard() {
   /* live content-storage stats */
@@ -52,6 +40,12 @@ export default function Dashboard() {
     refreshInterval: 60_000,
   });
 
+  const {
+        data: credits = [],
+        error: creditsError,
+        isLoading: creditsLoading,
+  } = useSWR<Credits>("/api/credits", fetcher);
+
   const Panel = ({ children }: { children: React.ReactNode }) => (
       <div className="rounded-lg border bg-white shadow-sm">{children}</div>
   );
@@ -62,22 +56,41 @@ export default function Dashboard() {
   return (
       <section className="mx-auto w-full max-w-6xl space-y-10 px-6 py-10">
         {/* Credits banner */}
-        <Panel>
-          <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
-            <h1 className="col-span-2 text-3xl font-bold text-blue-900">
-                Ready for take-off?
-            </h1>
-            <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
-              <p className="text-xs font-medium text-gray-500">Credits not activated (trial)</p>
-              <p className="text-lg font-semibold text-blue-700">
-                {creditTotal.toLocaleString()}
-              </p>
-              <button className="rounded-md border px-3 py-1 text-xs hover:bg-gray-50">
-                Buy more
-              </button>
-            </div>
-          </div>
-        </Panel>
+          <Panel>
+              <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
+                  <h1 className="col-span-2 text-3xl font-bold text-blue-900">
+                      Welcome to Wingsuite
+                  </h1>
+
+                  <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
+                      {creditsLoading ? (
+                          <p className="text-sm text-gray-500">Loading plan info…</p>
+                      ) : creditsError ? (
+                          <p className="text-sm text-red-600">Could not load usage data.</p>
+                      ) : (
+                          <>
+                              <p className="text-xs font-medium text-gray-500">Plan: {credits[0].plan}</p>
+                              <p
+                                  className={`text-lg font-semibold ${
+                                      credits[0].over_limit ? "text-red-600" : "text-blue-700"
+                                  }`}
+                              >
+                                  {credits[0].credits_used} / {credits[0].plan_credits} credits
+                              </p>
+                              {credits[0].over_limit ? (
+                                  <button className="rounded-md border border-red-600 px-3 py-1 text-xs text-red-600 hover:bg-red-50">
+                                      Upgrade plan
+                                  </button>
+                              ) : (
+                                  <button className="rounded-md border px-3 py-1 text-xs hover:bg-gray-50">
+                                      Buy more
+                                  </button>
+                              )}
+                          </>
+                      )}
+                  </div>
+              </div>
+          </Panel>
         {/* Content types */}
         <div>
           <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
