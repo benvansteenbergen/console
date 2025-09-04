@@ -68,6 +68,10 @@ function StepRow({ step, fresh }: { step: TraceStep; fresh: boolean }) {
             <p className="min-h-[1rem] text-sm text-slate-600">
                 {phase === "dots" ? (
                     <span className="inline-block w-4 animate-pulse text-center">…</span>
+                ) : typed.startsWith("http") ? (
+                    <a href={typed} target="_blank" rel="noopener noreferrer" className="text-sky-700 underline">
+                        {typed}
+                    </a>
                 ) : (
                     typed
                 )}
