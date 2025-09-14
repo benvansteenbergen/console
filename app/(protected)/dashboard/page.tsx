@@ -2,8 +2,9 @@
 import useSWR from 'swr';
 import Link from 'next/link';
 import RecentExecutions from '@/components/RecentExecutions';
-import ContentWriterGrid from "@/components/ContentwriterGrid";
-import ContentFormGrid from "@/components/ContentformGrid";
+import ContentWriterGrid from "@/components/Agents/ContentwriterGrid";
+import ContentFormGrid from "@/components/Agents/ContentformGrid";
+import ContentautomationGrid from "@/components/Agents/ContentautomationGrid";
 
 /* --------------------------------------------------------------------
    Helper types
@@ -156,27 +157,7 @@ export default function Dashboard() {
             Automations
           </h2>
           <div className="border-x border-b bg-blue-100 p-6">
-            <div className="grid grid-cols-5 items-center gap-4 text-xs font-semibold text-gray-600">
-              <span>Workflow</span>
-              <span className="text-center">Schedule</span>
-              <span className="text-center">Last run</span>
-              <span className="col-span-2 text-center">Avg / Lifetime cost</span>
-            </div>
-            { /*
-            {automations.map((a) => (
-                <div
-                    key={a.id}
-                    className="grid grid-cols-5 items-center gap-4 border-t py-2 text-sm"
-                >
-                  <span>{a.name}</span>
-                  <span className="text-center">{a.schedule}</span>
-                  <span className="text-center">{a.lastRun}</span>
-                  <span className="text-center">
-                {a.avgCost} <span className="text-xs text-gray-400">avg</span>
-              </span>
-                  <span className="text-center">{a.totalCost}</span>
-                </div>
-            ))} */ }
+              <ContentautomationGrid />
           </div>
         </div>
 

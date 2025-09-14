@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 interface N8nWorkflow {
     id: string;
     name: string;
-    type: "chat" | "form";
+    type: "chat" | "form" | "automation";
     url: string;
     avatar?: string;
 }
