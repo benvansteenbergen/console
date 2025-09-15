@@ -17,17 +17,13 @@ interface AutomationBoardRow {
   units_today: number;
   runs_yesterday: number;
   units_yesterday: number;
-  hours_saved_5d: number;   
+  hours_saved_5d: number;
   credits_30d: number;
   dest_label: string;
   dest_url: string;
 }
 
-const fetcher = (url: string) =>
-  fetch(url, { credentials: "include" }).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-  });
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 /* --------------------------------------------------------------------------
    Tiny spark bar renderer
