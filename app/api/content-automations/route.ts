@@ -36,7 +36,7 @@ export async function GET() {
     /* Proxy to n8n automation board webhook */
     const res = await fetch(
         `${process.env.N8N_BASE_URL}/webhook/portal-automations`,
-        { headers: { cookie: `n8n-auth=${jwt};` }, cache: 'no-store' },
+        { headers: { cookie: `auth=${jwt};` }, cache: "no-store" },
     );
     if (res.status === 401) {
         return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
