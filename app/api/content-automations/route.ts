@@ -5,16 +5,25 @@ import { NextResponse } from "next/server";
 /*  Types                                                             */
 /* ------------------------------------------------------------------ */
 
-interface N8nWorkflow {
+interface AutomationBoardRow {
     id: string;
     name: string;
-    type: "chat" | "form" | "automation";
-    url: string;
     avatar?: string;
+    units_label: string;
+    spark5: number[];
+    avg_per_day_5d: number;
+    runs_today: number;
+    units_today: number;
+    runs_yesterday: number;
+    units_yesterday: number;
+    hours_saved_5d: number;
+    credits_30d: number;
+    dest_label: string;
+    dest_url: string;
 }
 
 /* ------------------------------------------------------------------ */
-/*  GET /api/content-writers                                          */
+/*  GET /api/content-automations                                      */
 /* ------------------------------------------------------------------ */
 export async function GET() {
 
@@ -24,23 +33,18 @@ export async function GET() {
     if (!jwt)
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    /* n8n filters by tag=agent */
+    /* Proxy to n8n automation board webhook */
     const res = await fetch(
-        `${process.env.N8N_BASE_URL}/webhook/portal-agents`,
-        { headers: { cookie: `auth=${jwt};` }, cache: "no-store" },
+        `${process.env.N8N_BASE_URL}/webhook/portal-automations`,
+        { headers: { cookie: `n8n-auth=${jwt};` }, cache: 'no-store' },
     );
-    if (!res.ok)
-        return NextResponse.json({ error: "upstream error" }, { status: 502 });
-
-    const rows = (await res.json())  as N8nWorkflow[];
-
-    const forms = rows
-        .filter((w) => w.type === "automation")
-        .map((w) => ({
-        id: w.id,
-        name: w.name,
-        formUrl: `${w.url}`,
-    }));
-
-    return NextResponse.json(forms);
+    if (res.status === 401) {
+        return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    if (!res.ok) {
+        const body = await res.text();
+        return NextResponse.json({ error: 'upstream error', detail: body }, { status: 502 });
+    }
+    const rows = (await res.json()) as AutomationBoardRow[];
+    return NextResponse.json(rows);
 }
