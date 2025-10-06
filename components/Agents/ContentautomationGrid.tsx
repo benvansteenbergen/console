@@ -96,7 +96,7 @@ export default function ContentautomationGrid() {
               <div className="col-span-4">
                 <div className="font-medium leading-tight">{a.name}</div>
                 <div className="text-xs text-gray-500">
-                  today {a.units_today} · yesterday {a.units_yesterday}
+                  Today {a.units_today} · Yesterday {a.units_yesterday}
                 </div>
               </div>
 
