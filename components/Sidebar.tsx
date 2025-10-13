@@ -1,5 +1,3 @@
-
-/* Sidebar.tsx --------------------------------------------------------- */
 "use client";
 
 import { useState } from "react";
@@ -12,16 +10,18 @@ import {
     ClockIcon,
     ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
+import { useBranding } from "@/components/BrandingProvider";
 
 export default function Sidebar() {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
+    const branding = useBranding();
 
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
         {
-            href: "https://console.wingsuite.io/login",
+            href: `https://${branding.domain}/login`,
             label: "Logout ↗",
             icon: ArrowTopRightOnSquareIcon,
             external: true,
@@ -54,7 +54,7 @@ export default function Sidebar() {
             >
                 {/* header */}
                 <div className="flex items-center justify-between px-4 py-4">
-                    <img src="/logo.svg" alt="Wingsuite" width={200} height={48} />
+                    <img src={branding.logo} alt={branding.name} width={200} height={48} />
                     <button
                         className="rounded-md p-1 text-gray-700 hover:bg-gray-100 md:hidden"
                         onClick={() => setOpen(false)}

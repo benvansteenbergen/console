@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useBranding } from '@/components/BrandingProvider';
 
 const ERROR_MESSAGES: Record<string, string> = {
   'missing-fields'      : 'Vul zowel e-mail als wachtwoord in.',
@@ -11,6 +12,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null);
+  const branding = useBranding();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -21,9 +23,13 @@ export default function Login() {
       <div className="flex h-screen">
         {/* ---------- Hero image (desktop only) ---------- */}
         <div className="relative hidden lg:block lg:w-1/2">
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: branding.loginBg }}
+          />
           <img
-              src="/hero.jpg"
-              alt="Wingsuite flying"
+              src={branding.loginImage}
+              alt={`${branding.name} flying`}
               className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
@@ -31,10 +37,10 @@ export default function Login() {
         {/* ---------- Form column ---------- */}
         <div className="flex flex-1 flex-col items-center justify-center px-6">
           {/* logo */}
-          <img src="/logo.svg" alt="Wingsuite" width={200} height={48} />
+          <img src={branding.logo} alt={branding.name} width={200} height={48} />
 
           <h1 className="mt-8 text-2xl font-semibold">
-            Login to the Wingsuite Console
+            Login to the {branding.name} Console
           </h1>
 
           {error && (
