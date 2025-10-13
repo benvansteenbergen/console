@@ -13,9 +13,9 @@ export default async function Page(props: unknown) {
     const folderName = decodeURIComponent(params.folder);
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
-
-    const headersList = headers();
-    const host = headersList.get('host');
+    
+    const headersList = await headers();
+    const host = headersList.get("host") || "console.wingsuite.io";
 
     /* ---------- data ---------- */
     const res = await fetch(
