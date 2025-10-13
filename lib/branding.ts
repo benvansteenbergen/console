@@ -13,7 +13,7 @@ export const BRAND: Record<string, Branding> = {
         domain: "emotion.wingsuite.io",
         name: "Emotion Digital",
         logo: "/emotion/logo.svg",
-        loginImage: "/emotion/hero.svg",
+        loginImage: "/emotion/hero.png",
         loginBg: "#32a852",
         primaryColor: "#2c3e50",
     },
