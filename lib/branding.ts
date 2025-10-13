@@ -1,13 +1,6 @@
-// lib/branding.ts
-export interface Branding {
-    name: string;
-    domain: string;
-    logo: string;
-    loginImage: string;
-    loginBg: string;
-    primaryColor: string;
-}
-export const Branding = {
+import type { Branding } from "@/components/BrandingProvider";
+
+export const BRANDING = {
     wingsuite: {
         domain: "console.wingsuite.io",
         name: "Wingsuite",
@@ -27,10 +20,10 @@ export const Branding = {
 };
 
 export function detectBranding(hostname: string | undefined): Branding {
-    if (!hostname) return Branding.wingsuite;
+    if (!hostname) return BRANDING.wingsuite;
 
     return (
-        Object.values(Branding).find((b) => hostname.includes(b.domain)) ??
-        Branding.wingsuite
+        Object.values(BRANDING).find((b) => hostname.includes(b.domain)) ??
+        BRANDING.wingsuite
     );
 }
