@@ -1,18 +1,26 @@
 // apps/console/app/layout.tsx
 import '@/globals.css';          // ✅ must come BEFORE the font import
-import { Inter } from 'next/font/google';
 import { headers } from "next/headers";
 import { detectBranding } from "@/lib/branding";
-import { BrandingProvider } from "@/components/BrandingProvider";
+import {BrandingProvider} from "@/components/BrandingProvider"; // ✅ not a client file
 
-const inter = Inter({ subsets: ['latin'] });
+export interface Branding {
+    name: string;
+    domain: string;
+    logo: string;
+    loginImage: string;
+    loginBg: string;
+    primaryColor: string;
+}
+
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
     const headerList = await headers();
     const host = headerList.get("host") || "console.wingsuite.io";
     const branding = detectBranding(host);
 
     return (
-        <html lang="en" className={inter.className}>
+        <html lang="en">
         <body>
         <BrandingProvider value={branding}>
             {children}
