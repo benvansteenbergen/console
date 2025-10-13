@@ -1,6 +1,6 @@
 import type { Branding } from "@/components/BrandingProvider";
 
-export const BRANDING = {
+export const BRANDING: Record<string, Branding> = {
     wingsuite: {
         domain: "console.wingsuite.io",
         name: "Wingsuite",
@@ -9,7 +9,7 @@ export const BRANDING = {
         loginBg: "#ffffff",
         primaryColor: "#0c1d40",
     },
-    moonlight: {
+    emotion: {
         domain: "emotion.wingsuite.io",
         name: "Emotion Digital",
         logo: "/emotion/logo.svg",
