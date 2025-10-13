@@ -2,17 +2,19 @@
 import { NextResponse } from 'next/server';
 import { parse } from 'cookie';
 
-function redirectToLogin(code: string) {
-  return NextResponse.redirect(`${process.env.CONSOLE_BASE_URL}/login?error=${code}`, 303);
+function redirectToLogin(code: string, host: string) {
+  const baseUrl = `https://${host}`;
+  return NextResponse.redirect(`${baseUrl}/login?error=${code}`, 303);
 }
 
 export async function POST(req: Request) {
+  const host = req.headers.get('host') ?? '';
   const form = await req.formData();
   const email = form.get('emailOrLdapLoginId');
   const password = form.get('password');
 
   if (!email || !password) {
-    return redirectToLogin('missing-fields');
+    return redirectToLogin('missing-fields', host);
   }
   const apiRes = await fetch(`${process.env.N8N_BASE_URL}/rest/login`, {
     method : 'POST',
@@ -21,17 +23,18 @@ export async function POST(req: Request) {
   });
 
   if (!apiRes.ok) {
-    return redirectToLogin('invalid-credentials');
+    return redirectToLogin('invalid-credentials', host);
   }
 
   const setCookie = apiRes.headers.get('set-cookie');
   const { 'n8n-auth': n8nJwt } = parse(setCookie ?? '');
 
   if (!n8nJwt) {
-    return redirectToLogin('token-missing');
+    return redirectToLogin('token-missing', host);
   }
 
-  const res = NextResponse.redirect(`${process.env.CONSOLE_BASE_URL}/dashboard`, 303);
+  const baseUrl = `https://${host}`;
+  const res = NextResponse.redirect(`${baseUrl}/dashboard`, 303);
   res.cookies.set({
     name   : 'session',
     value  : n8nJwt,

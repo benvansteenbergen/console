@@ -1,6 +1,6 @@
 // app/(protected)/content/[folder]/page.tsx
 import FolderGrid, { DriveFile } from "@/components/FolderGrid";
-import {cookies} from "next/headers";
+import { cookies, headers } from "next/headers";
 
 interface FolderStat {
     folder: string;
@@ -14,9 +14,12 @@ export default async function Page(props: unknown) {
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
 
+    const headersList = headers();
+    const host = headersList.get('host');
+
     /* ---------- data ---------- */
     const res = await fetch(
-        `${process.env.CONSOLE_BASE_URL}/api/content-storage?folder=${encodeURIComponent(folderName)}`,
+        `https://${host}/api/content-storage?folder=${encodeURIComponent(folderName)}`,
         { headers: { cookie: `session=${jwt};` }}
     );
 
