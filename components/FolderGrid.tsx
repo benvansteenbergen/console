@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import useSWR from "swr";
+import { useRouter } from "next/navigation";
 
 export interface DriveFile {
     id: string;
@@ -40,7 +41,9 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
         { refreshInterval: 5000, fallbackData: initialItems },
     );
 
+    const router = useRouter();
     const openDoc = (url: string) => window.open(url, "_blank");
+    const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
     const downloadUrl = (id: string, fmt: string) =>
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
 
@@ -61,7 +64,7 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                     {/* hover actions */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
-                            onClick={() => alert("Review flow coming soon ✨")}
+                            onClick={() => handleReview(id)}
                             className="w-28 rounded bg-sky-600 py-1 text-xs font-medium text-white hover:bg-sky-700"
                         >
                             Review
