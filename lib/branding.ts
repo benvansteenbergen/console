@@ -14,7 +14,7 @@ export const BRAND: Record<string, Branding> = {
         name: "Emotion Digital",
         logo: "/emotion/logo.svg",
         loginImage: "/emotion/hero.png",
-        loginBg: "#32a852",
+        loginBg: "#03c38b",
         primaryColor: "#2c3e50",
     },
 };
