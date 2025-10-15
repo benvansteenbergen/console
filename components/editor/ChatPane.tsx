@@ -49,7 +49,7 @@ export function ChatPane({
 
             // ✅ Clear input after sending
             setInput("");
-            
+
         } catch (error) {
             console.error("Chat error:", error);
         } finally {
@@ -93,10 +93,10 @@ export function ChatPane({
                     <Button
                         onClick={sendMessage}
                         disabled={loading || !input.trim()}
-                        className="relative"
+                        className="relative flex items-center justify-center gap-2"
                     >
                         {loading && (
-                            <span className="absolute left-2 inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                         )}
                         {loading ? "Thinking..." : "Send"}
                     </Button>
