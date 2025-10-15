@@ -28,7 +28,7 @@ export default function EditorPage() {
     useEffect(() => {
         const fetchDoc = async () => {
             if (!params?.fileId) return;
-            const res = await fetch(`/api/editor/file?fileId=${params.fileId}`);
+            const res = await fetch(`/api/drive/file?fileId=${params.fileId}`);
             const data = (await res.json()) as DocumentSnapshot;
             setDoc(data);
             setLoading(false);
@@ -39,7 +39,7 @@ export default function EditorPage() {
     const handlePreview = (proposed: string) => setPreview(proposed);
 
     const handleAccept = async (ops: EditOperation[]) => {
-        const res = await fetch(`/api/editor/commit`, {
+        const res = await fetch(`/api/drive/commit`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
