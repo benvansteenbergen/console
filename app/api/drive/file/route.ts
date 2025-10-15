@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {cookies} from "next/headers";
+import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
     const fileId = req.nextUrl.searchParams.get("fileId");
@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
 
     if (!jwt)
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
     if (!fileId) {
         return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
     }
