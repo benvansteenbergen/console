@@ -10,6 +10,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.52",
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/typography": "^0.5.19",
     "ai": "^5.0.71",
