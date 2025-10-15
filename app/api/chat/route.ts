@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import {cookies} from "next/headers";
 
 export const runtime = "edge";
 
@@ -18,10 +19,16 @@ export async function POST(req: NextRequest) {
 
         // 🟡 1️⃣  Fetch current document text
         const host = req.headers.get('host') ?? '';
+        const cookieStore = await cookies();
+        const jwt = cookieStore.get('session')?.value;
 
         const docRes = await fetch(
             `https://${host}/api/drive/file?fileId=${fileId}`,
-            { cache: "no-store" }
+            {
+                method: "GET",
+                headers: { cookie: `auth=${jwt};` },
+                cache: "no-store"
+            }
         );
 
         if (!docRes.ok) {
