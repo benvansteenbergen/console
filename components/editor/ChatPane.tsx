@@ -87,7 +87,14 @@ export function ChatPane({
                     disabled={loading}
                 />
                 <div className="flex gap-2">
-                    <Button onClick={sendMessage} disabled={loading || !input.trim()}>
+                    <Button
+                        onClick={sendMessage}
+                        disabled={loading || !input.trim()}
+                        className="relative"
+                    >
+                        {loading && (
+                            <span className="absolute left-2 inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        )}
                         {loading ? "Thinking..." : "Send"}
                     </Button>
                     <Button variant="default" onClick={acceptChanges}>
