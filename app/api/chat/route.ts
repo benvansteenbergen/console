@@ -10,24 +10,48 @@ const openai = createOpenAI({
 
 export async function POST(req: NextRequest) {
     try {
-        const { messages, fileId, version } = (await req.json()) as {
-            messages: CoreMessage[]; // ✅ strictly typed here
+        const { messages, fileId } = (await req.json()) as {
+            messages: CoreMessage[];
             fileId?: string;
             version?: string;
         };
 
+        // 🟡 1️⃣  Fetch current document text
+        const host = req.headers.get('host') ?? '';
+
+        const docRes = await fetch(
+            `https://${host}/api/editor/file?fileId=${fileId}`,
+            { cache: "no-store" }
+        );
+
+        if (!docRes.ok) {
+            console.warn("⚠️ Failed to load document content:", docRes.status);
+        }
+
+        const docData = (await docRes.json()) as { content?: string };
+        const documentText = docData?.content ?? "";
+
+        // 🟡 2️⃣  Build system prompt with doc context
         const systemPrompt = `
 You are a helpful text-editing assistant.
-You suggest improvements and edits, but never directly save documents.
-Context: fileId=${fileId ?? "unknown"}, version=${version ?? "n/a"}.
+You help improve or rewrite parts of a document when asked.
+Always base your suggestions on the document text below.
+
+Document text:
+"""
+${documentText}
+"""
+
+If the user asks for a rewrite or improvement, respond with a direct, clear rewrite — not with meta comments or questions.
     `;
 
-        // ✅ Explicitly cast combined array to CoreMessage[]
+        // 🟡 3️⃣  Combine messages
         const fullMessages: CoreMessage[] = [
             { role: "system", content: systemPrompt },
             ...messages,
         ];
 
+        // 🟡 4️⃣  Stream response from OpenAI
         const result = await streamText({
             model: openai("gpt-4o-mini"),
             messages: fullMessages,
