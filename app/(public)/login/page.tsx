@@ -41,7 +41,7 @@ export default function Login() {
           <img src={branding.logo} alt={branding.name} width={200} height={48} />
 
           <h1 className="mt-8 text-2xl font-semibold">
-            Login to the {branding.name} Console
+            Login to the {branding.name}
           </h1>
 
           {error && (
