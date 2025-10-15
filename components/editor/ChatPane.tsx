@@ -26,28 +26,32 @@ export function ChatPane({
         setMessages((m) => [...m, userMsg]);
         setLoading(true);
 
-        const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileId, messages: [...messages, userMsg] }),
-        });
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileId, messages: [...messages, userMsg] }),
+            });
 
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let assistantText = "";
+            const data = await res.json();
 
-        while (reader) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            assistantText += decoder.decode(value, { stream: true });
-            setMessages((m) => [
-                ...m.filter((msg) => msg.role !== "assistant"),
-                { role: "assistant", content: assistantText },
-            ]);
+            // Update chat (assistant message)
+            if (data.assistant_message) {
+                setMessages((m) => [
+                    ...m,
+                    { role: "assistant", content: data.assistant_message },
+                ]);
+            }
+
+            // Update preview (rewritten document)
+            if (data.suggested_text) {
+                onPreview(data.suggested_text);
+            }
+        } catch (error) {
+            console.error("Chat error:", error);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
-        onPreview(`**Suggested change:** ${assistantText}`);
     };
 
     const acceptChanges = async () => {

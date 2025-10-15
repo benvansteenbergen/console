@@ -5,68 +5,77 @@ import { createOpenAI } from "@ai-sdk/openai";
 export const runtime = "edge";
 
 const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
+  apiKey: process.env.OPENAI_API_KEY!,
 });
 
 export async function POST(req: NextRequest) {
-    try {
-        const { messages, fileId } = (await req.json()) as {
-            messages: CoreMessage[];
-            fileId?: string;
-            version?: string;
-        };
+  try {
+    const { messages, fileId } = (await req.json()) as {
+      messages: CoreMessage[];
+      fileId?: string;
+    };
 
-        // 🟡 1️⃣  Fetch current document text
-        const host = req.headers.get('host') ?? '';
+    // 🟡 1️⃣  Fetch current document text
+    const host = req.headers.get("host") ?? "";
 
-        const docRes = await fetch(
-            `https://${host}/api/drive/file?fileId=${fileId}`, {
-                cache: "no-store",
-                headers: {
-                    // Forward cookies and/or auth headers
-                    cookie: req.headers.get("cookie") ?? "",
-                    authorization: req.headers.get("authorization") ?? "",
-                }
-            }
-        );
+    const docRes = await fetch(`https://${host}/api/drive/file?fileId=${fileId}`, {
+      cache: "no-store",
+      headers: {
+        cookie: req.headers.get("cookie") ?? "",
+        authorization: req.headers.get("authorization") ?? "",
+      },
+    });
 
-        if (!docRes.ok) {
-            console.warn("⚠️ Failed to load document content:", docRes.status);
-        }
+    if (!docRes.ok) {
+      console.warn("⚠️ Failed to load document content:", docRes.status);
+    }
 
-        const docData = (await docRes.json()) as { content?: string };
-        const documentText = docData?.content ?? "";
+    const docData = (await docRes.json()) as { content?: string };
+    const documentText = docData?.content ?? "";
 
-        // 🟡 2️⃣  Build system prompt with doc context
-        const systemPrompt = `
-You are a helpful text-editing assistant.
-You help improve or rewrite parts of a document when asked.
-Always base your suggestions on the document text below.
+    // 🟡 2️⃣  Build system prompt with doc context
+    const systemPrompt = `
+You are a text-editing assistant.
+
+When responding to the user:
+- Always return structured JSON.
+- "assistant_message" = short explanation of what was changed or a direct answer in natural language.
+- "suggested_text" = the full rewritten version of the document (with all edits applied).
+
+Example output:
+{
+  "assistant_message": "I simplified the introduction for better flow.",
+  "suggested_text": "## **Introductie** WingSuite heeft zijn design een frisse update gekregen..."
+}
 
 Document text:
 """
 ${documentText}
 """
+`;
 
-If the user asks for a rewrite or improvement, respond with a direct, clear rewrite — not with meta comments or questions.
-    `;
+    // 🟡 3️⃣  Combine messages
+    const fullMessages: CoreMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ];
 
-        // 🟡 3️⃣  Combine messages
-        const fullMessages: CoreMessage[] = [
-            { role: "system", content: systemPrompt },
-            ...messages,
-        ];
+    // 🟡 4️⃣  Request response in JSON format
+    const result = await streamText({
+      model: openai("gpt-4o-mini"),
+      messages: fullMessages,
+      temperature: 0.6,
+      format: "json",
+    });
 
-        // 🟡 4️⃣  Stream response from OpenAI
-        const result = await streamText({
-            model: openai("gpt-4o-mini"),
-            messages: fullMessages,
-            temperature: 0.6,
-        });
-
-        return result.toTextStreamResponse();
-    } catch (error) {
-        console.error("Chat API error:", error);
-        return new Response("Failed to connect to OpenAI API", { status: 500 });
-    }
+    // 🟡 5️⃣  Return structured JSON
+    const response = await result.readAll();
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Chat API error:", error);
+    return new Response("Failed to connect to OpenAI API", { status: 500 });
+  }
 }
