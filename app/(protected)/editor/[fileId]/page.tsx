@@ -9,9 +9,7 @@ import { cn } from "@/lib/utils";
 
 type DocumentSnapshot = {
     fileId: string;
-    name: string;
     content: string;
-    version: string;
 };
 
 export type EditOperation =
@@ -44,8 +42,7 @@ export default function EditorPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 fileId: doc?.fileId,
-                ops,
-                version: doc?.version,
+                ops
             }),
         });
         const updated = (await res.json()) as DocumentSnapshot;
@@ -63,7 +60,6 @@ export default function EditorPage() {
             <div className="w-[30%] border-r bg-muted/10 overflow-y-auto">
                 <ChatPane
                     fileId={doc.fileId}
-                    version={doc.version}
                     onPreview={handlePreview}
                     onAccept={handleAccept}
                 />

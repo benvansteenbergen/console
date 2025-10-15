@@ -7,12 +7,10 @@ import type { EditOperation } from "@/app/(protected)/editor/[fileId]/page";
 
 export function ChatPane({
                              fileId,
-                             version,
                              onPreview,
                              onAccept,
                          }: {
     fileId: string;
-    version: string;
     onPreview: (proposed: string) => void;
     onAccept: (ops: EditOperation[]) => void;
 }) {
@@ -31,7 +29,7 @@ export function ChatPane({
         const res = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileId, version, messages: [...messages, userMsg] }),
+            body: JSON.stringify({ fileId, messages: [...messages, userMsg] }),
         });
 
         const reader = res.body?.getReader();

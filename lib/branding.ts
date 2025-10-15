@@ -11,7 +11,7 @@ export const BRAND: Record<string, Branding> = {
     },
     emotion: {
         domain: "emotion.wingsuite.io",
-        name: "Emotion Digital",
+        name: "Emotion AI Studio",
         logo: "/emotion/logo.svg",
         loginImage: "/emotion/hero.png",
         loginBg: "#03c38b",

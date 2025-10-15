@@ -27,10 +27,12 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await res.json();
+        const doc = Array.isArray(data) ? data[0] : data;
 
-        // Expected shape from n8n:
-        // { fileId, name, content, version }
-        return NextResponse.json(data);
+        return NextResponse.json({
+            fileId: doc.documentId ?? doc.fileId ?? "",
+            content: doc.content ?? "",
+        });
     } catch (err: unknown) {
         console.error("Error loading doc via n8n:", err);
         return NextResponse.json(
