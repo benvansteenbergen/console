@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     try {
         const res = await fetch(
-            `${process.env.N8N_BASE_URL}webhook/load-document?fileId=${fileId}`, {
+            `${process.env.N8N_BASE_URL}/webhook/load-document?fileId=${fileId}`, {
                 method: "GET",
                 headers: { cookie: `auth=${jwt};` },
                 cache: "no-store"

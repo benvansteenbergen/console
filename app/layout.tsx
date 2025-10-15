@@ -2,7 +2,7 @@
 import '@/globals.css';          // ✅ must come BEFORE the font import
 import { headers } from "next/headers";
 import { detectBranding } from "@/lib/branding";
-import {BrandingProvider} from "@/components/BrandingProvider"; // ✅ not a client file
+import { BrandingProvider } from "@/components/BrandingProvider"; // ✅ not a client file
 
 export interface Branding {
     name: string;
