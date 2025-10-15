@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
         const host = req.headers.get('host') ?? '';
 
         const docRes = await fetch(
-            `https://${host}/api/editor/file?fileId=${fileId}`,
+            `https://${host}/api/drive/file?fileId=${fileId}`,
             { cache: "no-store" }
         );
 
