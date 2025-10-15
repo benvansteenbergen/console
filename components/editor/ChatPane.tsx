@@ -43,10 +43,13 @@ export function ChatPane({
                 ]);
             }
 
-            // Update preview (rewritten document)
             if (data.suggested_text) {
                 onPreview(data.suggested_text);
             }
+
+            // ✅ Clear input after sending
+            setInput("");
+            
         } catch (error) {
             console.error("Chat error:", error);
         } finally {
