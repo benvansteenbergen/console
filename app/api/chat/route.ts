@@ -60,17 +60,27 @@ ${documentText}
       ...messages,
     ];
 
-    // 🟡 4️⃣  Request response in JSON format
+    // 🟡 4️⃣  Request response
     const result = await streamText({
       model: openai("gpt-4o-mini"),
       messages: fullMessages,
       temperature: 0.6,
-      format: "json",
     });
 
-    // 🟡 5️⃣  Return structured JSON
-    const response = await result.readAll();
-    return new Response(JSON.stringify(response), {
+// 🟡 5️⃣  Parse JSON manually
+    const text = await (await result.toTextStreamResponse()).text();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = {
+        assistant_message: "Could not parse AI response as JSON.",
+        suggested_text: text,
+      };
+    }
+
+    return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
