@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText } from "ai";
+import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
 export const runtime = "edge";
@@ -11,7 +11,7 @@ const openai = createOpenAI({
 export async function POST(req: NextRequest) {
     try {
         const { messages, fileId, version } = (await req.json()) as {
-            messages: { role: "user" | "assistant" | "system"; content: string }[];
+            messages: CoreMessage[]; // ✅ strictly typed here
             fileId?: string;
             version?: string;
         };
@@ -22,7 +22,8 @@ You suggest improvements and edits, but never directly save documents.
 Context: fileId=${fileId ?? "unknown"}, version=${version ?? "n/a"}.
     `;
 
-        const fullMessages = [
+        // ✅ Explicitly cast combined array to CoreMessage[]
+        const fullMessages: CoreMessage[] = [
             { role: "system", content: systemPrompt },
             ...messages,
         ];
