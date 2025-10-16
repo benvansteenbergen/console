@@ -30,7 +30,7 @@ export default function Login() {
           <img
               src={branding.loginImage}
               alt={`${branding.name} flying`}
-              className="absolute inset-0 h-full w-full object-contain object-center"
+              className="absolute inset-0 m-auto max-h-full max-w-full object-contain"
               aria-hidden="true"
           />
         </div>
