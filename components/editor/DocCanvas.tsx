@@ -20,34 +20,36 @@ export function DocCanvas({
 
     // Normalize and split both texts into blocks (by blank lines)
     const normalize = (text: string) =>
-        text.replace(/\r\n/g, "\n").trim();
+      text.replace(/\r\n/g, "\n").trim();
     const oldBlocks = normalize(content).split(/\n{2,}/);
     const newBlocks = normalize(preview).split(/\n{2,}/);
 
     const dmp = new DiffMatchPatch();
+    const max = Math.max(oldBlocks.length, newBlocks.length);
     const blocks: { changed: boolean; text: string }[] = [];
 
-    // Compare block by block, fall back to unchanged if lengths differ
-    newBlocks.forEach((newB, i) => {
+    for (let i = 0; i < max; i++) {
       const oldB = oldBlocks[i] || "";
+      const newB = newBlocks[i] || "";
       const diffs = dmp.diff_main(oldB, newB);
       dmp.diff_cleanupSemantic(diffs);
       const hasChanges = diffs.some(([type]) => type !== 0);
-      blocks.push({ changed: hasChanges, text: newB });
-    });
+      // Push new block if available, otherwise push old block to maintain full document
+      blocks.push({ changed: hasChanges, text: newB || oldB });
+    }
 
     // Render full doc — only changed blocks highlighted
     return (
-        <div className="prose prose-docs max-w-none leading-relaxed">
-          {blocks.map((b, i) => (
-              <div
-                  key={i}
-                  className={b.changed ? "bg-yellow-50 rounded-md p-1 transition-colors" : ""}
-              >
-                <ReactMarkdown>{b.text}</ReactMarkdown>
-              </div>
-          ))}
-        </div>
+      <div className="prose prose-docs max-w-none leading-relaxed">
+        {blocks.map((b, i) => (
+          <div
+            key={i}
+            className={b.changed ? "bg-yellow-50 rounded-md p-1 transition-colors" : ""}
+          >
+            <ReactMarkdown>{b.text}</ReactMarkdown>
+          </div>
+        ))}
+      </div>
     );
   };
 
