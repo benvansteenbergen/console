@@ -1,6 +1,7 @@
 'use client';
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useBranding } from '@/components/BrandingProvider';
 import RecentExecutions from '@/components/RecentExecutions';
 import ContentWriterGrid from "@/components/Agents/ContentwriterGrid";
 import ContentFormGrid from "@/components/Agents/ContentformGrid";
@@ -47,6 +48,8 @@ export default function Dashboard() {
         isLoading: creditsLoading,
   } = useSWR<Credits>("/api/credits", fetcher);
 
+  const branding= useBranding();
+
   const Panel = ({ children }: { children: React.ReactNode }) => (
       <div className="rounded-lg border bg-white shadow-sm">{children}</div>
   );
@@ -60,7 +63,7 @@ export default function Dashboard() {
           <Panel>
               <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
                   <h1 className="col-span-2 text-3xl font-bold text-blue-900">
-                      Welcome to Wingsuite
+                      Welcome to {branding.name}
                   </h1>
 
                   <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
