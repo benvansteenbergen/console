@@ -18,32 +18,25 @@ export function DocCanvas({
   const renderDiff = () => {
     if (!preview) return null;
 
-    // Normalize and split both texts into blocks
+    // Normalize and split both texts into blocks (by blank lines)
     const normalize = (text: string) =>
         text.replace(/\r\n/g, "\n").trim();
     const oldBlocks = normalize(content).split(/\n{2,}/);
     const newBlocks = normalize(preview).split(/\n{2,}/);
 
     const dmp = new DiffMatchPatch();
-    const max = Math.max(oldBlocks.length, newBlocks.length);
     const blocks: { changed: boolean; text: string }[] = [];
 
-    for (let i = 0; i < max; i++) {
+    // Compare block by block, fall back to unchanged if lengths differ
+    newBlocks.forEach((newB, i) => {
       const oldB = oldBlocks[i] || "";
-      const newB = newBlocks[i] || "";
-      if (oldB === newB) {
-        blocks.push({ changed: false, text: newB });
-        continue;
-      }
-
-      // Compare blocks semantically to detect real change
       const diffs = dmp.diff_main(oldB, newB);
       dmp.diff_cleanupSemantic(diffs);
       const hasChanges = diffs.some(([type]) => type !== 0);
       blocks.push({ changed: hasChanges, text: newB });
-    }
+    });
 
-    // Render blocks — each block stays as Markdown, but changed blocks highlighted
+    // Render full doc — only changed blocks highlighted
     return (
         <div className="prose prose-docs max-w-none leading-relaxed">
           {blocks.map((b, i) => (
