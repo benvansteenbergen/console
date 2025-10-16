@@ -18,63 +18,42 @@ export function DocCanvas({
   const renderDiff = () => {
     if (!preview) return null;
 
-    // 1️⃣ Normaliseer whitespace
+    // Normalize and split both texts into blocks
     const normalize = (text: string) =>
-        text.replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
+        text.replace(/\r\n/g, "\n").trim();
+    const oldBlocks = normalize(content).split(/\n{2,}/);
+    const newBlocks = normalize(preview).split(/\n{2,}/);
 
-    const oldText = normalize(content);
-    const newText = normalize(preview);
+    const dmp = new DiffMatchPatch();
+    const max = Math.max(oldBlocks.length, newBlocks.length);
+    const blocks: { changed: boolean; text: string }[] = [];
 
-    // 2️⃣ Diff op paragrafen (split per dubbele newline)
-    const oldParagraphs = oldText.split("\n\n");
-    const newParagraphs = newText.split("\n\n");
-
-    const diffs: [number, string][] = [];
-
-    // Vergelijk per paragraaf
-    const max = Math.max(oldParagraphs.length, newParagraphs.length);
     for (let i = 0; i < max; i++) {
-      const oldP = oldParagraphs[i] || "";
-      const newP = newParagraphs[i] || "";
-
-      if (oldP === newP) {
-        diffs.push([0, newP]);
+      const oldB = oldBlocks[i] || "";
+      const newB = newBlocks[i] || "";
+      if (oldB === newB) {
+        blocks.push({ changed: false, text: newB });
         continue;
       }
 
-      const dmp = new DiffMatchPatch();
-      const innerDiffs = dmp.diff_main(oldP, newP);
-      dmp.diff_cleanupSemantic(innerDiffs);
-      innerDiffs.forEach((d) => diffs.push(d));
-      diffs.push([0, "\n\n"]); // voeg paragraaf-scheiding terug
+      // Compare blocks semantically to detect real change
+      const diffs = dmp.diff_main(oldB, newB);
+      dmp.diff_cleanupSemantic(diffs);
+      const hasChanges = diffs.some(([type]) => type !== 0);
+      blocks.push({ changed: hasChanges, text: newB });
     }
 
-    // 3️⃣ Render schoon
+    // Render blocks — each block stays as Markdown, but changed blocks highlighted
     return (
         <div className="prose prose-docs max-w-none leading-relaxed">
-          {diffs.map(([type, text], i) => {
-            if (type === 1)
-              return (
-                  <mark
-                      key={i}
-                      className="bg-green-50 rounded-sm px-0.5"
-                      style={{ display: "inline" }}
-                  >
-                    <ReactMarkdown>{text}</ReactMarkdown>
-                  </mark>
-              );
-            if (type === -1)
-              return (
-                  <mark
-                      key={i}
-                      className="bg-red-50 line-through opacity-50 rounded-sm px-0.5"
-                      style={{ display: "inline" }}
-                  >
-                    <ReactMarkdown>{text}</ReactMarkdown>
-                  </mark>
-              );
-            return <ReactMarkdown key={i}>{text}</ReactMarkdown>;
-          })}
+          {blocks.map((b, i) => (
+              <div
+                  key={i}
+                  className={b.changed ? "bg-yellow-50 rounded-md p-1 transition-colors" : ""}
+              >
+                <ReactMarkdown>{b.text}</ReactMarkdown>
+              </div>
+          ))}
         </div>
     );
   };
