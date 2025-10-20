@@ -54,9 +54,9 @@ export function DocCanvas({
   };
 
   return (
-    <div className="relative p-8 bg-white">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-slate-900">
+    <div className="relative p-4 bg-white sm:p-6 md:p-8">
+      <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+        <h1 className="text-base font-semibold text-slate-900 sm:text-lg">
           Document Preview
         </h1>
         {isPreviewing && (
@@ -66,7 +66,7 @@ export function DocCanvas({
         )}
       </div>
 
-      <div className="overflow-y-auto max-h-[calc(100vh-8rem)]">
+      <div className="overflow-y-auto max-h-[calc(100vh-10rem)] sm:max-h-[calc(100vh-8rem)]">
         {!content && !preview ? (
           <p className="text-muted-foreground text-sm italic">
             No document content available.

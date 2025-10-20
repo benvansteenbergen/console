@@ -48,34 +48,34 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
 
     return (
-        <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
+        <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
             {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew }) => (
                 <div key={id} className="group flex flex-col items-center">
-                    <div className="relative">
+                    <div className="relative w-full">
                     <Image
                         src={thumbnailLink}
                         alt={name}
                         width={160}
                         height={200}
-                        className="rounded-lg border border-slate-200 shadow-sm"
+                        className="w-full rounded-lg border border-slate-200 shadow-sm"
                         unoptimized
                     />
 
-                    {/* hover actions */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* hover actions - tap on mobile, hover on desktop */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">
                         <button
                             onClick={() => handleReview(id)}
-                            className="w-28 rounded bg-sky-600 py-1 text-xs font-medium text-white hover:bg-sky-700"
+                            className="w-24 rounded bg-sky-600 py-1 text-xs font-medium text-white hover:bg-sky-700 sm:w-28"
                         >
                             Review
                         </button>
                         <button
                             onClick={() => openDoc(webViewLink)}
-                            className="w-28 rounded bg-white/90 py-1 text-xs font-medium text-sky-700 hover:bg-white"
+                            className="w-24 rounded bg-white/90 py-1 text-xs font-medium text-sky-700 hover:bg-white sm:w-28"
                         >
                             Open
                         </button>
-                        <div className="flex w-28 justify-center gap-1">
+                        <div className="flex w-24 justify-center gap-1 sm:w-28">
                             {DOWNLOAD_FORMATS.map(({ fmt, label }) => (
                                 <a
                                     key={fmt}
@@ -97,7 +97,7 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                     ) : null}
                 </div>
                 {/* file title --------------------------------------------------- */}
-                <p className="mt-1 max-w-[160px] truncate text-center text-xs font-medium text-slate-700">
+                <p className="mt-1 w-full truncate text-center text-xs font-medium text-slate-700">
                 {name}
                 </p>
                 </div>
