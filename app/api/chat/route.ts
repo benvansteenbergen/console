@@ -143,13 +143,11 @@ ${documentText}
       ...messages,
     ];
 
-    // 🟡 4️⃣  Request response with JSON mode
+    // 🟡 4️⃣  Request response
     const result = await streamText({
       model: openai("gpt-4o"),
       messages: fullMessages,
       temperature: 0.6,
-      // Force JSON response format
-      response_format: { type: "json_object" },
     });
 
     // 🟡 5️⃣  Get complete text and parse
