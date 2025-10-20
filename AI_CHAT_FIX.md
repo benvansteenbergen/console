@@ -11,13 +11,13 @@ The AI chat response format was inconsistent, causing the diff comparison in Doc
 
 ## Solution Implemented
 
-### 1. **Forced JSON Output Mode**
+### 1. **Proper Stream Text Extraction**
 ```typescript
-// Now using OpenAI's JSON mode
-response_format: { type: "json_object" }
+// Correctly await the full text from streamText
+const fullText = await result.text;
 ```
 
-This forces the model to always return valid JSON.
+The Vercel AI SDK requires awaiting `result.text` to get the complete response.
 
 ### 2. **Robust JSON Parser with Fallbacks**
 
