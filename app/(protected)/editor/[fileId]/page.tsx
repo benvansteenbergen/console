@@ -84,6 +84,7 @@ export default function EditorPage() {
                     fileId={doc.fileId}
                     onPreview={handlePreview}
                     onAccept={handleAccept}
+                    onLoadingChange={setSaving}
                 />
             </div>
 

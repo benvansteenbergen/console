@@ -9,10 +9,12 @@ export function ChatPane({
                              fileId,
                              onPreview,
                              onAccept,
+                             onLoadingChange,
                          }: {
     fileId: string;
     onPreview: (proposed: string) => void;
     onAccept: (ops: EditOperation[]) => void;
+    onLoadingChange?: (loading: boolean) => void;
 }) {
     const [messages, setMessages] = useState<
         { role: "user" | "assistant"; content: string }[]
@@ -25,6 +27,7 @@ export function ChatPane({
         const userMsg = { role: "user" as const, content: input };
         setMessages((m) => [...m, userMsg]);
         setLoading(true);
+        onLoadingChange?.(true);
 
         try {
             const res = await fetch("/api/chat", {
@@ -54,6 +57,7 @@ export function ChatPane({
             console.error("Chat error:", error);
         } finally {
             setLoading(false);
+            onLoadingChange?.(false);
         }
     };
 
