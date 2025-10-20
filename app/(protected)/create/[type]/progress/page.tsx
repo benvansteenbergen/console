@@ -17,7 +17,33 @@ export default function ProgressPage({ params }: { params: { type: string } }) {
 
             if (data.status === 'success') {
                 clearInterval(interval);
-                router.replace(`/create/${params.type}?execution=${execution}`);
+
+                // Extract fileId from trace (look for Google Docs URL)
+                const fileIdStep = data.trace?.find((step: { label: string; summary: string }) =>
+                    step.summary?.includes('docs.google.com/document/d/')
+                );
+
+                if (fileIdStep) {
+                    // Extract ID from URL like: https://docs.google.com/document/d/abc123/edit
+                    const match = fileIdStep.summary.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    const fileId = match?.[1];
+
+                    if (fileId) {
+                        router.replace(`/editor/${fileId}`);
+                        return;
+                    }
+                }
+
+                // Fallback: if no fileId found, go to dashboard
+                console.error('No fileId found in execution trace');
+                router.replace('/dashboard');
+            }
+
+            if (data.status === 'error') {
+                clearInterval(interval);
+                // Could redirect to error page or show error message
+                console.error('Workflow execution failed');
+                router.replace('/dashboard');
             }
         }, 2000);
 
