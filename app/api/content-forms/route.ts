@@ -36,11 +36,19 @@ export async function GET() {
 
     const forms = rows
         .filter((w) => w.type === "form")
-        .map((w) => ({
-        id: w.id,
-        name: w.name,
-        formUrl: `${w.url}`,
-    }));
+        .map((w) => {
+            // Extract form slug from URL
+            // e.g., "https://workflow.wingsuite.io/form/blogpost-demo" -> "blogpost-demo"
+            const urlMatch = w.url.match(/\/form\/([^/?]+)/);
+            const slug = urlMatch ? urlMatch[1] : w.id; // Fallback to id if pattern doesn't match
+
+            return {
+                id: w.id,
+                slug,
+                name: w.name,
+                formUrl: `${w.url}`,
+            };
+        });
 
     return NextResponse.json(forms);
 }

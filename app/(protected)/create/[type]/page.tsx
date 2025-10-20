@@ -6,6 +6,7 @@ import useSWR from 'swr';
 
 interface ContentForm {
     id: string;
+    slug: string;
     name: string;
     formUrl: string;
 }
@@ -24,10 +25,10 @@ export default function CreateFormPage({ params }: { params: Promise<{ type: str
         params.then((p) => setFormType(p.type));
     }, [params]);
 
-    // Find the form URL from the API based on form ID
+    // Find the form URL from the API based on form slug
     useEffect(() => {
         if (forms && formType) {
-            const form = forms.find((f) => f.id === formType);
+            const form = forms.find((f) => f.slug === formType);
             if (form) {
                 setFormUrl(form.formUrl);
             } else {

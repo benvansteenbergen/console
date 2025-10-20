@@ -6,6 +6,7 @@ import clsx from "clsx";
 /* -------- types returned by /api/content-forms -------------------- */
 export interface ContentForm {
     id: string;
+    slug: string;
     name: string;
     formUrl: string;
 }
