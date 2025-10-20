@@ -77,8 +77,8 @@ export default function EditorPage() {
             )}
 
             <div className={cn(
-                "w-[30%] border-r bg-muted/10 overflow-y-auto transition-opacity",
-                saving && "opacity-50 pointer-events-none"
+                "w-[30%] border-r bg-muted/10 overflow-y-auto",
+                saving && "pointer-events-none"
             )}>
                 <ChatPane
                     fileId={doc.fileId}
