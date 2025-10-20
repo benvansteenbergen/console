@@ -145,7 +145,7 @@ ${documentText}
 
     // 🟡 4️⃣  Request response
     const result = await streamText({
-      model: openai("gpt-5"),
+      model: openai("gpt-5-mini"),
       messages: fullMessages,
       temperature: 0.6,
     });
