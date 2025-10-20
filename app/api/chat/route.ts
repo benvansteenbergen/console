@@ -150,15 +150,14 @@ ${documentText}
       temperature: 0.6,
     });
 
-    // 🟡 5️⃣  Get complete text from stream
-    // Wait for the stream to complete and get all text
-    const fullText = await result.text;
+    // 🟡 5️⃣  Get complete text from stream (ORIGINAL WORKING METHOD)
+    const text = await (await result.toTextStreamResponse()).text();
 
-    console.log("🔍 AI Response Length:", fullText.length);
-    console.log("🔍 AI Response Preview:", fullText.substring(0, 200));
+    console.log("🔍 AI Response Length:", text.length);
+    console.log("🔍 AI Response Preview:", text.substring(0, 300));
 
     // 🟡 6️⃣  Robust JSON parsing with fallbacks
-    const parsed = parseAIResponse(fullText, documentText);
+    const parsed = parseAIResponse(text, documentText);
 
     console.log("✅ Parsed Response:", {
       messageLength: parsed.assistant_message.length,
