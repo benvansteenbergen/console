@@ -145,7 +145,7 @@ ${documentText}
 
     // 🟡 4️⃣  Request response
     const result = await streamText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-5"),
       messages: fullMessages,
       temperature: 0.6,
     });
@@ -153,18 +153,20 @@ ${documentText}
     // 🟡 5️⃣  Get complete text from stream (ORIGINAL WORKING METHOD)
     const text = await (await result.toTextStreamResponse()).text();
 
-    console.log("🔍 AI Response Length:", text.length);
-    console.log("🔍 AI Response Preview:", text.substring(0, 300));
-
     // 🟡 6️⃣  Robust JSON parsing with fallbacks
     const parsed = parseAIResponse(text, documentText);
 
-    console.log("✅ Parsed Response:", {
-      messageLength: parsed.assistant_message.length,
-      textLength: parsed.suggested_text.length,
-    });
+    // Add debug info to response so you can see what's happening
+    const responseWithDebug = {
+      ...parsed,
+      _debug: {
+        rawLength: text?.length || 0,
+        rawPreview: text?.substring(0, 500) || "",
+        rawType: typeof text,
+      }
+    };
 
-    return new Response(JSON.stringify(parsed), {
+    return new Response(JSON.stringify(responseWithDebug), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
