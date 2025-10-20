@@ -1,5 +1,0 @@
-# Ignore build artefacts
-.next
-dist
-out
-coverage

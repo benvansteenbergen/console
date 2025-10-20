@@ -12,27 +12,33 @@ interface ContentForm {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export default function CreateFormPage({ params }: { params: { type: string } }) {
+export default function CreateFormPage({ params }: { params: Promise<{ type: string }> }) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const router = useRouter();
     const { data: forms } = useSWR<ContentForm[]>('/api/content-forms', fetcher);
     const [formUrl, setFormUrl] = useState<string | null>(null);
+    const [formType, setFormType] = useState<string | null>(null);
+
+    // Unwrap async params (Next.js 15)
+    useEffect(() => {
+        params.then((p) => setFormType(p.type));
+    }, [params]);
 
     // Find the form URL from the API based on form ID
     useEffect(() => {
-        if (forms) {
-            const form = forms.find((f) => f.id === params.type);
+        if (forms && formType) {
+            const form = forms.find((f) => f.id === formType);
             if (form) {
                 setFormUrl(form.formUrl);
             } else {
-                console.error(`Form not found: ${params.type}`);
+                console.error(`Form not found: ${formType}`);
                 router.replace('/dashboard');
             }
         }
-    }, [forms, params.type, router]);
+    }, [forms, formType, router]);
 
     useEffect(() => {
-        if (!formUrl) return;
+        if (!formUrl || !formType) return;
 
         const checkForExecution = () => {
             const iframe = iframeRef.current;
@@ -44,7 +50,7 @@ export default function CreateFormPage({ params }: { params: { type: string } })
                 const execution = url.searchParams.get('execution');
 
                 if (execution) {
-                    router.replace(`/create/${params.type}/progress?execution=${execution}`);
+                    router.replace(`/create/${formType}/progress?execution=${execution}`);
                 }
             } catch {
                 // Silent fail on cross-origin
@@ -54,7 +60,7 @@ export default function CreateFormPage({ params }: { params: { type: string } })
         const iframe = iframeRef.current;
         iframe?.addEventListener('load', checkForExecution);
         return () => iframe?.removeEventListener('load', checkForExecution);
-    }, [formUrl, params.type, router]);
+    }, [formUrl, formType, router]);
 
     if (!formUrl) {
         return (
