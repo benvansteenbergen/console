@@ -18,9 +18,22 @@ export function DocCanvas({
   const renderDiff = () => {
     if (!preview) return null;
 
-    // Normalize and split both texts into blocks (by blank lines)
-    const normalize = (text: string) =>
-      text.replace(/\r\n/g, "\n").trim();
+    // Normalize text for consistent comparison
+    const normalize = (text: string) => {
+      return text
+        // Normalize line endings
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        // Trim
+        .trim()
+        // Normalize multiple blank lines
+        .replace(/\n{3,}/g, "\n\n")
+        // Remove trailing spaces on lines
+        .replace(/ +$/gm, "")
+        // Normalize header spacing
+        .replace(/^(#{1,6})\s+/gm, "$1 ");
+    };
+
     const oldBlocks = normalize(content).split(/\n{2,}/);
     const newBlocks = normalize(preview).split(/\n{2,}/);
 

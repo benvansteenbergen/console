@@ -4,6 +4,84 @@ import { createOpenAI } from "@ai-sdk/openai";
 
 export const runtime = "edge";
 
+/**
+ * Robust JSON parser that handles various AI response formats
+ */
+function parseAIResponse(text: string, fallbackDocument: string) {
+  // Remove markdown code blocks if present
+  let cleaned = text.trim();
+
+  // Remove ```json and ``` markers
+  cleaned = cleaned.replace(/^```json\s*/i, "");
+  cleaned = cleaned.replace(/^```\s*/, "");
+  cleaned = cleaned.replace(/\s*```$/, "");
+
+  // Try to parse as JSON
+  try {
+    const parsed = JSON.parse(cleaned);
+
+    // Validate structure
+    if (typeof parsed === "object" && parsed !== null) {
+      // Ensure we have the required fields
+      const result = {
+        assistant_message:
+          typeof parsed.assistant_message === "string"
+            ? parsed.assistant_message
+            : "Changes applied",
+        suggested_text:
+          typeof parsed.suggested_text === "string"
+            ? normalizeMarkdown(parsed.suggested_text)
+            : fallbackDocument,
+      };
+
+      return result;
+    }
+  } catch (error) {
+    console.error("JSON parse error:", error);
+  }
+
+  // Fallback: try to extract JSON from text
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        assistant_message: parsed.assistant_message || "Changes applied",
+        suggested_text: normalizeMarkdown(parsed.suggested_text || fallbackDocument),
+      };
+    } catch {
+      // Continue to final fallback
+    }
+  }
+
+  // Final fallback: treat entire text as suggested content
+  return {
+    assistant_message: "Unable to parse AI response. Showing raw output.",
+    suggested_text: normalizeMarkdown(text),
+  };
+}
+
+/**
+ * Normalize markdown text for consistent diff comparison
+ */
+function normalizeMarkdown(text: string): string {
+  return text
+    // Normalize line endings
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    // Remove leading/trailing whitespace
+    .trim()
+    // Normalize multiple blank lines to double newline
+    .replace(/\n{3,}/g, "\n\n")
+    // Remove trailing spaces on lines
+    .replace(/ +$/gm, "")
+    // Ensure consistent spacing around headers
+    .replace(/^(#{1,6})\s+/gm, "$1 ")
+    // Remove any remaining markdown code block markers
+    .replace(/^```[\w]*\s*/gm, "")
+    .replace(/\s*```$/gm, "");
+}
+
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
@@ -34,25 +112,30 @@ export async function POST(req: NextRequest) {
     const documentText = docData?.content ?? "";
 
     // 🟡 2️⃣  Build system prompt with doc context
-    const systemPrompt = `
-You are a text-editing assistant.
+    const systemPrompt = `You are a professional document editor assistant.
 
-When responding to the user:
-- Always return structured JSON.
-- "assistant_message" = short explanation of what was changed or a direct answer in natural language.
-- "suggested_text" = the full rewritten version of the document (with all edits applied).
+The current document content is provided below. When the user asks for edits:
 
-Example output:
+1. Make the requested changes to the document
+2. Return ONLY valid JSON with this exact structure (no markdown, no code blocks, no extra text):
+
 {
-  "assistant_message": "I simplified the introduction for better flow.",
-  "suggested_text": "## **Introductie** WingSuite heeft zijn design een frisse update gekregen..."
+  "assistant_message": "Brief explanation of changes made",
+  "suggested_text": "Complete updated document with all changes applied"
 }
 
-Document text:
-"""
+CRITICAL RULES:
+- Return ONLY the JSON object, nothing else
+- NO markdown code blocks (no \`\`\`json)
+- NO extra explanations outside the JSON
+- "suggested_text" must contain the COMPLETE document with proper markdown formatting
+- Preserve document structure (headings, paragraphs, lists)
+- Keep the same markdown style as the original
+
+Current document:
+---
 ${documentText}
-"""
-`;
+---`;
 
     // 🟡 3️⃣  Combine messages
     const fullMessages: CoreMessage[] = [
@@ -60,25 +143,20 @@ ${documentText}
       ...messages,
     ];
 
-    // 🟡 4️⃣  Request response
+    // 🟡 4️⃣  Request response with JSON mode
     const result = await streamText({
-      model: openai("gpt-4o-mini"),
+      model: openai("gpt-4o"),
       messages: fullMessages,
       temperature: 0.6,
+      // Force JSON response format
+      response_format: { type: "json_object" },
     });
 
-// 🟡 5️⃣  Parse JSON manually
+    // 🟡 5️⃣  Get complete text and parse
     const text = await (await result.toTextStreamResponse()).text();
 
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = {
-        assistant_message: "Could not parse AI response as JSON.",
-        suggested_text: text,
-      };
-    }
+    // 🟡 6️⃣  Robust JSON parsing with fallbacks
+    const parsed = parseAIResponse(text, documentText);
 
     return new Response(JSON.stringify(parsed), {
       status: 200,
