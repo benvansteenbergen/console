@@ -301,13 +301,18 @@ section > hr{
 }
 
 @media (min-width: 1024px) {
+  :root {
+    --container-width: 1200px;
+  }
+
+  .container {
+    max-width: var(--container-width);
+  }
+
   .inputs-wrapper {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     align-items: start;
     gap: 20px 24px;
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
   }
 
   /* Make textarea fields span full width for better readability */
