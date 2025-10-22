@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { EditOperation } from "@/app/(protected)/editor/[fileId]/page";
 
 export function ChatPane({
                              fileId,
@@ -13,7 +12,7 @@ export function ChatPane({
                          }: {
     fileId: string;
     onPreview: (proposed: string) => void;
-    onAccept: (ops: EditOperation[]) => void;
+    onAccept: () => void;
     onLoadingChange?: (loading: boolean) => void;
 }) {
     const [messages, setMessages] = useState<
@@ -62,10 +61,7 @@ export function ChatPane({
     };
 
     const acceptChanges = async () => {
-        const fakeOps: EditOperation[] = [
-            { type: "replaceRange", start: 0, end: 0, text: "New text..." },
-        ];
-        await onAccept(fakeOps);
+        await onAccept();
     };
 
     return (

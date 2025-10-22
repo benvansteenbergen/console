@@ -37,19 +37,25 @@ export default function EditorPage() {
 
     const handlePreview = (proposed: string) => setPreview(proposed);
 
-    const handleAccept = async (ops: EditOperation[]) => {
+    const handleAccept = async () => {
+        if (!preview) return;
+
         setSaving(true);
         try {
-            const res = await fetch(`/api/drive/commit`, {
+            await fetch(`/api/drive/commit`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     fileId: doc?.fileId,
-                    ops
+                    content: preview, // Send the full updated markdown content
                 }),
             });
-            const updated = (await res.json()) as DocumentSnapshot;
-            setDoc(updated);
+
+            // Update doc with new content
+            setDoc({
+                fileId: doc!.fileId,
+                content: preview,
+            });
             setPreview(null);
         } finally {
             setSaving(false);
