@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ChatPane } from "@/components/editor/ChatPane";
 import { DocCanvas } from "@/components/editor/DocCanvas";
 import { Separator } from "@/components/ui/separator";
@@ -19,6 +19,7 @@ export type EditOperation =
 
 export default function EditorPage() {
     const params = useParams<{ fileId: string }>();
+    const router = useRouter();
     const [doc, setDoc] = useState<DocumentSnapshot | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -68,8 +69,35 @@ export default function EditorPage() {
         );
 
     return (
-        <div className="relative flex h-[calc(100vh-60px)]">
-            {/* Progress Bar */}
+        <div className="flex flex-col h-[calc(100vh-60px)]">
+            {/* Header with Breadcrumb and Close */}
+            <div className="flex items-center justify-between px-6 py-3 border-b bg-white">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        className="hover:text-gray-900 transition-colors"
+                    >
+                        Dashboard
+                    </button>
+                    <span>/</span>
+                    <span className="text-gray-900 font-medium">
+                        {doc?.fileId ? `Document ${doc.fileId.slice(0, 8)}...` : 'Document'}
+                    </span>
+                </div>
+                <button
+                    onClick={() => router.push('/dashboard')}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Close document"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Editor Content */}
+            <div className="relative flex flex-1">
+                {/* Progress Bar */}
             {saving && (
                 <div className="absolute top-0 left-0 right-0 z-50 h-1 bg-blue-600 animate-pulse">
                     <div className="h-full bg-blue-400 animate-[shimmer_1s_ease-in-out_infinite]"
@@ -91,6 +119,7 @@ export default function EditorPage() {
                     onPreview={handlePreview}
                     onAccept={handleAccept}
                     onLoadingChange={setSaving}
+                    hasChanges={preview !== null}
                 />
             </div>
 
@@ -109,6 +138,7 @@ export default function EditorPage() {
                     100% { background-position: 200% 0; }
                 }
             `}</style>
+            </div>
         </div>
     );
 }

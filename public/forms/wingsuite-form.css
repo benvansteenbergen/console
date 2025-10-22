@@ -302,7 +302,7 @@ section > hr{
 
 @media (min-width: 1024px) {
   :root {
-    --container-width: 1200px;
+    --container-width: 1024px;
   }
 
   .container {

@@ -86,11 +86,20 @@ const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
+// Persona-based system prompts
+const PERSONA_PROMPTS = {
+  general: "You are a professional document editor assistant.",
+  seo: "You are an SEO Expert specializing in optimizing content for search engines. Focus on keywords, meta descriptions, readability, and search intent.",
+  marketing: "You are a Marketing Expert specializing in persuasive copywriting, audience engagement, and conversion optimization.",
+  proofreader: "You are a meticulous Proof Reader focused on grammar, spelling, punctuation, style consistency, and clarity.",
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const { messages, fileId } = (await req.json()) as {
+    const { messages, fileId, persona = "general" } = (await req.json()) as {
       messages: CoreMessage[];
       fileId?: string;
+      persona?: keyof typeof PERSONA_PROMPTS;
     };
 
     // 🟡 1️⃣  Fetch current document text
@@ -112,7 +121,8 @@ export async function POST(req: NextRequest) {
     const documentText = docData?.content ?? "";
 
     // 🟡 2️⃣  Build system prompt with doc context
-    const systemPrompt = `You are a professional document editor assistant.
+    const personaIntro = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.general;
+    const systemPrompt = `${personaIntro}
 
 The current document content is provided below. When the user asks for edits:
 
