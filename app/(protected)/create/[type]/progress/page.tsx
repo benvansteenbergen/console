@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 export default function ProgressPage({ params }: { params: Promise<{ type: string }> }) {
     const searchParams = useSearchParams();
@@ -64,12 +65,15 @@ export default function ProgressPage({ params }: { params: Promise<{ type: strin
                 <p className="mt-2 text-sm text-gray-500">Hang tight, we&apos;re almost done</p>
             </div>
 
-            <div
-                className="hidden flex-1 bg-cover bg-center md:block"
-                style={{
-                    backgroundImage: formType ? `url('/images/inspiration/${formType}.jpg')` : undefined,
-                }}
-            />
+            <div className="relative hidden flex-1 md:block">
+                <Image
+                    src="/loading.jpg"
+                    alt="Loading illustration"
+                    fill
+                    className="object-cover object-center"
+                    priority
+                />
+            </div>
         </div>
     );
 }
