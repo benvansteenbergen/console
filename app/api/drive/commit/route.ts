@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         fileId,
-        content, // Markdown content - n8n will convert to HTML if needed
+        html: content, // Send as 'html' parameter (n8n will handle markdown)
       }),
     });
 
