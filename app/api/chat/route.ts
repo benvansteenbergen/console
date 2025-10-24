@@ -96,10 +96,11 @@ const PERSONA_PROMPTS = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, fileId, persona = "general" } = (await req.json()) as {
+    const { messages, fileId, persona = "general", mode = "edit" } = (await req.json()) as {
       messages: CoreMessage[];
       fileId?: string;
       persona?: keyof typeof PERSONA_PROMPTS;
+      mode?: "edit" | "feedback";
     };
 
     // 🟡 1️⃣  Fetch current document text
@@ -122,7 +123,35 @@ export async function POST(req: NextRequest) {
 
     // 🟡 2️⃣  Build system prompt with doc context
     const personaIntro = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.general;
-    const systemPrompt = `${personaIntro}
+
+    let systemPrompt;
+    if (mode === "feedback") {
+      // Feedback mode: Just provide analysis/comments without editing
+      systemPrompt = `${personaIntro}
+
+The current document content is provided below. When the user asks for feedback or analysis:
+
+1. Provide your feedback, suggestions, or analysis
+2. Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
+
+{
+  "assistant_message": "Your detailed feedback, suggestions, and observations about the document"
+}
+
+CRITICAL RULES:
+- Return ONLY the JSON object, nothing else
+- NO markdown code blocks (no \`\`\`json)
+- Do NOT include "suggested_text" - just provide feedback in "assistant_message"
+- Be specific and actionable in your feedback
+- Reference specific sections when providing feedback
+
+Current document:
+---
+${documentText}
+---`;
+    } else {
+      // Edit mode: Make actual changes to the document
+      systemPrompt = `${personaIntro}
 
 The current document content is provided below. When the user asks for edits:
 
@@ -146,6 +175,7 @@ Current document:
 ---
 ${documentText}
 ---`;
+    }
 
     // 🟡 3️⃣  Combine messages
     const fullMessages: CoreMessage[] = [

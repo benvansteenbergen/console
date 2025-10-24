@@ -23,6 +23,7 @@ export function ChatPane({
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [persona, setPersona] = useState<string>("general");
+    const [mode, setMode] = useState<"edit" | "feedback">("edit");
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -35,7 +36,7 @@ export function ChatPane({
             const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fileId, messages: [...messages, userMsg], persona }),
+                body: JSON.stringify({ fileId, messages: [...messages, userMsg], persona, mode }),
             });
 
             const data = await res.json();
@@ -48,7 +49,8 @@ export function ChatPane({
                 ]);
             }
 
-            if (data.suggested_text) {
+            // Only preview changes in edit mode
+            if (mode === "edit" && data.suggested_text) {
                 onPreview(data.suggested_text);
             }
 
@@ -100,22 +102,39 @@ export function ChatPane({
                 ))}
             </div>
             <div className="p-4 border-t bg-white space-y-3 shrink-0">
-                <div className="flex items-center gap-2">
-                    <label htmlFor="persona-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                        AI Persona:
-                    </label>
-                    <select
-                        id="persona-select"
-                        value={persona}
-                        onChange={(e) => setPersona(e.target.value)}
-                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        disabled={loading}
-                    >
-                        <option value="general">General Assistant</option>
-                        <option value="seo">SEO Expert</option>
-                        <option value="marketing">Marketing Expert</option>
-                        <option value="proofreader">Proof Reader</option>
-                    </select>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="mode-select" className="text-xs font-medium text-gray-600">
+                            Mode
+                        </label>
+                        <select
+                            id="mode-select"
+                            value={mode}
+                            onChange={(e) => setMode(e.target.value as "edit" | "feedback")}
+                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            disabled={loading}
+                        >
+                            <option value="edit">Edit Document</option>
+                            <option value="feedback">Give Feedback</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="persona-select" className="text-xs font-medium text-gray-600">
+                            Persona
+                        </label>
+                        <select
+                            id="persona-select"
+                            value={persona}
+                            onChange={(e) => setPersona(e.target.value)}
+                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            disabled={loading}
+                        >
+                            <option value="general">General Assistant</option>
+                            <option value="seo">SEO Expert</option>
+                            <option value="marketing">Marketing Expert</option>
+                            <option value="proofreader">Proof Reader</option>
+                        </select>
+                    </div>
                 </div>
                 <Textarea
                     placeholder="Ask AI to suggest edits..."
