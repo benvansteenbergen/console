@@ -142,8 +142,11 @@ CRITICAL RULES:
 - Return ONLY the JSON object, nothing else
 - NO markdown code blocks (no \`\`\`json)
 - Do NOT include "suggested_text" - just provide feedback in "assistant_message"
-- Be specific and actionable in your feedback
-- Reference specific sections when providing feedback
+- Keep feedback CONCISE: Maximum 250 words or 5-6 key points
+- Use bullet points or numbered lists for readability
+- Focus on the most important observations
+- Be specific and actionable
+- Prioritize high-impact suggestions
 
 Current document:
 ---
