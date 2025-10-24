@@ -14,7 +14,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
                     <Sidebar />
 
                     {/* main scrollable area */}
-                    <main className="flex-1 overflow-auto p-8 md:ml-10">{children}</main>
+                    <main className="flex-1 overflow-auto md:ml-10">{children}</main>
                 </div>
             </AuthGate>
         </SessionProvider>

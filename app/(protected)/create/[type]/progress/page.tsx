@@ -58,20 +58,21 @@ export default function ProgressPage({ params }: { params: Promise<{ type: strin
     }, [execution, formType, router]);
 
     return (
-        <div className="flex h-screen flex-col md:flex-row">
-            <div className="flex flex-1 flex-col items-center justify-center p-6">
+        <div className="flex h-screen flex-col md:flex-row overflow-hidden">
+            <div className="flex flex-1 flex-col items-center justify-center p-6 bg-white">
                 <p className="text-lg font-semibold sm:text-xl">Generating your {formType}…</p>
                 <div className="mt-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
                 <p className="mt-2 text-sm text-gray-500">Hang tight, we&apos;re almost done</p>
             </div>
 
-            <div className="relative hidden flex-1 md:block">
+            <div className="relative hidden flex-1 md:block overflow-hidden">
                 <Image
                     src="/loading.jpg"
                     alt="Loading illustration"
                     fill
                     className="object-cover object-center"
                     priority
+                    sizes="50vw"
                 />
             </div>
         </div>

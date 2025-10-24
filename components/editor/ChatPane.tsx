@@ -69,7 +69,7 @@ export function ChatPane({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                 {messages.length === 0 && (
                     <div className="flex items-center justify-center h-full text-center px-4">
                         <div className="space-y-2">
@@ -85,19 +85,21 @@ export function ChatPane({
                 {messages.map((m, i) => (
                     <div
                         key={i}
-                        className={m.role === "user" ? "text-right" : "text-left text-muted-foreground"}
+                        className={m.role === "user" ? "text-right" : "text-left"}
                     >
                         <div
-                            className={`inline-block px-3 py-2 rounded-2xl ${
-                                m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                            className={`inline-block px-4 py-3 rounded-2xl max-w-[85%] shadow-sm ${
+                                m.role === "user"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-white text-gray-800 border border-gray-200"
                             }`}
                         >
-                            {m.content}
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.content}</p>
                         </div>
                     </div>
                 ))}
             </div>
-            <div className="p-4 border-t space-y-3">
+            <div className="p-4 border-t bg-white space-y-3 shrink-0">
                 <div className="flex items-center gap-2">
                     <label htmlFor="persona-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                         AI Persona:

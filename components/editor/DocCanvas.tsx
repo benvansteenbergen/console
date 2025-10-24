@@ -79,18 +79,28 @@ export function DocCanvas({
         )}
       </div>
 
-      <div className="overflow-y-auto max-h-[calc(100vh-10rem)] sm:max-h-[calc(100vh-8rem)]">
-        {!content && !preview ? (
-          <p className="text-muted-foreground text-sm italic">
-            No document content available.
-          </p>
-        ) : isPreviewing ? (
-          renderDiff()
-        ) : (
-          <article className="prose prose-docs max-w-none leading-relaxed">
-            <ReactMarkdown>{content}</ReactMarkdown>
-          </article>
-        )}
+      <div className="flex gap-4">
+        {/* Line Numbers */}
+        <div className="select-none text-right text-xs text-gray-400 pt-1 pr-4 border-r border-gray-200 shrink-0 font-mono leading-relaxed">
+          {(isPreviewing ? preview : content)?.split('\n').map((_, i) => (
+            <div key={i} className="h-[1.75rem]">{i + 1}</div>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {!content && !preview ? (
+            <p className="text-muted-foreground text-sm italic">
+              No document content available.
+            </p>
+          ) : isPreviewing ? (
+            renderDiff()
+          ) : (
+            <article className="prose prose-docs max-w-none leading-relaxed">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </article>
+          )}
+        </div>
       </div>
 
       {isPreviewing && (

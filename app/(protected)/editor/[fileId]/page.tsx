@@ -69,9 +69,9 @@ export default function EditorPage() {
         );
 
     return (
-        <div className="flex flex-col h-[calc(100vh-60px)]">
+        <div className="flex flex-col h-screen">
             {/* Header with Breadcrumb and Close */}
-            <div className="flex items-center justify-between px-6 py-3 border-b bg-white">
+            <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                     <button
                         onClick={() => router.push('/dashboard')}
@@ -96,7 +96,7 @@ export default function EditorPage() {
             </div>
 
             {/* Editor Content */}
-            <div className="relative flex flex-1">
+            <div className="relative flex flex-1 min-h-0">
                 {/* Progress Bar */}
             {saving && (
                 <div className="absolute top-0 left-0 right-0 z-50 h-1 bg-blue-600 animate-pulse">
@@ -111,7 +111,7 @@ export default function EditorPage() {
             )}
 
             <div className={cn(
-                "w-[30%] border-r bg-muted/10 overflow-y-auto",
+                "w-[30%] border-r bg-gray-50 flex flex-col min-h-0",
                 saving && "pointer-events-none"
             )}>
                 <ChatPane
@@ -126,7 +126,7 @@ export default function EditorPage() {
             <Separator orientation="vertical" />
 
             <div className={cn(
-                "flex-1 overflow-y-auto transition-all duration-200",
+                "flex-1 overflow-y-auto bg-white transition-all duration-200 min-h-0",
                 saving && "blur-sm opacity-75"
             )}>
                 <DocCanvas content={doc.content} preview={preview} />
