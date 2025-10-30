@@ -8,10 +8,12 @@ export function DocCanvas({
   content,
   preview,
   loading = false,
+  showSaved = false,
 }: {
   content: string;
   preview: string | null;
   loading?: boolean;
+  showSaved?: boolean;
 }) {
   const isPreviewing = Boolean(preview);
 
@@ -76,6 +78,16 @@ export function DocCanvas({
           <span className="text-xs font-medium px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-200">
             Previewing suggested edits
           </span>
+        )}
+        {showSaved && !isPreviewing && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-800 border border-green-200"
+          >
+            Saved
+          </motion.span>
         )}
       </div>
 

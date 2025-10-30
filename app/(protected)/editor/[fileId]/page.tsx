@@ -24,6 +24,7 @@ export default function EditorPage() {
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showSaved, setShowSaved] = useState(false);
 
     useEffect(() => {
         const fetchDoc = async () => {
@@ -58,6 +59,10 @@ export default function EditorPage() {
                 content: preview,
             });
             setPreview(null);
+
+            // Show saved indicator
+            setShowSaved(true);
+            setTimeout(() => setShowSaved(false), 3000); // Hide after 3 seconds
         } finally {
             setSaving(false);
         }
@@ -129,7 +134,7 @@ export default function EditorPage() {
                 "flex-1 overflow-y-auto bg-white transition-all duration-200 min-h-0",
                 saving && "blur-sm opacity-75"
             )}>
-                <DocCanvas content={doc.content} preview={preview} />
+                <DocCanvas content={doc.content} preview={preview} showSaved={showSaved} />
             </div>
 
             <style jsx>{`
