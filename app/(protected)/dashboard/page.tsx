@@ -50,127 +50,167 @@ export default function Dashboard() {
 
   const branding= useBranding();
 
-  const Panel = ({ children }: { children: React.ReactNode }) => (
-      <div className="rounded-lg border bg-white shadow-sm">{children}</div>
-  );
-
   /* ------------------------------------------------------------------ */
   /*  JSX                                                               */
   /* ------------------------------------------------------------------ */
   return (
-      <section className="mx-auto w-full max-w-6xl space-y-10 px-6 py-10">
-        {/* Credits banner */}
-          <Panel>
-              <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-3">
-                  <h1 className="col-span-2 text-3xl font-bold text-blue-900">
-                      Welcome to {branding.name}
-                  </h1>
+      <section className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10">
+        {/* Welcome header with credits */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50 p-8 shadow-sm">
+          <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome to {branding.name}
+              </h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Create and manage your content with AI
+              </p>
+            </div>
 
-                  <div className="flex flex-col items-start justify-center gap-2 sm:items-end">
-                      {creditsLoading ? (
-                          <p className="text-sm text-gray-500">Loading plan info…</p>
-                      ) : creditsError ? (
-                          <p className="text-sm text-red-600">Could not load usage data.</p>
-                      ) : (
-                          <>
-                              <p className="text-xs font-medium text-gray-500">Plan: {credits[0].plan}</p>
-                              <p
-                                  className={`text-lg font-semibold ${
-                                      credits[0].over_limit ? "text-red-600" : "text-blue-700"
-                                  }`}
-                              >
-                                  {credits[0].credits_used} / {credits[0].plan_credits} credits
-                              </p>
-                              {credits[0].over_limit ? (
-                                  <button className="rounded-md border border-red-600 px-3 py-1 text-xs text-red-600 hover:bg-red-50">
-                                      Upgrade plan
-                                  </button>
-                              ) : (
-                                  <button className="rounded-md border px-3 py-1 text-xs hover:bg-gray-50">
-                                      Buy more
-                                  </button>
-                              )}
-                          </>
-                      )}
-                  </div>
-              </div>
-          </Panel>
+            <div className="flex flex-col items-start gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-6 py-4 shadow-sm sm:items-end">
+              {creditsLoading ? (
+                <p className="text-sm text-gray-500">Loading plan info…</p>
+              ) : creditsError ? (
+                <p className="text-sm text-red-600">Could not load usage data.</p>
+              ) : (
+                <>
+                  <p className="text-xs font-medium text-gray-500">
+                    {credits[0].plan} Plan
+                  </p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      credits[0].over_limit ? "text-red-600" : "bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+                    }`}
+                  >
+                    {credits[0].credits_used} / {credits[0].plan_credits}
+                  </p>
+                  <p className="text-xs text-gray-500">credits used</p>
+                  {credits[0].over_limit && (
+                    <button className="mt-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-700">
+                      Upgrade plan
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
         {/* Content types */}
         <div>
-          <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
             What do you want to create?
           </h2>
-            <ContentFormGrid showTitle={false} />
+          <ContentFormGrid showTitle={false} />
         </div>
-          {/* Content Writers */}
+
+        {/* Content Writers */}
         <div>
-          <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
-          Content Writers
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
+            Content Writers
           </h2>
           <ContentWriterGrid />
         </div>
-          {/* Content Storage (dynamic) */}
-          <div>
-              <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
-                  Content Storage (Google Drive)
-              </h2>
-              {storageError && (
-                  <p className="rounded bg-red-50 p-4 text-sm text-red-700">
-                      Could not load storage data.
-                  </p>
-              )}
-              <div className="grid grid-cols-3 gap-6 border-x border-b bg-blue-100 p-6">
-                  {/* Skeleton during first load */}
-                  {storageLoading && stats.length === 0 &&
-                      Array.from({ length: 3 }).map((_, i) => (
-                          <div
-                              key={i}
-                              className="h-24 animate-pulse rounded-lg border bg-gray-100"
-                          />
-                      ))}
+        {/* Content Storage (dynamic) */}
+        <div>
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
+            Content Storage
+          </h2>
+          {storageError && (
+            <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              Could not load storage data.
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Skeleton during first load */}
+            {storageLoading && stats.length === 0 &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-24 animate-pulse rounded-xl bg-gradient-to-br from-gray-100 to-gray-200"
+                />
+              ))}
 
-                  {/* Real tiles */}
-                  {!storageLoading &&
-                      stats.map(({ folder, unseen, items }) => (
-                          <Panel key={folder}>
-                              <Link
-                                  href={`/content/${toSlug(folder)}`}
-                                  className="relative flex flex-col items-center gap-1 p-6 text-center"
-                              >
-                                  <span className="font-medium">{folder}</span>
-                                  <span className="text-xs text-gray-500">
-                    {items.length ?? 0} file{items.length === 1 ? '' : 's'}
-                  </span>
+            {/* Real tiles */}
+            {!storageLoading &&
+              stats.map(({ folder, unseen, items }) => (
+                <Link
+                  key={folder}
+                  href={`/content/${toSlug(folder)}`}
+                  className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                >
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-purple-100">
+                      <svg
+                        className="h-6 w-6 text-purple-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <span className="font-medium text-gray-900 transition-colors group-hover:text-purple-700">
+                      {folder}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {items.length ?? 0} file{items.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
 
-                                  {unseen > 0 && (
-                                      <span className="absolute -top-2 -right-2 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
+                  {unseen > 0 && (
+                    <span className="absolute -top-2 -right-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-1 text-[10px] font-bold text-white shadow-md">
                       +{unseen}
                     </span>
-                                  )}
-                              </Link>
-                          </Panel>
-                      ))}
-              </div>
+                  )}
+                </Link>
+              ))}
           </div>
-        {/* + Recent executions */}
-        <RecentExecutions limit={5} className="max-w-4xl" />
+        </div>
+        {/* Recent executions */}
+        <div>
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
+            Recent Activity
+          </h2>
+          <RecentExecutions limit={5} />
+        </div>
+
         {/* Automations */}
         <div>
-          <h2 className="rounded-t-lg border-x border-t bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
             Automations
           </h2>
-          <div className="border-x border-b bg-blue-100 p-6">
-              <ContentautomationGrid />
-          </div>
+          <ContentautomationGrid />
         </div>
 
         {/* APIs */}
         <div>
-          <h2 className="rounded-lg border bg-blue-50 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-gray-600">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
             APIs
           </h2>
-          <div className="border-x border-b bg-blue-100 p-6 text-center text-sm text-gray-500">
-            No API endpoints yet…
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <svg
+                  className="h-6 w-6 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-500">No API endpoints configured yet</p>
+            </div>
           </div>
         </div>
       </section>
