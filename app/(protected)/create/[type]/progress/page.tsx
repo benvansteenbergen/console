@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import GlassLoader from '@/components/GlassLoader';
 
 export default function ProgressPage({ params }: { params: Promise<{ type: string }> }) {
     const searchParams = useSearchParams();
@@ -59,10 +60,11 @@ export default function ProgressPage({ params }: { params: Promise<{ type: strin
 
     return (
         <div className="flex h-screen flex-col md:flex-row overflow-hidden">
-            <div className="flex flex-1 flex-col items-center justify-center p-6 bg-white">
-                <p className="text-lg font-semibold sm:text-xl">Generating your {formType}…</p>
-                <div className="mt-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                <p className="mt-2 text-sm text-gray-500">Hang tight, we&apos;re almost done</p>
+            <div className="flex flex-1 flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50">
+                <p className="mb-8 text-2xl font-semibold text-gray-800">
+                    Generating your {formType}…
+                </p>
+                <GlassLoader duration={22000} />
             </div>
 
             <div className="relative hidden flex-1 md:block overflow-hidden">

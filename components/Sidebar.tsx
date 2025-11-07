@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     Bars3Icon,
     XMarkIcon,
     HomeIcon,
     ClockIcon,
-    ArrowTopRightOnSquareIcon,
+    ArrowRightOnRectangleIcon,
     PlusCircleIcon,
     ChevronDownIcon,
     ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useBranding } from "@/components/BrandingProvider";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 
 interface ContentForm {
     id: string;
@@ -29,18 +29,28 @@ export default function Sidebar() {
     const [open, setOpen] = useState(false);
     const [formsExpanded, setFormsExpanded] = useState(true);
     const pathname = usePathname();
+    const router = useRouter();
     const branding = useBranding();
+    const { mutate } = useSWRConfig();
     const { data: forms } = useSWR<ContentForm[]>('/api/content-forms', fetcher);
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            // Clear all SWR cache
+            mutate(() => true, undefined, { revalidate: false });
+            // Redirect to login
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+            // Still redirect even if logout fails
+            router.push('/login');
+        }
+    };
 
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
-        {
-            href: `https://${branding.domain}/login`,
-            label: "Logout ↗",
-            icon: ArrowTopRightOnSquareIcon,
-            external: true,
-        },
     ];
 
     return (
@@ -80,26 +90,11 @@ export default function Sidebar() {
 
                 {/* nav links */}
                 <nav className="mt-2 flex flex-1 flex-col gap-1 px-3 overflow-y-auto">
-                    {nav.map(({href, label, icon: Icon, external}) => {
+                    {nav.map(({href, label, icon: Icon}) => {
                         const active = pathname === href;
                         const common =
                             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium";
-                        return external ? (
-                            <a
-                                key={href}
-                                href={href}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`${common} ${
-                                    active
-                                        ? "bg-blue-600 text-white"
-                                        : "text-gray-600 hover:bg-gray-100"
-                                }`}
-                            >
-                                <Icon className="h-5 w-5"/>
-                                {label}
-                            </a>
-                        ) : (
+                        return (
                             <Link
                                 key={href}
                                 href={href}
@@ -115,6 +110,15 @@ export default function Sidebar() {
                             </Link>
                         );
                     })}
+
+                    {/* Logout button */}
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                    >
+                        <ArrowRightOnRectangleIcon className="h-5 w-5"/>
+                        Logout
+                    </button>
 
                     {/* Divider */}
                     <div className="my-2 border-t border-gray-200" />
