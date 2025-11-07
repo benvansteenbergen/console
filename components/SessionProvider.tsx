@@ -28,6 +28,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const { data, error, isLoading } = useSWR<SessionData>('/api/auth/me', fetcher, {
         refreshInterval: 5 * 60_000, // 5‑minute re‑validation
+        shouldRetryOnError: false, // Don't retry on auth errors
+        onError: (err) => {
+            // Suppress auth errors from bubbling up to error boundary
+            if (err?.message === 'unauth') {
+                // Silently handle - will redirect via useEffect below
+                return;
+            }
+            // Log other errors
+            console.error('Session fetch error:', err);
+        },
     });
 
     // Treat both HTTP 401 and valid:false payloads as unauthenticated

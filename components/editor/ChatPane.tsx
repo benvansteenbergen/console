@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -24,6 +24,12 @@ export function ChatPane({
     const [loading, setLoading] = useState(false);
     const [persona, setPersona] = useState<string>("general");
     const [mode, setMode] = useState<"edit" | "feedback">("edit");
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -100,6 +106,8 @@ export function ChatPane({
                         </div>
                     </div>
                 ))}
+                {/* Invisible div to scroll to */}
+                <div ref={messagesEndRef} />
             </div>
             <div className="p-4 border-t bg-white space-y-3 shrink-0">
                 <div className="grid grid-cols-2 gap-2">

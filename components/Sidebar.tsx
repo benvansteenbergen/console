@@ -12,6 +12,7 @@ import {
     PlusCircleIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    FolderIcon,
 } from "@heroicons/react/24/outline";
 import { useBranding } from "@/components/BrandingProvider";
 import useSWR, { useSWRConfig } from "swr";
@@ -23,16 +24,26 @@ interface ContentForm {
     formUrl: string;
 }
 
+interface FolderStat {
+    folder: string;
+    unseen: number;
+    items: unknown[];
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const toSlug = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 export default function Sidebar() {
     const [open, setOpen] = useState(false);
     const [formsExpanded, setFormsExpanded] = useState(true);
+    const [foldersExpanded, setFoldersExpanded] = useState(true);
     const pathname = usePathname();
     const router = useRouter();
     const branding = useBranding();
     const { mutate } = useSWRConfig();
     const { data: forms } = useSWR<ContentForm[]>('/api/content-forms', fetcher);
+    const { data: folders } = useSWR<FolderStat[]>('/api/content-storage', fetcher);
 
     const handleLogout = async () => {
         try {
@@ -159,6 +170,58 @@ export default function Sidebar() {
                                             onClick={() => setOpen(false)}
                                         >
                                             {form.name}
+                                        </Link>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+
+                    {/* Divider */}
+                    <div className="my-2 border-t border-gray-200" />
+
+                    {/* Content Folders section */}
+                    <button
+                        onClick={() => setFoldersExpanded(!foldersExpanded)}
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                    >
+                        <FolderIcon className="h-5 w-5" />
+                        <span className="flex-1 text-left">Content Folders</span>
+                        {foldersExpanded ? (
+                            <ChevronDownIcon className="h-4 w-4" />
+                        ) : (
+                            <ChevronRightIcon className="h-4 w-4" />
+                        )}
+                    </button>
+
+                    {/* Folders submenu */}
+                    {foldersExpanded && (
+                        <div className="ml-4 space-y-1">
+                            {!folders ? (
+                                <div className="px-3 py-2 text-xs text-gray-400">Loading...</div>
+                            ) : folders.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-gray-400">No folders available</div>
+                            ) : (
+                                folders.map((folder) => {
+                                    const folderSlug = toSlug(folder.folder);
+                                    const folderActive = pathname.startsWith(`/content/${folderSlug}`);
+                                    return (
+                                        <Link
+                                            key={folder.folder}
+                                            href={`/content/${folderSlug}`}
+                                            className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                                                folderActive
+                                                    ? "bg-blue-50 text-blue-600 font-medium"
+                                                    : "text-gray-600 hover:bg-gray-50"
+                                            }`}
+                                            onClick={() => setOpen(false)}
+                                        >
+                                            <span>{folder.folder}</span>
+                                            {folder.unseen > 0 && (
+                                                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                                    {folder.unseen}
+                                                </span>
+                                            )}
                                         </Link>
                                     );
                                 })
