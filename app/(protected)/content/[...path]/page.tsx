@@ -40,6 +40,10 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
     // Check if we're at root level (only 1 segment in path)
     const isRootLevel = path.length === 1;
 
+    // Find the parent folder ID from items (for CreateFolderButton)
+    // The first item in a folder view should contain metadata, or we look for folder type
+    const parentFolderId = folderPath; // We'll use the folder path/name as ID for now
+
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
         name: segment,
@@ -78,7 +82,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
                 </h1>
 
                 {isRootLevel && (
-                    <CreateFolderButton parentFolder={folderPath} />
+                    <CreateFolderButton parentFolderId={parentFolderId} />
                 )}
             </div>
 

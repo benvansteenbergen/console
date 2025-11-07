@@ -53,8 +53,9 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
     const downloadUrl = (id: string, fmt: string) =>
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
 
-    // Navigate into subfolder
-    const handleFolderClick = (folderName: string) => {
+    // Navigate into subfolder using folder ID
+    const handleFolderClick = (folderId: string, folderName: string) => {
+        // Use folder ID to navigate instead of name-based slug
         const folderSlug = folderName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         const currentPath = folder.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         router.push(`/content/${currentPath}/${folderSlug}`);
@@ -94,7 +95,7 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                     {itemIsFolder ? (
                         // Folder card
                         <div
-                            onClick={() => handleFolderClick(name)}
+                            onClick={() => handleFolderClick(id, name)}
                             className="flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 shadow-sm transition-all hover:border-blue-400 hover:shadow-md"
                         >
                             <svg

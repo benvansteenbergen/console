@@ -11,11 +11,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { parentFolder, folderName } = body;
+  const { parentFolderId, folderName } = body;
 
-  if (!parentFolder || !folderName) {
+  if (!parentFolderId || !folderName) {
     return NextResponse.json(
-      { error: 'Missing parentFolder or folderName' },
+      { error: 'Missing parentFolderId or folderName' },
       { status: 400 }
     );
   }
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
           cookie: `auth=${jwt};`,
         },
-        body: JSON.stringify({ parentFolder, folderName }),
+        body: JSON.stringify({ parentFolderId, folderName }),
       }
     );
 

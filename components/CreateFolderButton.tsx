@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CreateFolderButton({ parentFolder }: { parentFolder: string }) {
+export default function CreateFolderButton({ parentFolderId }: { parentFolderId: string }) {
     const [showModal, setShowModal] = useState(false);
     const [folderName, setFolderName] = useState("");
     const [creating, setCreating] = useState(false);
@@ -18,7 +18,7 @@ export default function CreateFolderButton({ parentFolder }: { parentFolder: str
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    parentFolder,
+                    parentFolderId,
                     folderName: folderName.trim(),
                 }),
             });
