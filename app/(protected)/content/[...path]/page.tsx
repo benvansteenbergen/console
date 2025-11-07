@@ -12,8 +12,10 @@ interface FolderStat {
 export default async function Page(props: { params: Promise<{ path: string[] }> }) {
     const params = await props.params;
     const path = params.path || [];
-    const folderPath = path.join('/');
-    const folderName = path[path.length - 1] || '';
+    // Now path contains folder IDs, not names
+    // For root folders: ['blogpost']
+    // For subfolders: ['abc123def456'] (the Google Drive folder ID)
+    const folderId = path[path.length - 1] || '';
 
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
@@ -22,7 +24,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
     // Use environment variable for base URL to avoid self-referencing issues
     const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
     const res = await fetch(
-        `${baseUrl}/api/content-storage?folder=${encodeURIComponent(folderPath)}`,
+        `${baseUrl}/api/content-storage?folder=${encodeURIComponent(folderId)}`,
         {
             headers: { cookie: `session=${jwt};` },
             cache: 'no-store'
@@ -33,16 +35,16 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
 
     const stats = (await res.json()) as FolderStat[];
     const match = stats.find(
-        (s) => s.folder.toLowerCase() === folderPath.toLowerCase(),
+        (s) => s.folder.toLowerCase() === folderId.toLowerCase(),
     );
     const items = match?.items ?? [];
+    const folderName = match?.folder || folderId;
 
     // Check if we're at root level (only 1 segment in path)
     const isRootLevel = path.length === 1;
 
-    // Find the parent folder ID from items (for CreateFolderButton)
-    // The first item in a folder view should contain metadata, or we look for folder type
-    const parentFolderId = folderPath; // We'll use the folder path/name as ID for now
+    // Use the actual folder ID for creating subfolders
+    const parentFolderId = folderId;
 
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
@@ -86,7 +88,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
                 )}
             </div>
 
-            <FolderGrid folder={folderPath} initialItems={items} />
+            <FolderGrid folder={folderId} initialItems={items} />
         </main>
     );
 }
