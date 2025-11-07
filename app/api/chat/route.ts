@@ -104,9 +104,10 @@ export async function POST(req: NextRequest) {
     };
 
     // 🟡 1️⃣  Fetch current document text
-    const host = req.headers.get("host") ?? "";
+    // Use CONSOLE_BASE_URL to avoid self-referencing issues
+    const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
 
-    const docRes = await fetch(`https://${host}/api/drive/file?fileId=${fileId}`, {
+    const docRes = await fetch(`${baseUrl}/api/drive/file?fileId=${fileId}`, {
       cache: "no-store",
       headers: {
         cookie: req.headers.get("cookie") ?? "",
