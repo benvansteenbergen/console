@@ -23,18 +23,38 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
 
     /* ---------- data ---------- */
     // Fetch directly from n8n to avoid self-referencing issues
-    const res = await fetch(
-        `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderId)}`,
-        {
-            headers: { cookie: `auth=${jwt};` },
-            cache: 'no-store'
+    let res;
+    let raw;
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        res = await fetch(
+            `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderId)}`,
+            {
+                headers: { cookie: `auth=${jwt};` },
+                cache: 'no-store',
+                signal: controller.signal
+            }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            console.error('N8N fetch failed:', res.status, await res.text());
+            throw new Error(`Failed to load folder content: ${res.status}`);
         }
-    );
 
-    if (!res.ok) throw new Error("Failed to load folder content");
-
-    // n8n returns: [{ "FolderName": { folderId, newFiles, items: [] } }]
-    const raw = await res.json();
+        // n8n returns: [{ "FolderName": { folderId, newFiles, items: [] } }]
+        raw = await res.json();
+    } catch (error) {
+        console.error('Fetch error:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('Request timeout - n8n took too long to respond');
+        }
+        throw error;
+    }
 
     // Transform the response
     interface UpstreamFolder {
