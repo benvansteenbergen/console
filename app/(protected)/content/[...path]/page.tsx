@@ -1,6 +1,6 @@
 // app/(protected)/content/[...path]/page.tsx
 import FolderGrid, { DriveFile } from "@/components/FolderGrid";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import CreateFolderButton from "@/components/CreateFolderButton";
 
 interface FolderStat {
@@ -17,13 +17,16 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
 
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
-    const headersList = await headers();
-    const host = headersList.get('host');
 
     /* ---------- data ---------- */
+    // Use environment variable for base URL to avoid self-referencing issues
+    const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
     const res = await fetch(
-        `https://${host}/api/content-storage?folder=${encodeURIComponent(folderPath)}`,
-        { headers: { cookie: `session=${jwt};` }}
+        `${baseUrl}/api/content-storage?folder=${encodeURIComponent(folderPath)}`,
+        {
+            headers: { cookie: `session=${jwt};` },
+            cache: 'no-store'
+        }
     );
 
     if (!res.ok) throw new Error("Failed to load folder content");
