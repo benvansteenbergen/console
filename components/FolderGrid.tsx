@@ -11,6 +11,8 @@ export interface DriveFile {
     webViewLink: string;
     thumbnailLink: string;
     new?: number;
+    mimeType?: string;  // to detect folders
+    isFolder?: boolean; // helper flag
 }
 
 interface GridProps {
@@ -51,6 +53,13 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
     const downloadUrl = (id: string, fmt: string) =>
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
 
+    // Navigate into subfolder
+    const handleFolderClick = (folderName: string) => {
+        const folderSlug = folderName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const currentPath = folder.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        router.push(`/content/${currentPath}/${folderSlug}`);
+    };
+
     const handleDelete = async (id: string) => {
         setDeleting(true);
         try {
@@ -76,20 +85,47 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
 
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
-            {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew }) => (
+            {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder }) => {
+                const itemIsFolder = isFolder || mimeType === 'application/vnd.google-apps.folder';
+
+                return (
                 <div key={id} className="group flex flex-col items-center">
                     <div className="relative w-full">
-                    <Image
-                        src={thumbnailLink}
-                        alt={name}
-                        width={160}
-                        height={200}
-                        className="w-full rounded-lg border border-slate-200 shadow-sm"
-                        unoptimized
-                    />
+                    {itemIsFolder ? (
+                        // Folder card
+                        <div
+                            onClick={() => handleFolderClick(name)}
+                            className="flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 shadow-sm transition-all hover:border-blue-400 hover:shadow-md"
+                        >
+                            <svg
+                                className="h-16 w-16 text-blue-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.5}
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                                />
+                            </svg>
+                            <p className="mt-2 text-sm font-medium text-gray-700">{name}</p>
+                        </div>
+                    ) : (
+                        // File card
+                        <>
+                        <Image
+                            src={thumbnailLink}
+                            alt={name}
+                            width={160}
+                            height={200}
+                            className="w-full rounded-lg border border-slate-200 shadow-sm"
+                            unoptimized
+                        />
 
-                    {/* hover actions - tap on mobile, hover on desktop */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">
+                        {/* hover actions - tap on mobile, hover on desktop */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">
                         <button
                             onClick={() => handleReview(id)}
                             className="w-24 rounded bg-sky-600 py-1 text-xs font-medium text-white hover:bg-sky-700 sm:w-28"
@@ -123,18 +159,23 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                         </button>
                     </div>
 
-                    {isNew ? (
+                    {isNew && !itemIsFolder ? (
                         <span className="absolute top-1 right-1 rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-semibold text-white">
               NEW
             </span>
                     ) : null}
+                    </>
+                    )}
                 </div>
-                {/* file title --------------------------------------------------- */}
-                <p className="mt-1 w-full truncate text-center text-xs font-medium text-slate-700">
-                {name}
-                </p>
+                {/* file/folder title --------------------------------------------------- */}
+                {!itemIsFolder && (
+                    <p className="mt-1 w-full truncate text-center text-xs font-medium text-slate-700">
+                        {name}
+                    </p>
+                )}
                 </div>
-            ))}
+                );
+            })}
 
             {/* Delete confirmation modal */}
             {deleteConfirm && (
