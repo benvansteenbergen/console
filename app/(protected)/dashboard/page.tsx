@@ -136,7 +136,7 @@ export default function Dashboard() {
                 <Link
                   key={folder}
                   href={`/content/${toSlug(folder)}`}
-                  className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                  className="group relative rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
                 >
                   <div className="flex flex-col items-center gap-2 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-purple-100">
@@ -163,7 +163,7 @@ export default function Dashboard() {
                   </div>
 
                   {unseen > 0 && (
-                    <span className="absolute -top-2 -right-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-1 text-[10px] font-bold text-white shadow-md">
+                    <span className="absolute top-2 right-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-1 text-[10px] font-bold text-white shadow-md">
                       +{unseen}
                     </span>
                   )}
@@ -171,20 +171,13 @@ export default function Dashboard() {
               ))}
           </div>
         </div>
-        {/* Recent executions */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">
-            Recent Activity
-          </h2>
-          <RecentExecutions limit={5} />
-        </div>
 
         {/* Automations */}
         <div>
           <h2 className="mb-4 text-xl font-semibold text-gray-900">
             Automations
           </h2>
-          <ContentautomationGrid />
+          <ContentautomationGrid showTitle={false} />
         </div>
 
         {/* APIs */}
@@ -212,6 +205,14 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500">No API endpoints configured yet</p>
             </div>
           </div>
+        </div>
+
+        {/* Recent executions */}
+        <div>
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">
+            Recent Activity
+          </h2>
+          <RecentExecutions limit={5} showTitle={false} />
         </div>
       </section>
   );

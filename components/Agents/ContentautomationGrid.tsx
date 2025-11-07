@@ -47,7 +47,11 @@ function Spark({ values }: { values: number[] }) {
 /* --------------------------------------------------------------------------
    Automations board component
 ---------------------------------------------------------------------------- */
-export default function ContentautomationGrid() {
+interface Props {
+  showTitle?: boolean;  // default TRUE
+}
+
+export default function ContentautomationGrid({ showTitle = true }: Props) {
   const { data, error, isLoading } = useSWR<AutomationBoardRow[]>(
     "/api/content-automations",
     fetcher,
@@ -61,14 +65,16 @@ export default function ContentautomationGrid() {
 
   return (
     <section className="space-y-4 p-6">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Automations</h2>
-        <p className="text-sm text-gray-600">
-          Goodmorning Chief. Your bots worked the night shift: {overnight}
-          {" "}
-          {overnight === 1 ? `${(data?.[0]?.units_label || "item").toLowerCase()} was` : `${(data?.[0]?.units_label || "items").toLowerCase()} were`} produced while you slept.
-        </p>
-      </header>
+      {showTitle && (
+        <header className="space-y-1">
+          <h2 className="text-xl font-semibold">Automations</h2>
+          <p className="text-sm text-gray-600">
+            Goodmorning Chief. Your bots worked the night shift: {overnight}
+            {" "}
+            {overnight === 1 ? `${(data?.[0]?.units_label || "item").toLowerCase()} was` : `${(data?.[0]?.units_label || "items").toLowerCase()} were`} produced while you slept.
+          </p>
+        </header>
+      )}
 
       <div className="rounded-xl border bg-white p-4 shadow-sm">
         <div className="grid grid-cols-12 items-center gap-2 border-b pb-2 text-xs font-semibold text-gray-600">
