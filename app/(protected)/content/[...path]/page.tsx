@@ -21,19 +21,33 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
     const jwt = cookieStore.get('session')?.value;
 
     /* ---------- data ---------- */
-    // Use environment variable for base URL to avoid self-referencing issues
-    const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
+    // Fetch directly from n8n to avoid self-referencing issues
     const res = await fetch(
-        `${baseUrl}/api/content-storage?folder=${encodeURIComponent(folderId)}`,
+        `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderId)}`,
         {
-            headers: { cookie: `session=${jwt};` },
+            headers: { cookie: `auth=${jwt};` },
             cache: 'no-store'
         }
     );
 
     if (!res.ok) throw new Error("Failed to load folder content");
 
-    const stats = (await res.json()) as FolderStat[];
+    // n8n returns: [{ "FolderName": { folderId, newFiles, items: [] } }]
+    const raw = await res.json();
+
+    // Transform the response
+    interface UpstreamFolder {
+        folderId?: string;
+        newFiles: number;
+        items: unknown[];
+    }
+    type UpstreamPayload = { [folderName: string]: UpstreamFolder };
+
+    const stats: FolderStat[] = (raw as UpstreamPayload[]).map((obj) => {
+        const [key] = Object.keys(obj);
+        return { folder: key, unseen: obj[key].newFiles, items: obj[key].items as DriveFile[] };
+    });
+
     const match = stats.find(
         (s) => s.folder.toLowerCase() === folderId.toLowerCase(),
     );
