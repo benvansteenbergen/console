@@ -216,7 +216,7 @@ export default function Sidebar() {
                                             }`}
                                             onClick={() => setOpen(false)}
                                         >
-                                            <span>{folder.folder}</span>
+                                            <span className="capitalize">{folder.folder}</span>
                                             {folder.unseen > 0 && (
                                                 <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                                                     {folder.unseen}

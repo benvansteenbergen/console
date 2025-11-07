@@ -3,6 +3,7 @@
 import Image from "next/image";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export interface DriveFile {
     id: string;
@@ -35,17 +36,43 @@ const fetcher = async (url: string): Promise<DriveFile[]> => {
     return raw as DriveFile[];
 };
 export default function FolderGrid({ folder, initialItems }: GridProps) {
-    const { data = initialItems } = useSWR<DriveFile[]>(
+    const { data = initialItems, mutate } = useSWR<DriveFile[]>(
         `/api/content-storage?folder=${encodeURIComponent(folder)}`,
         fetcher,
         { refreshInterval: 5000, fallbackData: initialItems },
     );
 
     const router = useRouter();
+    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
     const openDoc = (url: string) => window.open(url, "_blank");
     const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
     const downloadUrl = (id: string, fmt: string) =>
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
+
+    const handleDelete = async (id: string) => {
+        setDeleting(true);
+        try {
+            const res = await fetch(`/api/delete-document?fileId=${id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                // Remove from local data immediately
+                mutate(data.filter(file => file.id !== id), false);
+                setDeleteConfirm(null);
+            } else {
+                console.error('Delete failed:', await res.text());
+                alert('Failed to delete document. Please try again.');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete document. Please try again.');
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
@@ -88,6 +115,12 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                                 </a>
                             ))}
                         </div>
+                        <button
+                            onClick={() => setDeleteConfirm(id)}
+                            className="w-24 rounded bg-red-600 py-1 text-xs font-medium text-white hover:bg-red-700 sm:w-28"
+                        >
+                            Delete
+                        </button>
                     </div>
 
                     {isNew ? (
@@ -102,6 +135,53 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                 </p>
                 </div>
             ))}
+
+            {/* Delete confirmation modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                                <svg
+                                    className="h-6 w-6 text-red-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Delete document?
+                            </h3>
+                        </div>
+                        <p className="mb-6 text-sm text-gray-600">
+                            Are you sure you want to delete this document? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={deleting}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleDelete(deleteConfirm)}
+                                disabled={deleting}
+                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
