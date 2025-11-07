@@ -7,6 +7,7 @@ interface FolderStat {
     folder: string;
     unseen: number;
     items: DriveFile[];
+    folderId?: string;
 }
 
 export default async function Page(props: { params: Promise<{ path: string[] }> }) {
@@ -45,12 +46,21 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
 
     const stats: FolderStat[] = (raw as UpstreamPayload[]).map((obj) => {
         const [key] = Object.keys(obj);
-        return { folder: key, unseen: obj[key].newFiles, items: obj[key].items as DriveFile[] };
+        return {
+            folder: key,
+            unseen: obj[key].newFiles,
+            items: obj[key].items as DriveFile[],
+            folderId: obj[key].folderId
+        };
     });
 
-    const match = stats.find(
-        (s) => s.folder.toLowerCase() === folderId.toLowerCase(),
-    );
+    // Match by folderId if available, otherwise by folder name
+    const match = stats.find((s) => {
+        return s.folderId
+            ? s.folderId === folderId
+            : s.folder.toLowerCase() === folderId.toLowerCase();
+    });
+
     const items = match?.items ?? [];
     const folderName = match?.folder || folderId;
 
