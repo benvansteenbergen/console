@@ -55,7 +55,7 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
         setDeleting(true);
         try {
             const res = await fetch(`/api/delete-document?fileId=${id}`, {
-                method: 'DELETE',
+                method: 'POST',
             });
 
             if (res.ok) {
