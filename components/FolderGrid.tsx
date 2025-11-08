@@ -159,27 +159,27 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                         />
 
                         {/* hover actions - tap on mobile, hover on desktop */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-black/70 to-black/50 backdrop-blur-sm opacity-0 transition-all group-hover:opacity-100 group-active:opacity-100 p-3">
                         <button
                             onClick={() => handleReview(id)}
-                            className="w-24 rounded bg-sky-600 py-1 text-xs font-medium text-white hover:bg-sky-700 sm:w-28"
+                            className="w-full rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-sky-700 hover:scale-105 transition-all"
                         >
                             Review
                         </button>
                         <button
                             onClick={() => openDoc(webViewLink)}
-                            className="w-24 rounded bg-white/90 py-1 text-xs font-medium text-sky-700 hover:bg-white sm:w-28"
+                            className="w-full rounded-lg bg-white/95 py-2.5 text-sm font-semibold text-slate-700 shadow-lg hover:bg-white hover:scale-105 transition-all"
                         >
-                            Open
+                            Open in Drive
                         </button>
-                        <div className="flex w-24 justify-center gap-1 sm:w-28">
+                        <div className="flex w-full justify-between gap-1.5">
                             {DOWNLOAD_FORMATS.map(({ fmt, label }) => (
                                 <a
                                     key={fmt}
                                     href={downloadUrl(id, fmt)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="rounded bg-white/90 px-1 py-0.5 text-[10px] font-medium text-sky-700 hover:bg-white"
+                                    className="flex-1 rounded-md bg-white/90 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-white hover:text-sky-600 transition-all text-center shadow-md"
                                 >
                                     {label}
                                 </a>
@@ -188,14 +188,14 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                         {folders.length > 0 && (
                             <button
                                 onClick={() => setMoveFileId(id)}
-                                className="w-24 rounded bg-purple-600 py-1 text-xs font-medium text-white hover:bg-purple-700 sm:w-28"
+                                className="w-full rounded-lg bg-purple-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-purple-700 hover:scale-105 transition-all"
                             >
-                                Move
+                                Move to Folder
                             </button>
                         )}
                         <button
                             onClick={() => setDeleteConfirm(id)}
-                            className="w-24 rounded bg-red-600 py-1 text-xs font-medium text-white hover:bg-red-700 sm:w-28"
+                            className="w-full rounded-lg bg-red-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-red-700 hover:scale-105 transition-all"
                         >
                             Delete
                         </button>
