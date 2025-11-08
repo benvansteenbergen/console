@@ -13,10 +13,9 @@ interface FolderStat {
 export default async function Page(props: { params: Promise<{ path: string[] }> }) {
     const params = await props.params;
     const path = params.path || [];
-    // Now path contains folder IDs, not names
-    // For root folders: ['blogpost']
-    // For subfolders: ['abc123def456'] (the Google Drive folder ID)
-    const folderId = path[path.length - 1] || '';
+    // Path contains folder names: ['blogpost'] or ['blogpost', '2026']
+    const folderPath = path.join('/'); // 'blogpost' or 'blogpost/2026'
+    const folderName = path[path.length - 1] || '';
 
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
@@ -31,7 +30,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         res = await fetch(
-            `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderId)}`,
+            `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderPath)}`,
             {
                 headers: { cookie: `auth=${jwt};` },
                 cache: 'no-store',
@@ -74,21 +73,16 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
         };
     });
 
-    // Match by folderId if available, otherwise by folder name
-    const match = stats.find((s) => {
-        return s.folderId
-            ? s.folderId === folderId
-            : s.folder.toLowerCase() === folderId.toLowerCase();
-    });
+    // Match by folder name/path
+    const match = stats.find((s) => s.folder.toLowerCase() === folderPath.toLowerCase());
 
     const items = match?.items ?? [];
-    const folderName = match?.folder || folderId;
 
     // Check if we're at root level (only 1 segment in path)
     const isRootLevel = path.length === 1;
 
-    // Use the actual folder ID for creating subfolders
-    const parentFolderId = folderId;
+    // Use the actual Google Drive folder ID for creating subfolders
+    const parentFolderId = match?.folderId || folderPath;
 
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
@@ -132,7 +126,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
                 )}
             </div>
 
-            <FolderGrid folder={folderId} initialItems={items} />
+            <FolderGrid folder={folderPath} initialItems={items} />
         </main>
     );
 }
