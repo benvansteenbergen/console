@@ -58,43 +58,9 @@ export default function CreateFormPage({ params }: { params: Promise<{ type: str
             }
         };
 
-        const injectStyles = () => {
-            const iframe = iframeRef.current;
-            if (!iframe?.contentWindow?.document) return;
-
-            try {
-                const style = iframe.contentWindow.document.createElement('style');
-                style.textContent = `
-                    /* Left-align submit button */
-                    button[type="submit"],
-                    .n8n-form button[type="submit"],
-                    form button[type="submit"] {
-                        margin-left: 0 !important;
-                        margin-right: auto !important;
-                    }
-
-                    /* Ensure button container is also left-aligned */
-                    .button-container,
-                    .form-actions,
-                    .n8n-form-actions {
-                        display: flex !important;
-                        justify-content: flex-start !important;
-                    }
-                `;
-                iframe.contentWindow.document.head.appendChild(style);
-            } catch {
-                // Silent fail on cross-origin
-            }
-        };
-
         const iframe = iframeRef.current;
-        const handleLoad = () => {
-            checkForExecution();
-            injectStyles();
-        };
-
-        iframe?.addEventListener('load', handleLoad);
-        return () => iframe?.removeEventListener('load', handleLoad);
+        iframe?.addEventListener('load', checkForExecution);
+        return () => iframe?.removeEventListener('load', checkForExecution);
     }, [formUrl, formType, router]);
 
     if (!formUrl) {
