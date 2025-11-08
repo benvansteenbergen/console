@@ -51,12 +51,11 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
     const router = useRouter();
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [moveFileId, setMoveFileId] = useState<string | null>(null);
+    const [moving, setMoving] = useState(false);
 
-    // Drag and drop state
-    const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
-    const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-    const [dragTimer, setDragTimer] = useState<NodeJS.Timeout | null>(null);
-    const [mouseStartPos, setMouseStartPos] = useState<{ x: number; y: number } | null>(null);
+    // Get list of folders from current data
+    const folders = data.filter(item => item.isFolder || item.mimeType === 'application/vnd.google-apps.folder');
 
     const openDoc = (url: string) => window.open(url, "_blank");
     const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
@@ -92,70 +91,19 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
         }
     };
 
-    // Drag handlers for files
-    const handleMouseDown = (e: React.MouseEvent, fileId: string, isFolder: boolean) => {
-        if (isFolder) return; // Don't drag folders
-
-        // Record start position
-        setMouseStartPos({ x: e.clientX, y: e.clientY });
-
-        const timer = setTimeout(() => {
-            setDraggedFileId(fileId);
-        }, 1500); // 1.5 second delay
-
-        setDragTimer(timer);
-    };
-
-    const handleMouseUp = () => {
-        if (dragTimer) {
-            clearTimeout(dragTimer);
-            setDragTimer(null);
-        }
-        setDraggedFileId(null);
-        setMouseStartPos(null);
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        // If mouse moved too much during hold, cancel the drag start
-        if (dragTimer && mouseStartPos) {
-            const deltaX = Math.abs(e.clientX - mouseStartPos.x);
-            const deltaY = Math.abs(e.clientY - mouseStartPos.y);
-
-            // If moved more than 10px, cancel
-            if (deltaX > 10 || deltaY > 10) {
-                clearTimeout(dragTimer);
-                setDragTimer(null);
-                setMouseStartPos(null);
-            }
-        }
-    };
-
-    // Drop handlers for folders
-    const handleFolderDragOver = (folderId: string) => {
-        if (!draggedFileId) return;
-        setDragOverFolderId(folderId);
-    };
-
-    const handleFolderDragLeave = () => {
-        setDragOverFolderId(null);
-    };
-
-    const handleDrop = async (targetFolderId: string) => {
-        if (!draggedFileId) return;
-
+    const handleMove = async (fileId: string, targetFolderId: string) => {
+        setMoving(true);
         try {
             const res = await fetch('/api/move-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileId: draggedFileId,
-                    targetFolderId,
-                }),
+                body: JSON.stringify({ fileId, targetFolderId }),
             });
 
             if (res.ok) {
                 // Remove the file from local data and revalidate
-                await mutate(data.filter(file => file.id !== draggedFileId), { revalidate: true });
+                await mutate(data.filter(file => file.id !== fileId), { revalidate: true });
+                setMoveFileId(null);
             } else {
                 console.error('Move failed:', await res.text());
                 alert('Failed to move file. Please try again.');
@@ -164,10 +112,10 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             console.error('Move error:', error);
             alert('Failed to move file. Please try again.');
         } finally {
-            setDraggedFileId(null);
-            setDragOverFolderId(null);
+            setMoving(false);
         }
     };
+
 
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
@@ -178,17 +126,10 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                 <div key={id} className="group flex flex-col items-center">
                     <div className="relative w-full">
                     {itemIsFolder ? (
-                        // Folder card - drop target
+                        // Folder card
                         <div
                             onClick={() => handleFolderClick(id)}
-                            onMouseEnter={() => handleFolderDragOver(id)}
-                            onMouseLeave={handleFolderDragLeave}
-                            onMouseUp={() => draggedFileId && handleDrop(id)}
-                            className={`flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed shadow-sm transition-all hover:shadow-md ${
-                                dragOverFolderId === id
-                                    ? 'border-green-500 bg-gradient-to-br from-green-50 to-blue-50'
-                                    : 'border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 hover:border-blue-400'
-                            }`}
+                            className="flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed shadow-sm transition-all hover:shadow-md border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 hover:border-blue-400"
                         >
                             <svg
                                 className="h-16 w-16 text-blue-600"
@@ -206,27 +147,16 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                             <p className="mt-2 text-sm font-medium text-gray-700">{name}</p>
                         </div>
                     ) : (
-                        // File card - draggable
+                        // File card
                         <>
-                        <div
-                            onMouseDown={(e) => handleMouseDown(e, id, itemIsFolder)}
-                            onMouseUp={handleMouseUp}
-                            onMouseMove={handleMouseMove}
-                            className={`transition-all ${
-                                draggedFileId === id
-                                    ? 'opacity-50 scale-95 cursor-grabbing'
-                                    : 'cursor-grab'
-                            }`}
-                        >
-                            <Image
-                                src={thumbnailLink}
-                                alt={name}
-                                width={160}
-                                height={200}
-                                className="w-full rounded-lg border border-slate-200 shadow-sm pointer-events-none"
-                                unoptimized
-                            />
-                        </div>
+                        <Image
+                            src={thumbnailLink}
+                            alt={name}
+                            width={160}
+                            height={200}
+                            className="w-full rounded-lg border border-slate-200 shadow-sm"
+                            unoptimized
+                        />
 
                         {/* hover actions - tap on mobile, hover on desktop */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">
@@ -255,6 +185,14 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                                 </a>
                             ))}
                         </div>
+                        {folders.length > 0 && (
+                            <button
+                                onClick={() => setMoveFileId(id)}
+                                className="w-24 rounded bg-purple-600 py-1 text-xs font-medium text-white hover:bg-purple-700 sm:w-28"
+                            >
+                                Move
+                            </button>
+                        )}
                         <button
                             onClick={() => setDeleteConfirm(id)}
                             className="w-24 rounded bg-red-600 py-1 text-xs font-medium text-white hover:bg-red-700 sm:w-28"
@@ -324,6 +262,56 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                                 {deleting ? 'Deleting...' : 'Delete'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move file modal */}
+            {moveFileId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                                <svg
+                                    className="h-6 w-6 text-purple-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Move to folder
+                            </h3>
+                        </div>
+                        <p className="mb-4 text-sm text-gray-600">
+                            Select a folder to move this document to:
+                        </p>
+                        <div className="mb-6 flex flex-col gap-2">
+                            {folders.map((folder) => (
+                                <button
+                                    key={folder.id}
+                                    onClick={() => handleMove(moveFileId, folder.id)}
+                                    disabled={moving}
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:border-purple-300 disabled:opacity-50"
+                                >
+                                    {folder.name}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setMoveFileId(null)}
+                            disabled={moving}
+                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
                     </div>
                 </div>
             )}
