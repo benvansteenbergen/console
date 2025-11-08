@@ -10,11 +10,11 @@ const interestingFacts = [
     "A single strand of spider silk is five times stronger than steel of the same thickness."
 ];
 
-export default function GlassLoader({ duration = 22000 }: { duration?: number }) {
+export default function GlassLoader({ duration = 30000 }: { duration?: number }) {
     const [progress, setProgress] = useState(0);
     const [factIndex, setFactIndex] = useState(0);
 
-    // Progress animation over 22 seconds
+    // Progress animation over 30 seconds
     useEffect(() => {
         const startTime = Date.now();
         const interval = setInterval(() => {
@@ -30,7 +30,7 @@ export default function GlassLoader({ duration = 22000 }: { duration?: number })
         return () => clearInterval(interval);
     }, [duration]);
 
-    // Rotate facts every 4.4 seconds (22s / 5 facts)
+    // Rotate facts every 6 seconds (30s / 5 facts)
     useEffect(() => {
         const factInterval = setInterval(() => {
             setFactIndex((prev) => (prev + 1) % interestingFacts.length);

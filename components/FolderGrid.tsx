@@ -159,27 +159,27 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                         />
 
                         {/* hover actions - tap on mobile, hover on desktop */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-black/70 to-black/50 backdrop-blur-sm opacity-0 transition-all group-hover:opacity-100 group-active:opacity-100 p-3">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-white/10 backdrop-blur-md opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 p-2 border border-white/20">
                         <button
                             onClick={() => handleReview(id)}
-                            className="w-full rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-sky-700 hover:scale-105 transition-all"
+                            className="w-full rounded-lg bg-sky-500/90 backdrop-blur-sm py-2 text-xs font-semibold text-white shadow-lg hover:bg-sky-600/90 hover:shadow-xl transition-all border border-sky-400/30"
                         >
                             Review
                         </button>
                         <button
                             onClick={() => openDoc(webViewLink)}
-                            className="w-full rounded-lg bg-white/95 py-2.5 text-sm font-semibold text-slate-700 shadow-lg hover:bg-white hover:scale-105 transition-all"
+                            className="w-full rounded-lg bg-white/90 backdrop-blur-sm py-2 text-xs font-semibold text-slate-700 shadow-lg hover:bg-white hover:shadow-xl transition-all border border-white/40"
                         >
-                            Open in Drive
+                            Open
                         </button>
-                        <div className="flex w-full justify-between gap-1.5">
+                        <div className="flex w-full justify-center gap-1">
                             {DOWNLOAD_FORMATS.map(({ fmt, label }) => (
                                 <a
                                     key={fmt}
                                     href={downloadUrl(id, fmt)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 rounded-md bg-white/90 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-white hover:text-sky-600 transition-all text-center shadow-md"
+                                    className="flex-1 rounded-md bg-white/80 backdrop-blur-sm py-1 text-[10px] font-bold text-slate-600 hover:bg-white hover:text-sky-600 transition-all text-center shadow-md border border-white/40"
                                 >
                                     {label}
                                 </a>
@@ -188,14 +188,14 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                         {folders.length > 0 && (
                             <button
                                 onClick={() => setMoveFileId(id)}
-                                className="w-full rounded-lg bg-purple-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-purple-700 hover:scale-105 transition-all"
+                                className="w-full rounded-lg bg-purple-500/90 backdrop-blur-sm py-2 text-xs font-semibold text-white shadow-lg hover:bg-purple-600/90 hover:shadow-xl transition-all border border-purple-400/30"
                             >
-                                Move to Folder
+                                Move
                             </button>
                         )}
                         <button
                             onClick={() => setDeleteConfirm(id)}
-                            className="w-full rounded-lg bg-red-600 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-red-700 hover:scale-105 transition-all"
+                            className="w-full rounded-lg bg-red-500/90 backdrop-blur-sm py-2 text-xs font-semibold text-white shadow-lg hover:bg-red-600/90 hover:shadow-xl transition-all border border-red-400/30"
                         >
                             Delete
                         </button>
