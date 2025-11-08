@@ -16,7 +16,8 @@ export interface DriveFile {
 }
 
 interface GridProps {
-    folder: string;
+    folder: string;          // folder path or name (for display/API)
+    folderId?: string;       // actual Google Drive folder ID (when available)
     initialItems: DriveFile[];
 }
 
@@ -37,27 +38,34 @@ const fetcher = async (url: string): Promise<DriveFile[]> => {
     // When it already returns DriveFile[]
     return raw as DriveFile[];
 };
-export default function FolderGrid({ folder, initialItems }: GridProps) {
+export default function FolderGrid({ folder, folderId, initialItems }: GridProps) {
+    // Use folder ID if available, otherwise use folder name/path
+    const queryParam = folderId || folder;
+
     const { data = initialItems, mutate } = useSWR<DriveFile[]>(
-        `/api/content-storage?folder=${encodeURIComponent(folder)}`,
+        `/api/content-storage?folder=${encodeURIComponent(queryParam)}`,
         fetcher,
-        { refreshInterval: 5000, fallbackData: initialItems },
+        { refreshInterval: 5000, fallbackData: initialItems, dedupingInterval: 0 }, // No deduping for fresh data
     );
 
     const router = useRouter();
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
 
+    // Drag and drop state
+    const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
+    const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+    const [dragTimer, setDragTimer] = useState<NodeJS.Timeout | null>(null);
+
     const openDoc = (url: string) => window.open(url, "_blank");
     const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
     const downloadUrl = (id: string, fmt: string) =>
         `https://docs.google.com/document/d/${id}/export?format=${fmt}`;
 
-    // Navigate into subfolder using folder name
-    const handleFolderClick = (folderName: string) => {
-        // Build the path: current/subfolder
-        const newPath = folder ? `${folder}/${folderName}` : folderName;
-        router.push(`/content/${newPath}`);
+    // Navigate into subfolder using folder ID
+    const handleFolderClick = (subFolderId: string) => {
+        // Navigate with folder ID as the path segment for precise lookup
+        router.push(`/content/${folder}/${subFolderId}`);
     };
 
     const handleDelete = async (id: string) => {
@@ -68,8 +76,8 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
             });
 
             if (res.ok) {
-                // Remove from local data immediately
-                mutate(data.filter(file => file.id !== id), false);
+                // Remove from local data immediately and revalidate
+                await mutate(data.filter(file => file.id !== id), { revalidate: true });
                 setDeleteConfirm(null);
             } else {
                 console.error('Delete failed:', await res.text());
@@ -83,6 +91,72 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
         }
     };
 
+    // Drag handlers for files
+    const handleMouseDown = (fileId: string, isFolder: boolean) => {
+        if (isFolder) return; // Don't drag folders
+
+        const timer = setTimeout(() => {
+            setDraggedFileId(fileId);
+        }, 1500); // 1.5 second delay
+
+        setDragTimer(timer);
+    };
+
+    const handleMouseUp = () => {
+        if (dragTimer) {
+            clearTimeout(dragTimer);
+            setDragTimer(null);
+        }
+        setDraggedFileId(null);
+    };
+
+    const handleMouseMove = () => {
+        // If dragging started, clear the timer
+        if (dragTimer) {
+            clearTimeout(dragTimer);
+            setDragTimer(null);
+        }
+    };
+
+    // Drop handlers for folders
+    const handleFolderDragOver = (folderId: string) => {
+        if (!draggedFileId) return;
+        setDragOverFolderId(folderId);
+    };
+
+    const handleFolderDragLeave = () => {
+        setDragOverFolderId(null);
+    };
+
+    const handleDrop = async (targetFolderId: string) => {
+        if (!draggedFileId) return;
+
+        try {
+            const res = await fetch('/api/move-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileId: draggedFileId,
+                    targetFolderId,
+                }),
+            });
+
+            if (res.ok) {
+                // Remove the file from local data and revalidate
+                await mutate(data.filter(file => file.id !== draggedFileId), { revalidate: true });
+            } else {
+                console.error('Move failed:', await res.text());
+                alert('Failed to move file. Please try again.');
+            }
+        } catch (error) {
+            console.error('Move error:', error);
+            alert('Failed to move file. Please try again.');
+        } finally {
+            setDraggedFileId(null);
+            setDragOverFolderId(null);
+        }
+    };
+
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
             {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder }) => {
@@ -92,10 +166,17 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                 <div key={id} className="group flex flex-col items-center">
                     <div className="relative w-full">
                     {itemIsFolder ? (
-                        // Folder card
+                        // Folder card - drop target
                         <div
-                            onClick={() => handleFolderClick(name)}
-                            className="flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 shadow-sm transition-all hover:border-blue-400 hover:shadow-md"
+                            onClick={() => handleFolderClick(id)}
+                            onMouseEnter={() => handleFolderDragOver(id)}
+                            onMouseLeave={handleFolderDragLeave}
+                            onMouseUp={() => draggedFileId && handleDrop(id)}
+                            className={`flex h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed shadow-sm transition-all hover:shadow-md ${
+                                dragOverFolderId === id
+                                    ? 'border-green-500 bg-gradient-to-br from-green-50 to-blue-50'
+                                    : 'border-slate-300 bg-gradient-to-br from-blue-50 to-purple-50 hover:border-blue-400'
+                            }`}
                         >
                             <svg
                                 className="h-16 w-16 text-blue-600"
@@ -113,16 +194,25 @@ export default function FolderGrid({ folder, initialItems }: GridProps) {
                             <p className="mt-2 text-sm font-medium text-gray-700">{name}</p>
                         </div>
                     ) : (
-                        // File card
+                        // File card - draggable
                         <>
-                        <Image
-                            src={thumbnailLink}
-                            alt={name}
-                            width={160}
-                            height={200}
-                            className="w-full rounded-lg border border-slate-200 shadow-sm"
-                            unoptimized
-                        />
+                        <div
+                            onMouseDown={() => handleMouseDown(id, itemIsFolder)}
+                            onMouseUp={handleMouseUp}
+                            onMouseMove={handleMouseMove}
+                            className={`cursor-grab active:cursor-grabbing ${
+                                draggedFileId === id ? 'opacity-50 scale-95' : ''
+                            }`}
+                        >
+                            <Image
+                                src={thumbnailLink}
+                                alt={name}
+                                width={160}
+                                height={200}
+                                className="w-full rounded-lg border border-slate-200 shadow-sm pointer-events-none"
+                                unoptimized
+                            />
+                        </div>
 
                         {/* hover actions - tap on mobile, hover on desktop */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 sm:gap-2">

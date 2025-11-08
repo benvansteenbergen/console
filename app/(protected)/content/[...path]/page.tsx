@@ -13,9 +13,11 @@ interface FolderStat {
 export default async function Page(props: { params: Promise<{ path: string[] }> }) {
     const params = await props.params;
     const path = params.path || [];
-    // Path contains folder names: ['blogpost'] or ['blogpost', '2026']
-    const folderPath = path.join('/'); // 'blogpost' or 'blogpost/2026'
-    const folderName = path[path.length - 1] || '';
+
+    // For root folders, path is like ['blogpost']
+    // For subfolders, path is like ['blogpost', '1sd4MTHRJ72...'] (parent name, then child ID)
+    const isRootLevel = path.length === 1;
+    const queryParam = path[path.length - 1] || ''; // Last segment (name for root, ID for subfolders)
 
     const cookieStore = await cookies();
     const jwt = cookieStore.get('session')?.value;
@@ -30,7 +32,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
         res = await fetch(
-            `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folderPath)}`,
+            `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(queryParam)}`,
             {
                 headers: { cookie: `auth=${jwt};` },
                 cache: 'no-store',
@@ -73,16 +75,14 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
         };
     });
 
-    // Match by folder name/path
-    const match = stats.find((s) => s.folder.toLowerCase() === folderPath.toLowerCase());
-
+    // n8n returns a single folder in the response
+    const match = stats[0];
     const items = match?.items ?? [];
-
-    // Check if we're at root level (only 1 segment in path)
-    const isRootLevel = path.length === 1;
+    const folderName = match?.folder || queryParam;
+    const currentFolderId = match?.folderId;
 
     // Use the actual Google Drive folder ID for creating subfolders
-    const parentFolderId = match?.folderId || folderPath;
+    const parentFolderId = currentFolderId || queryParam;
 
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
@@ -126,7 +126,11 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
                 )}
             </div>
 
-            <FolderGrid folder={folderPath} initialItems={items} />
+            <FolderGrid
+                folder={path.join('/')}
+                folderId={currentFolderId}
+                initialItems={items}
+            />
         </main>
     );
 }
