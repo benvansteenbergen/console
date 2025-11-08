@@ -56,6 +56,7 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
     const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
     const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
     const [dragTimer, setDragTimer] = useState<NodeJS.Timeout | null>(null);
+    const [mouseStartPos, setMouseStartPos] = useState<{ x: number; y: number } | null>(null);
 
     const openDoc = (url: string) => window.open(url, "_blank");
     const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
@@ -92,8 +93,11 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
     };
 
     // Drag handlers for files
-    const handleMouseDown = (fileId: string, isFolder: boolean) => {
+    const handleMouseDown = (e: React.MouseEvent, fileId: string, isFolder: boolean) => {
         if (isFolder) return; // Don't drag folders
+
+        // Record start position
+        setMouseStartPos({ x: e.clientX, y: e.clientY });
 
         const timer = setTimeout(() => {
             setDraggedFileId(fileId);
@@ -108,13 +112,21 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             setDragTimer(null);
         }
         setDraggedFileId(null);
+        setMouseStartPos(null);
     };
 
-    const handleMouseMove = () => {
-        // If dragging started, clear the timer
-        if (dragTimer) {
-            clearTimeout(dragTimer);
-            setDragTimer(null);
+    const handleMouseMove = (e: React.MouseEvent) => {
+        // If mouse moved too much during hold, cancel the drag start
+        if (dragTimer && mouseStartPos) {
+            const deltaX = Math.abs(e.clientX - mouseStartPos.x);
+            const deltaY = Math.abs(e.clientY - mouseStartPos.y);
+
+            // If moved more than 10px, cancel
+            if (deltaX > 10 || deltaY > 10) {
+                clearTimeout(dragTimer);
+                setDragTimer(null);
+                setMouseStartPos(null);
+            }
         }
     };
 
@@ -197,11 +209,13 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                         // File card - draggable
                         <>
                         <div
-                            onMouseDown={() => handleMouseDown(id, itemIsFolder)}
+                            onMouseDown={(e) => handleMouseDown(e, id, itemIsFolder)}
                             onMouseUp={handleMouseUp}
                             onMouseMove={handleMouseMove}
-                            className={`cursor-grab active:cursor-grabbing ${
-                                draggedFileId === id ? 'opacity-50 scale-95' : ''
+                            className={`transition-all ${
+                                draggedFileId === id
+                                    ? 'opacity-50 scale-95 cursor-grabbing'
+                                    : 'cursor-grab'
                             }`}
                         >
                             <Image
