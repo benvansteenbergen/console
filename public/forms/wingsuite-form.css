@@ -45,15 +45,7 @@ body{ margin:0; background:var(--ws-bg); color:var(--ws-text); font-family:var(-
 
 .form-header::before {
     content: "";
-    display: inline-block;
-    width: 42px;
-    height: 42px;
-    background-image: url("https://console.wingsuite.io/logo.svg");
-    background-repeat: no-repeat;
-    background-size: 240px;          /* zooms in on the circle */
-    background-position: left center; /* keeps only the circle visible */
-    border-radius: 50%;
-    flex-shrink: 0;
+    display: none; /* Logo removed */
 }
 
 /* Title & subtitle styling */
