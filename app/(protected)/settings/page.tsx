@@ -215,7 +215,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Usage & Credits Card */}
-            {credits && (
+            {credits && credits.credits_used !== undefined && credits.plan_credits !== undefined && (
                 <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
@@ -239,7 +239,7 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Credits Used</span>
                             <span className="font-semibold text-gray-900">
-                                {credits.credits_used.toLocaleString()} / {credits.plan_credits.toLocaleString()}
+                                {(credits.credits_used || 0).toLocaleString()} / {(credits.plan_credits || 0).toLocaleString()}
                             </span>
                         </div>
                         <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
