@@ -1,0 +1,329 @@
+/* === Wingsuite style for n8n forms === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+    --ws-font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    --ws-bg:#f8fafc;        /* page */
+    --ws-surface:#ffffff;   /* cards */
+    --ws-border:#e5e7eb;    /* soft gray */
+    --ws-muted:#6b7280;     /* gray text */
+    --ws-text:#0f172a;      /* slate-900 */
+    --ws-primary:#2b4cff;   /* blue */
+    --ws-primary-600:#1f3ee8;
+    --ws-primary-50:#eef2ff;
+
+    --ws-radius:16px;
+    --ws-radius-sm:10px;
+    --ws-shadow:0 6px 24px rgba(2,6,23,.06),0 2px 6px rgba(2,6,23,.04);
+    --ws-shadow-sm:0 1px 2px rgba(2,6,23,.06);
+    --ws-focus:0 0 0 3px rgba(43,76,255,.15);
+}
+
+/* Page */
+body{ margin:0; background:var(--ws-bg); color:var(--ws-text); font-family:var(--ws-font); }
+.container{ max-width:980px; margin:0 auto; padding:24px; }
+
+/* Card (form + submitted box) */
+.card{
+    background:var(--ws-surface);
+    border:1px solid var(--ws-border);
+    border-radius:var(--ws-radius);
+    box-shadow:var(--ws-shadow);
+    padding:22px;
+}
+
+/* --- Wingsuite circle logo header integration (cropped from full logo.svg) --- */
+.form-header {
+    position: relative;
+    display: flex;
+    flex-direction:row;
+    flex-wrap:wrap;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+
+.form-header::before {
+    content: "";
+    display: inline-block;
+    width: 42px;
+    height: 42px;
+    background-image: url("https://console.wingsuite.io/logo.svg");
+    background-repeat: no-repeat;
+    background-size: 240px;          /* zooms in on the circle */
+    background-position: left center; /* keeps only the circle visible */
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Title & subtitle styling */
+.form-header h1 {
+    margin: 0;
+    font-size: clamp(26px, 2.8vw, 32px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: #0f172a;
+}
+
+.form-header p {
+    margin: 0;
+    font-weight: 100;
+    color: #475569;
+    line-height: 1.3;
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .form-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .form-header::before {
+        width: 34px;
+        height: 34px;
+        background-size: 200px;
+    }
+}
+/* Layout */
+.inputs-wrapper{ display:grid; gap:16px; margin-top:18px; }
+.form-group{ display:flex; flex-direction:column; gap:8px; }
+
+/* Labels */
+.form-label{ font-size:13px; font-weight:600; color:#111827; }
+.form-required::after{ content:" *"; color:#ef4444; }
+
+/* Inputs / textarea */
+.form-input, .select-input select{
+    width:100%;
+    appearance:none;
+    border:1px solid var(--ws-border);
+    background:#fff;
+    color:var(--ws-text);
+    border-radius:12px;
+    padding:12px 14px;
+    font:500 14px/1.2 var(--ws-font);
+    box-shadow:var(--ws-shadow-sm);
+    transition:border-color .15s ease, box-shadow .15s ease, transform .02s ease;
+}
+.form-input::placeholder{ color:#9ca3af; }
+textarea.form-input{ min-height:120px; resize:vertical; }
+
+/* === Material-style radio chips (clean + centered) === */
+.multiselect{
+    display:flex; flex-wrap:wrap; gap:12px; margin-top:6px;
+}
+
+/* We style the LABEL as the chip; the input stays visually hidden */
+.multiselect-option{ position:relative; }
+.multiselect-option .multiselect-checkbox{
+    position:absolute; inset:0; opacity:0; pointer-events:none;
+}
+
+.multiselect-option label{
+    display:inline-flex; align-items:center; gap:12px;
+    padding:12px 18px;
+    border:1.5px solid var(--ws-border);
+    border-radius:12px;
+    background:#fff;
+    color:#1e293b;
+    font:600 15px/1.2 var(--ws-font, 'Inter', system-ui, sans-serif);
+    box-shadow:var(--ws-shadow-sm, 0 1px 2px rgba(2,6,23,.06));
+    cursor:pointer; user-select:none;
+    transition:border-color .2s ease, background-color .2s ease, box-shadow .2s ease, color .2s ease;
+}
+
+/* Radio circle (perfectly centered next to text) */
+.multiselect-option label::before{
+    content:"";
+    width:18px; height:18px; flex:0 0 18px;
+    border:2px solid var(--ws-primary, #2b4cff);
+    border-radius:50%;
+    background:#fff;
+    box-sizing:border-box;
+    /* this tiny translate fixes optical baseline shift */
+    transform: translateY(0.5px);
+    transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+/* Hover/focus */
+.multiselect-option label:hover{
+    border-color:var(--ws-primary, #2b4cff);
+    background:var(--ws-primary-50, #eef2ff);
+}
+.multiselect-option .multiselect-checkbox:focus + label::before{
+    box-shadow:0 0 0 3px rgba(43,76,255,.25);
+}
+
+/* Checked state */
+.multiselect-option .multiselect-checkbox:checked + label{
+    color:var(--ws-primary, #2b4cff);
+    border-color:var(--ws-primary, #2b4cff);
+    background:#fff; /* keep chip white; change if you prefer filled */
+}
+.multiselect-option .multiselect-checkbox:checked + label::before{
+    background:
+            radial-gradient(#2b4cff 0 50%, transparent 51%),
+            radial-gradient(#fff 0 40%, transparent 41%);
+    background-position:center center, center center;
+    background-size: 10px 10px, 18px 18px; /* inner dot + outer */
+    background-repeat:no-repeat;
+}
+
+/* If you ever want multi-select with square checks, flip to a square here
+.multiselect[data-radio-select='checkbox'] label::before{ border-radius:4px; }
+*/
+
+/* === Material-style dropdown refinement === */
+
+/* Wrapper */
+.select-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1.5px solid var(--ws-border);
+    border-radius: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--ws-shadow-sm);
+}
+
+/* Native select element */
+.select-input select {
+    width: 100%;
+    appearance: none;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--ws-font);
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    padding: 14px 44px 14px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    line-height: 1.3;
+}
+
+/* Arrow icon */
+.select-input::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 0.55rem;
+    height: 0.55rem;
+    transform: translateY(-50%) rotate(45deg);
+    border-right: 2px solid #475569;
+    border-bottom: 2px solid #475569;
+    pointer-events: none;
+    transition: transform 0.25s ease;
+}
+
+/* Focus + hover states */
+.select-input:hover {
+    border-color: var(--ws-primary);
+    background-color: var(--ws-primary-50);
+}
+
+.select-input select:focus + .select-arrow,
+.select-input:focus-within {
+    border-color: var(--ws-primary);
+    box-shadow: var(--ws-focus);
+}
+
+/* Open effect (rotate arrow when active) */
+.select-input:focus-within::after {
+    transform: translateY(-50%) rotate(225deg);
+    border-color: var(--ws-primary);
+}
+
+/* Disabled state */
+.select-input select:disabled {
+    color: #94a3b8;
+    background-color: #f8fafc;
+    cursor: not-allowed;
+}
+
+/* File input wrapper (clear button present) */
+.file-input-wrapper{ position:relative; }
+.file-input-wrapper .clear-button{
+    position:absolute; right:10px; top:34px; /* aligns with input padding */
+    background:#fff; border:1px solid var(--ws-border);
+    width:28px; height:28px; border-radius:999px; cursor:pointer;
+    line-height:24px; font-size:18px; color:#64748b;
+    box-shadow:var(--ws-shadow-sm);
+}
+.file-input-wrapper .clear-button:hover{ background:#f8fafc; }
+
+/* Focus / disabled */
+.form-input:focus, .select-input select:focus{
+    outline:none; border-color:var(--ws-primary); box-shadow:var(--ws-focus);
+}
+.form-input:disabled, .select-input select:disabled{
+    background:#f3f4f6; color:#9ca3af; cursor:not-allowed;
+}
+
+/* Errors */
+[class^="error-field-"]{
+    margin:0; font-size:12px; color:#ef4444;
+}
+.error-hidden{ display:none !important; }
+
+/* Submit button */
+#submit-btn{
+    margin-top:6px;
+    display:inline-flex; align-items:center; gap:8px;
+    border-radius:12px; padding:10px 16px;
+    font-weight:600; color:#fff; background:var(--ws-primary);
+    border:1px solid transparent; cursor:pointer;
+    box-shadow:0 6px 16px rgba(43,76,255,.22);
+    transition:background .15s ease, transform .02s ease;
+}
+#submit-btn:hover{ background:var(--ws-primary-600); }
+#submit-btn:active{ transform:translateY(1px); }
+#submit-btn svg path{ fill:#fff; }
+
+/* n8n credit link */
+.n8n-link{display: none}
+
+/* HR */
+section > hr{
+    border:none; height:1px; background:var(--ws-border);
+    margin:24px 0 8px;
+}
+
+/* Responsive */
+@media (max-width:720px){
+    .container{ padding:16px; }
+    .card{ padding:16px; }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-width: 1024px;
+  }
+
+  .container {
+    max-width: var(--container-width);
+  }
+
+  .inputs-wrapper {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items: start;
+    gap: 20px 24px;
+  }
+
+  /* Make textarea fields span full width for better readability */
+  .form-group:has(textarea) {
+    grid-column: 1 / -1;
+  }
+
+  #submit-btn {
+    width: 50%;
+    max-width: 280px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
