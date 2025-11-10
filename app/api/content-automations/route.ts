@@ -20,6 +20,7 @@ interface AutomationBoardRow {
     credits_30d: number;
     dest_label: string;
     dest_url: string;
+    enabled?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -46,5 +47,9 @@ export async function GET() {
         return NextResponse.json({ error: 'upstream error', detail: body }, { status: 502 });
     }
     const rows = (await res.json()) as AutomationBoardRow[];
-    return NextResponse.json(rows);
+
+    // Filter to only enabled automations
+    const enabledRows = rows.filter(row => row.enabled !== false);
+
+    return NextResponse.json(enabledRows);
 }
