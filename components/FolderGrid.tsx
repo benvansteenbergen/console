@@ -223,7 +223,7 @@ export default function FolderGrid({ folder, folderId, parentFolderId, initialIt
                                 </a>
                             ))}
                         </div>
-                        {folders.length > 0 && (
+                        {(folders.length > 0 || parentFolderId) && (
                             <button
                                 onClick={() => setMoveFileId(id)}
                                 className="w-full rounded-lg bg-purple-500/90 backdrop-blur-sm py-2 text-xs font-semibold text-white shadow-lg hover:bg-purple-600/90 hover:shadow-xl transition-all border border-purple-400/30"
