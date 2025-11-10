@@ -25,9 +25,12 @@ export default function CreateFolderButton({ parentFolderId }: { parentFolderId:
             if (res.ok) {
                 setShowModal(false);
                 setFolderName("");
-                // Force cache refresh for content-storage by invalidating all matching keys
+                // Force cache refresh for this specific folder with the refresh parameter
+                const currentUrl = `/api/content-storage?folder=${encodeURIComponent(parentFolderId)}&refresh=${Date.now()}`;
                 await mutate(
-                    key => typeof key === 'string' && key.startsWith('/api/content-storage')
+                    key => typeof key === 'string' && key.includes(`folder=${encodeURIComponent(parentFolderId)}`),
+                    fetch(currentUrl).then(r => r.json()),
+                    { revalidate: false }
                 );
             } else {
                 const error = await res.json();

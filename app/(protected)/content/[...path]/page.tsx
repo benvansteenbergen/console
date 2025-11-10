@@ -84,8 +84,40 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
     // Use the actual Google Drive folder ID for creating subfolders
     const parentFolderId = currentFolderId || queryParam;
 
-    // For subfolders, get the parent folder ID (the one before the current in the path)
-    const moveUpFolderId = !isRootLevel && path.length > 1 ? path[path.length - 2] : undefined;
+    // For subfolders at depth 2 (e.g., /blogpost/subfolderId), we need to fetch parent's actual folder ID
+    // For now, if path.length === 2, we need to query the parent folder
+    let moveUpFolderId: string | undefined = undefined;
+    if (!isRootLevel && path.length === 2) {
+        // We're one level deep, parent is the root folder - need to get its ID
+        try {
+            const parentQueryParam = path[0]; // The root folder name
+            const parentRes = await fetch(
+                `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(parentQueryParam)}`,
+                {
+                    headers: { cookie: `auth=${jwt};` },
+                    cache: 'no-store',
+                }
+            );
+            if (parentRes.ok) {
+                const parentRaw = await parentRes.json();
+                const parentStats: FolderStat[] = (parentRaw as UpstreamPayload[]).map((obj) => {
+                    const [key] = Object.keys(obj);
+                    return {
+                        folder: key,
+                        unseen: obj[key].newFiles,
+                        items: obj[key].items as DriveFile[],
+                        folderId: obj[key].folderId
+                    };
+                });
+                moveUpFolderId = parentStats[0]?.folderId;
+            }
+        } catch (error) {
+            console.error('Failed to fetch parent folder ID:', error);
+        }
+    } else if (path.length > 2) {
+        // Deeper nesting - the parent is the previous ID in the path
+        moveUpFolderId = path[path.length - 2];
+    }
 
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
