@@ -43,7 +43,7 @@ export default function Dashboard() {
   });
 
   const {
-        data: credits = [],
+        data: credits,
         error: creditsError,
         isLoading: creditsLoading,
   } = useSWR<Credits>("/api/credits", fetcher);
@@ -70,22 +70,22 @@ export default function Dashboard() {
             <div className="flex flex-col items-start gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-6 py-4 shadow-sm sm:items-end">
               {creditsLoading ? (
                 <p className="text-sm text-gray-500">Loading plan info…</p>
-              ) : creditsError ? (
+              ) : creditsError || !credits ? (
                 <p className="text-sm text-red-600">Could not load usage data.</p>
               ) : (
                 <>
                   <p className="text-xs font-medium text-gray-500">
-                    {credits[0].plan} Plan
+                    {credits.plan} Plan
                   </p>
                   <p
                     className={`text-2xl font-bold ${
-                      credits[0].over_limit ? "text-red-600" : "bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+                      credits.over_limit ? "text-red-600" : "bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
                     }`}
                   >
-                    {credits[0].credits_used} / {credits[0].plan_credits}
+                    {credits.credits_used} / {credits.plan_credits}
                   </p>
                   <p className="text-xs text-gray-500">credits used</p>
-                  {credits[0].over_limit && (
+                  {credits.over_limit && (
                     <button className="mt-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-700">
                       Upgrade plan
                     </button>
