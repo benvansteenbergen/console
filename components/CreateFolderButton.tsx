@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { mutate } from "swr";
 
 export default function CreateFolderButton({ parentFolderId }: { parentFolderId: string }) {
     const [showModal, setShowModal] = useState(false);
     const [folderName, setFolderName] = useState("");
     const [creating, setCreating] = useState(false);
-    const router = useRouter();
 
     const handleCreate = async () => {
         if (!folderName.trim()) return;
@@ -26,7 +25,12 @@ export default function CreateFolderButton({ parentFolderId }: { parentFolderId:
             if (res.ok) {
                 setShowModal(false);
                 setFolderName("");
-                router.refresh(); // Refresh the page to show new folder
+                // Trigger cache refresh in background for all content-storage queries
+                mutate(
+                    key => typeof key === 'string' && key.startsWith('/api/content-storage'),
+                    undefined,
+                    { revalidate: true }
+                );
             } else {
                 const error = await res.json();
                 alert(`Failed to create folder: ${error.error || 'Unknown error'}`);

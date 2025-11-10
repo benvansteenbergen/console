@@ -18,6 +18,7 @@ export interface DriveFile {
 interface GridProps {
     folder: string;          // folder path or name (for display/API)
     folderId?: string;       // actual Google Drive folder ID (when available)
+    parentFolderId?: string; // parent folder ID for moving files up
     initialItems: DriveFile[];
 }
 
@@ -38,7 +39,7 @@ const fetcher = async (url: string): Promise<DriveFile[]> => {
     // When it already returns DriveFile[]
     return raw as DriveFile[];
 };
-export default function FolderGrid({ folder, folderId, initialItems }: GridProps) {
+export default function FolderGrid({ folder, folderId, parentFolderId, initialItems }: GridProps) {
     // Use folder ID if available, otherwise use folder name/path
     const queryParam = folderId || folder;
 
@@ -331,6 +332,18 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
                             Select a folder to move this document to:
                         </p>
                         <div className="mb-6 flex flex-col gap-2">
+                            {parentFolderId && (
+                                <button
+                                    onClick={() => handleMove(moveFileId, parentFolderId)}
+                                    disabled={moving}
+                                    className="rounded-lg border-2 border-blue-300 bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 hover:border-blue-400 disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                    </svg>
+                                    Move to Parent Folder
+                                </button>
+                            )}
                             {folders.map((folder) => (
                                 <button
                                     key={folder.id}

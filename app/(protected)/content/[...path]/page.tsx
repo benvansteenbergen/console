@@ -84,6 +84,9 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
     // Use the actual Google Drive folder ID for creating subfolders
     const parentFolderId = currentFolderId || queryParam;
 
+    // For subfolders, get the parent folder ID (the one before the current in the path)
+    const moveUpFolderId = !isRootLevel && path.length > 1 ? path[path.length - 2] : undefined;
+
     /* ---------- breadcrumb ---------- */
     const breadcrumbs = path.map((segment, index) => ({
         name: segment,
@@ -129,6 +132,7 @@ export default async function Page(props: { params: Promise<{ path: string[] }> 
             <FolderGrid
                 folder={path.join('/')}
                 folderId={currentFolderId}
+                parentFolderId={moveUpFolderId}
                 initialItems={items}
             />
         </main>
