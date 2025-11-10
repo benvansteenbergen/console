@@ -90,6 +90,16 @@ body{ margin:0; background:var(--ws-bg); color:var(--ws-text); font-family:var(-
 .inputs-wrapper{ display:grid; gap:16px; margin-top:18px; }
 .form-group{ display:flex; flex-direction:column; gap:8px; }
 
+/* Button container - force left alignment */
+.button-wrapper,
+[class*="button"],
+form > div:last-child {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+
 /* Labels */
 .form-label{ font-size:13px; font-weight:600; color:#111827; }
 .form-required::after{ content:" *"; color:#ef4444; }
@@ -274,15 +284,24 @@ textarea.form-input{ min-height:120px; resize:vertical; }
 /* Submit button */
 #submit-btn{
     margin-top:6px;
-    display:inline-flex; align-items:center; gap:8px;
-    border-radius:12px; padding:10px 16px;
-    font-weight:600; color:#fff; background:var(--ws-primary);
-    border:1px solid transparent; cursor:pointer;
+    display:inline-flex !important;
+    align-items:center;
+    gap:8px;
+    border-radius:12px;
+    padding:10px 20px;
+    font-weight:600;
+    color:#fff;
+    background:var(--ws-primary);
+    border:1px solid transparent;
+    cursor:pointer;
     box-shadow:0 6px 16px rgba(43,76,255,.22);
     transition:background .15s ease, transform .02s ease;
-    /* Force left alignment */
-    margin-left: 0;
-    margin-right: auto;
+    /* Force left alignment - aggressive */
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    align-self: flex-start !important;
+    float: none !important;
+    text-align: left !important;
 }
 #submit-btn:hover{ background:var(--ws-primary-600); }
 #submit-btn:active{ transform:translateY(1px); }
