@@ -45,7 +45,13 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
     const { data = initialItems, mutate } = useSWR<DriveFile[]>(
         `/api/content-storage?folder=${encodeURIComponent(queryParam)}`,
         fetcher,
-        { refreshInterval: 5000, fallbackData: initialItems, dedupingInterval: 0 }, // No deduping for fresh data
+        {
+            refreshInterval: 5000,
+            fallbackData: initialItems,
+            dedupingInterval: 0,
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+        },
     );
 
     const router = useRouter();
@@ -54,8 +60,21 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
     const [moveFileId, setMoveFileId] = useState<string | null>(null);
     const [moving, setMoving] = useState(false);
 
-    // Get list of folders from current data
-    const folders = data.filter(item => item.isFolder || item.mimeType === 'application/vnd.google-apps.folder');
+    // Sort data: folders first, then files
+    const sortedData = [...data].sort((a, b) => {
+        const aIsFolder = a.isFolder || a.mimeType === 'application/vnd.google-apps.folder';
+        const bIsFolder = b.isFolder || b.mimeType === 'application/vnd.google-apps.folder';
+
+        // Folders come first
+        if (aIsFolder && !bIsFolder) return -1;
+        if (!aIsFolder && bIsFolder) return 1;
+
+        // Within same type, sort alphabetically by name
+        return a.name.localeCompare(b.name);
+    });
+
+    // Get list of folders from sorted data
+    const folders = sortedData.filter(item => item.isFolder || item.mimeType === 'application/vnd.google-apps.folder');
 
     const openDoc = (url: string) => window.open(url, "_blank");
     const handleReview = (id: string) => router.push(`/editor/${id}?source=review`);
@@ -119,7 +138,7 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
 
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
-            {data.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder }) => {
+            {sortedData.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder }) => {
                 const itemIsFolder = isFolder || mimeType === 'application/vnd.google-apps.folder';
 
                 return (
