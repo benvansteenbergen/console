@@ -13,6 +13,7 @@ import {
     ChevronDownIcon,
     ChevronRightIcon,
     FolderIcon,
+    Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { useBranding } from "@/components/BrandingProvider";
 import useSWR, { useSWRConfig } from "swr";
@@ -62,6 +63,7 @@ export default function Sidebar() {
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
+        {href: "/settings", label: "Settings", icon: Cog6ToothIcon},
     ];
 
     return (

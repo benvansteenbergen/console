@@ -1,0 +1,34 @@
+// app/api/portal-agents/route.ts
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+    const cookieStore = await cookies();
+    const jwt = cookieStore.get('session')?.value;
+
+    if (!jwt) {
+        return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
+    try {
+        // Fetch all agents from n8n (no type filtering)
+        const res = await fetch(
+            `${process.env.N8N_BASE_URL}/webhook/portal-agents`,
+            {
+                headers: { cookie: `auth=${jwt};` },
+                cache: 'no-store',
+            }
+        );
+
+        if (!res.ok) {
+            console.error('N8N portal-agents fetch failed:', res.status, await res.text());
+            return NextResponse.json({ error: 'Failed to load agents' }, { status: res.status });
+        }
+
+        const data = await res.json();
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error('Portal agents API error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
