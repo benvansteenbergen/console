@@ -95,8 +95,17 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             });
 
             if (res.ok) {
-                // Remove from local data immediately and revalidate
-                await mutate(data.filter(file => file.id !== id), { revalidate: true });
+                // Optimistically remove from local data, then revalidate from server
+                await mutate(
+                    async () => {
+                        // Force refetch from server
+                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}`);
+                    },
+                    {
+                        optimisticData: data.filter(file => file.id !== id),
+                        revalidate: true,
+                    }
+                );
                 setDeleteConfirm(null);
             } else {
                 console.error('Delete failed:', await res.text());
@@ -120,8 +129,17 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             });
 
             if (res.ok) {
-                // Remove the file from local data and revalidate
-                await mutate(data.filter(file => file.id !== fileId), { revalidate: true });
+                // Optimistically remove from local data, then revalidate from server
+                await mutate(
+                    async () => {
+                        // Force refetch from server
+                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}`);
+                    },
+                    {
+                        optimisticData: data.filter(file => file.id !== fileId),
+                        revalidate: true,
+                    }
+                );
                 setMoveFileId(null);
             } else {
                 console.error('Move failed:', await res.text());
