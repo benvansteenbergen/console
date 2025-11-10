@@ -95,11 +95,11 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             });
 
             if (res.ok) {
-                // Optimistically remove from local data, then revalidate from server
+                // Optimistically remove from local data, then revalidate from server with cache refresh
                 await mutate(
                     async () => {
-                        // Force refetch from server
-                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}`);
+                        // Force refetch from server bypassing cache
+                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}&refresh=${Date.now()}`);
                     },
                     {
                         optimisticData: data.filter(file => file.id !== id),
@@ -129,11 +129,11 @@ export default function FolderGrid({ folder, folderId, initialItems }: GridProps
             });
 
             if (res.ok) {
-                // Optimistically remove from local data, then revalidate from server
+                // Optimistically remove from local data, then revalidate from server with cache refresh
                 await mutate(
                     async () => {
-                        // Force refetch from server
-                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}`);
+                        // Force refetch from server bypassing cache
+                        return fetcher(`/api/content-storage?folder=${encodeURIComponent(queryParam)}&refresh=${Date.now()}`);
                     },
                     {
                         optimisticData: data.filter(file => file.id !== fileId),

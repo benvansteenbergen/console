@@ -24,12 +24,17 @@ export async function GET(req: NextRequest) {
     const token = (await cookies()).get('session')?.value;
     const { searchParams } = new URL(req.url);
     const folder = searchParams.get("folder") ?? "";
+    const refresh = searchParams.get("refresh"); // Force refresh parameter
 
     if (!token) return new Response('Unauthorized', { status: 401 });
 
     const cacheKey = `${token.slice(-16)}:${folder.toLowerCase() || "all"}`;
-    const hit = CACHE[cacheKey];
-    if (hit && hit.expires > Date.now()) return Response.json(hit.payload);
+
+    // Skip cache if refresh parameter is present
+    if (!refresh) {
+        const hit = CACHE[cacheKey];
+        if (hit && hit.expires > Date.now()) return Response.json(hit.payload);
+    }
 
 
     /* proxy to n8n webhook */
