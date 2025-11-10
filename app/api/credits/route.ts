@@ -25,6 +25,20 @@ export async function GET() {
         return NextResponse.json({ error: "Upstream error" }, { status: 502 });
     }
 
-    const data = (await res.json()) as CreditsResponse;
-    return NextResponse.json(data);
+    let data = await res.json();
+
+    // n8n returns an array, take first element
+    if (Array.isArray(data) && data.length > 0) {
+        data = data[0];
+    }
+
+    // Ensure numbers are actually numbers (n8n might return strings)
+    const credits: CreditsResponse = {
+        plan: data.plan,
+        credits_used: Number(data.credits_used) || 0,
+        plan_credits: Number(data.plan_credits) || 0,
+        over_limit: Boolean(data.over_limit),
+    };
+
+    return NextResponse.json(credits);
 }
