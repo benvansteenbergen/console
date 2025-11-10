@@ -11,6 +11,7 @@ interface N8nWorkflow {
     type: "chat" | "form" | "automation";
     url: string;
     avatar?: string;
+    enabled: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -35,7 +36,7 @@ export async function GET() {
     const rows = (await res.json()) as N8nWorkflow[];
 
     const writers = rows
-        .filter((w) => w.type === "chat")
+        .filter((w) => w.type === "chat" && w.enabled === true)
         .map((w) => ({
         id: w.id,
         name: w.name,

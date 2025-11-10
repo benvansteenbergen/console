@@ -11,6 +11,7 @@ interface N8nWorkflow {
     type: "chat" | "form" | "automation";
     url: string;
     avatar?: string;
+    enabled: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -35,7 +36,7 @@ export async function GET() {
     const rows = (await res.json())  as N8nWorkflow[];
 
     const forms = rows
-        .filter((w) => w.type === "form")
+        .filter((w) => w.type === "form" && w.enabled === true)
         .map((w) => {
             // Extract form slug from URL
             // e.g., "https://workflow.wingsuite.io/form/blogpost-demo" -> "blogpost-demo"
