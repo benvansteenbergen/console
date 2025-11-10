@@ -21,7 +21,7 @@
 
 /* Page */
 body{ margin:0; background:var(--ws-bg); color:var(--ws-text); font-family:var(--ws-font); }
-.container{ max-width:980px; margin:0 auto; padding:24px; }
+.container{ max-width:980px; margin:0 auto; padding:24px; text-align:left; }
 
 /* Card (form + submitted box) */
 .card{
@@ -288,7 +288,7 @@ textarea.form-input{ min-height:120px; resize:vertical; }
     align-items:center;
     gap:8px;
     border-radius:12px;
-    padding:10px 20px;
+    padding:10px 16px;
     font-weight:600;
     color:#fff;
     background:var(--ws-primary);
@@ -343,8 +343,8 @@ section > hr{
   }
 
   #submit-btn {
-    width: auto;
-    min-width: 160px;
+    width: 50%;
+    min-width: 200px;
     max-width: 280px;
     margin-left: 0 !important;
     margin-right: auto !important;
