@@ -10,7 +10,7 @@ export const BRAND: Record<string, Branding> = {
         primaryColor: "#0c1d40",
     },
     emotion: {
-        domain: "emotion.wingsuite.io",
+        domain: "ai.emotion.nl",
         name: "Emotion AI Studio",
         logo: "/emotion/logo.svg",
         loginImage: "/emotion/hero.png",
