@@ -63,7 +63,7 @@ export default function Sidebar() {
 
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
-        {href: "/company-private-storage", label: "Private Storage", icon: ServerIcon},
+        {href: "/company-private-storage", label: "Private Storage (beta)", icon: ServerIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
         {href: "/settings", label: "Settings", icon: Cog6ToothIcon},
     ];
