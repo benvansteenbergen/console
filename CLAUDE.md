@@ -117,7 +117,7 @@ console/
 │   └── utils.ts               # Utility functions (cn for Tailwind merge)
 ├── public/
 │   ├── wingsuite/             # Wingsuite brand assets
-│   ├── emotion/               # Emotion AI Studio brand assets
+│   ├── emotion/               # Emotion AI Motion brand assets
 │   └── forms/                 # Static form assets
 ├── tests/                     # Vitest test files
 ├── .env.example               # Example environment variables
@@ -183,7 +183,7 @@ interface CreditsResponse {
 - **Location:** `lib/branding.ts`
 - **Brands Configured:**
   - **wingsuite:** Primary brand (default fallback)
-  - **emotion:** Emotion AI Studio white-label
+  - **emotion:** Emotion AI Motion white-label
 
 ```typescript
 interface Branding {

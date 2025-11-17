@@ -19,6 +19,10 @@ export default function Login() {
     setError(params.get('error'));
   }, []);
 
+  useEffect(() => {
+    document.title = `${branding.name} - Login`;
+  }, [branding.name]);
+
   return (
       <div className="flex h-screen">
         {/* ---------- Hero image (desktop only) ---------- */}

@@ -35,6 +35,10 @@ export async function generateMetadata() {
     const host = headerList.get("host") || "console.wingsuite.io";
     const branding = detectBranding(host);
     return {
+        title: {
+            template: `${branding.name} - %s`,
+            default: branding.name,
+        },
         icons: {
             icon:      branding.logo,
             shortcut:  "/favicon-16x16.png",

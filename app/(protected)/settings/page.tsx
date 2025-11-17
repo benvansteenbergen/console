@@ -1,7 +1,9 @@
 // app/(protected)/settings/page.tsx
 "use client";
 
+import { useEffect } from "react";
 import { useSession } from "@/components/SessionProvider";
+import { useBranding } from "@/components/BrandingProvider";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 
@@ -34,6 +36,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function SettingsPage() {
     const { loading: sessionLoading } = useSession();
+    const branding = useBranding();
     const router = useRouter();
 
     const { data: settings, error: settingsError } = useSWR<SettingsData>(
@@ -42,6 +45,10 @@ export default function SettingsPage() {
     );
 
     const { data: credits } = useSWR<CreditsData>("/api/credits", fetcher);
+
+    useEffect(() => {
+        document.title = `${branding.name} - Settings`;
+    }, [branding.name]);
 
     if (sessionLoading || !settings) {
         return (

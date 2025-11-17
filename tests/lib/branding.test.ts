@@ -10,9 +10,9 @@ describe('branding', () => {
         });
 
         it('should detect emotion brand', () => {
-            const brand = detectBranding('emotion.wingsuite.io');
-            expect(brand.name).toBe('Emotion AI Studio');
-            expect(brand.domain).toBe('emotion.wingsuite.io');
+            const brand = detectBranding('ai.emotion.nl');
+            expect(brand.name).toBe('Emotion AI Motion');
+            expect(brand.domain).toBe('ai.emotion.nl');
         });
 
         it('should return wingsuite as default for unknown hostname', () => {

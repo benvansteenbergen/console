@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
+import { useBranding } from '@/components/BrandingProvider';
 
 export default function CompanyPrivateStorage() {
   const { loading } = useSession();
+  const branding = useBranding();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -13,6 +15,10 @@ export default function CompanyPrivateStorage() {
   const [tags, setTags] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    document.title = `${branding.name} - Private Storage`;
+  }, [branding.name]);
 
   if (loading) {
     return (

@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useBranding } from '@/components/BrandingProvider';
@@ -49,6 +50,10 @@ export default function Dashboard() {
   } = useSWR<Credits>("/api/credits", fetcher);
 
   const branding= useBranding();
+
+  useEffect(() => {
+    document.title = `${branding.name} - Dashboard`;
+  }, [branding.name]);
 
   /* ------------------------------------------------------------------ */
   /*  JSX                                                               */
