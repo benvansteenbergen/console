@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
+import DocumentLibrary from '@/components/DocumentLibrary';
 
 export default function CompanyPrivateStorage() {
   const { loading } = useSession();
@@ -36,10 +37,10 @@ export default function CompanyPrivateStorage() {
     }
 
     // Check file type
-    const allowedTypes = ['.pdf', '.docx', '.txt'];
+    const allowedTypes = ['.pdf'];
     const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
     if (!fileExtension || !allowedTypes.includes(fileExtension)) {
-      return 'Invalid file type. Only PDF, DOCX, and TXT files are allowed.';
+      return 'Invalid file type. Only PDF files are allowed.';
     }
 
     return null;
@@ -159,7 +160,7 @@ export default function CompanyPrivateStorage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.docx,.txt"
+            accept=".pdf"
             onChange={handleFileInputChange}
             className="hidden"
           />
@@ -193,7 +194,7 @@ export default function CompanyPrivateStorage() {
                 Drop your file here, or click to browse
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                Supports PDF, DOCX, TXT (max 10MB)
+                Supports PDF only (max 10MB)
               </p>
             </div>
           )}
@@ -266,17 +267,13 @@ export default function CompanyPrivateStorage() {
         )}
       </div>
 
-      {/* Coming Soon Sections */}
-      <div className="space-y-4">
-        <div className="bg-gray-50 rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300">
-          <h2 className="text-xl font-semibold mb-2 text-gray-500">Document Library</h2>
-          <p className="text-gray-400">View and manage your uploaded documents (coming soon)</p>
-        </div>
+      {/* Document Library */}
+      <DocumentLibrary />
 
-        <div className="bg-gray-50 rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300">
-          <h2 className="text-xl font-semibold mb-2 text-gray-500">Test Search</h2>
-          <p className="text-gray-400">Chat with your knowledge base to test search quality (coming soon)</p>
-        </div>
+      {/* Coming Soon: Test Search */}
+      <div className="bg-gray-50 rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300">
+        <h2 className="text-xl font-semibold mb-2 text-gray-500">Test Search</h2>
+        <p className="text-gray-400">Chat with your knowledge base to test search quality (coming soon)</p>
       </div>
     </div>
   );

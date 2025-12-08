@@ -26,12 +26,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    const allowedTypes = ['.pdf', '.docx', '.txt'];
+    const allowedTypes = ['.pdf'];
     const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
     if (!fileExtension || !allowedTypes.includes(fileExtension)) {
       return NextResponse.json({
         success: false,
-        error: 'Invalid file type. Only PDF, DOCX, and TXT files are allowed.'
+        error: 'Invalid file type. Only PDF files are allowed.'
       }, { status: 400 });
     }
 
