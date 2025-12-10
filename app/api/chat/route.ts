@@ -189,9 +189,9 @@ ${documentText}
 
     // 🟡 4️⃣  Request response
     const result = await streamText({
-      model: openai("gpt-5-mini"),
+      model: openai("gpt-4o-mini"),
       messages: fullMessages,
-      temperature: 0.6,
+      temperature: 0.7,
     });
 
     // 🟡 5️⃣  Get complete text from stream (ORIGINAL WORKING METHOD)
