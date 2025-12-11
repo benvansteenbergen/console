@@ -196,19 +196,22 @@ ${documentText}
       temperature: 0.7,
     });
 
-    // 🟡 5️⃣  Get complete text from stream (ORIGINAL WORKING METHOD)
+    // 🟡 5️⃣  Get complete text from stream
     let text: string;
     try {
-      const streamResponse = await result.toTextStreamResponse();
-      text = await streamResponse.text();
+      // Use the proper Vercel AI SDK method to get full text
+      text = await result.text;
 
       if (!text || text.trim().length === 0) {
         console.error('Chat API: Empty response from OpenAI');
-        text = '{"assistant_message": "I apologize, but I received an empty response. Please try again."}';
+        console.error('OpenAI API Key present:', !!process.env.OPENAI_API_KEY);
+        console.error('Model:', 'gpt-4o-mini');
+        text = '{"assistant_message": "I apologize, but I received an empty response. Please check OpenAI API key configuration."}';
       }
     } catch (streamError) {
       console.error('Chat API: Stream error:', streamError);
-      text = '{"assistant_message": "I encountered an error while processing. Please try again."}';
+      console.error('OpenAI API Key present:', !!process.env.OPENAI_API_KEY);
+      text = '{"assistant_message": "I encountered an error while processing. Please check server logs."}';
     }
 
     // 🟡 6️⃣  Robust JSON parsing with fallbacks
