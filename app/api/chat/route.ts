@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
     // 🟡 1️⃣  Fetch current document text
     // Use CONSOLE_BASE_URL to avoid self-referencing issues
     const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
+    console.log('Chat API: Using baseUrl:', baseUrl);
+    console.log('Chat API: Fetching document with fileId:', fileId);
 
     const docRes = await fetch(`${baseUrl}/api/drive/file?fileId=${fileId}`, {
       cache: "no-store",
@@ -119,9 +121,14 @@ export async function POST(req: NextRequest) {
     let documentText = "";
     if (!docRes.ok) {
       console.error("⚠️ Failed to load document content:", docRes.status);
+      console.error("⚠️ Document fetch URL:", `${baseUrl}/api/drive/file?fileId=${fileId}`);
     } else {
       const docData = await safeJsonParse<{ content?: string }>(docRes, 'Chat API - Document Fetch');
       documentText = docData?.content ?? "";
+      console.log('Chat API: Document fetched successfully, length:', documentText.length);
+      if (documentText.length === 0) {
+        console.warn('Chat API: WARNING - Document text is empty!');
+      }
     }
 
     // 🟡 2️⃣  Build system prompt with doc context
