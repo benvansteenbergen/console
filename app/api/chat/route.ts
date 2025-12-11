@@ -193,13 +193,24 @@ ${documentText}
     console.log('Chat API: Requesting from OpenAI with', fullMessages.length, 'messages');
     console.log('Chat API: System prompt length:', fullMessages[0]?.content?.toString().length || 0);
 
-    const result = await streamText({
-      model: openai("gpt-4o-mini"),
-      messages: fullMessages,
-      temperature: 0.7,
-    });
+    let result;
+    try {
+      result = await streamText({
+        model: openai("gpt-4o-mini"),
+        messages: fullMessages,
+        temperature: 0.7,
+      });
+      console.log('Chat API: streamText result received');
+    } catch (openaiError) {
+      console.error('Chat API: OpenAI API error:', openaiError);
+      console.error('Error details:', JSON.stringify(openaiError, null, 2));
+      throw openaiError;
+    }
 
-    console.log('Chat API: streamText result received');
+    // Check if response has any warnings or errors
+    if (result.warnings) {
+      console.warn('Chat API: Warnings from OpenAI:', result.warnings);
+    }
 
     // 🟡 5️⃣  Get complete text from stream
     let text: string;
@@ -207,26 +218,41 @@ ${documentText}
       // Read the stream manually to avoid hanging
       console.log('Chat API: Reading text stream...');
       const chunks: string[] = [];
+      let chunkCount = 0;
 
       for await (const chunk of result.textStream) {
+        chunkCount++;
         chunks.push(chunk);
+        if (chunkCount === 1) {
+          console.log('Chat API: First chunk received, length:', chunk.length);
+        }
       }
 
       text = chunks.join('');
       console.log('Chat API: Got text, length:', text?.length || 0, 'chunks:', chunks.length);
 
+      // Check finish reason
+      const finishReason = await result.finishReason;
+      console.log('Chat API: Finish reason:', finishReason);
+
+      // Check usage
+      const usage = await result.usage;
+      console.log('Chat API: Token usage:', JSON.stringify(usage));
+
       if (!text || text.trim().length === 0) {
         console.error('Chat API: Empty response from OpenAI');
-        console.error('OpenAI API Key present:', !!process.env.OPENAI_API_KEY);
+        console.error('OpenAI API Key format:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
         console.error('Model:', 'gpt-4o-mini');
         console.error('Messages count:', fullMessages.length);
         console.error('First message role:', fullMessages[0]?.role);
-        text = '{"assistant_message": "I apologize, but I received an empty response. Please check OpenAI API key configuration."}';
+        console.error('Finish reason:', finishReason);
+        text = '{"assistant_message": "I apologize, but I received an empty response. Finish reason: ' + finishReason + '"}';
       }
     } catch (streamError) {
       console.error('Chat API: Stream error:', streamError);
       console.error('Error type:', typeof streamError);
       console.error('Error message:', (streamError as Error)?.message);
+      console.error('Error stack:', (streamError as Error)?.stack);
       text = '{"assistant_message": "I encountered an error while processing. Please check server logs."}';
     }
 
