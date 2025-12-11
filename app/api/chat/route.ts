@@ -204,10 +204,16 @@ ${documentText}
     // 🟡 5️⃣  Get complete text from stream
     let text: string;
     try {
-      // Use the proper Vercel AI SDK method to get full text
-      console.log('Chat API: Awaiting result.text...');
-      text = await result.text;
-      console.log('Chat API: Got text, length:', text?.length || 0);
+      // Read the stream manually to avoid hanging
+      console.log('Chat API: Reading text stream...');
+      const chunks: string[] = [];
+
+      for await (const chunk of result.textStream) {
+        chunks.push(chunk);
+      }
+
+      text = chunks.join('');
+      console.log('Chat API: Got text, length:', text?.length || 0, 'chunks:', chunks.length);
 
       if (!text || text.trim().length === 0) {
         console.error('Chat API: Empty response from OpenAI');
