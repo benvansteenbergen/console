@@ -190,27 +190,37 @@ ${documentText}
     ];
 
     // 🟡 4️⃣  Request response
+    console.log('Chat API: Requesting from OpenAI with', fullMessages.length, 'messages');
+    console.log('Chat API: System prompt length:', fullMessages[0]?.content?.toString().length || 0);
+
     const result = await streamText({
       model: openai("gpt-4o-mini"),
       messages: fullMessages,
       temperature: 0.7,
     });
 
+    console.log('Chat API: streamText result received');
+
     // 🟡 5️⃣  Get complete text from stream
     let text: string;
     try {
       // Use the proper Vercel AI SDK method to get full text
+      console.log('Chat API: Awaiting result.text...');
       text = await result.text;
+      console.log('Chat API: Got text, length:', text?.length || 0);
 
       if (!text || text.trim().length === 0) {
         console.error('Chat API: Empty response from OpenAI');
         console.error('OpenAI API Key present:', !!process.env.OPENAI_API_KEY);
         console.error('Model:', 'gpt-4o-mini');
+        console.error('Messages count:', fullMessages.length);
+        console.error('First message role:', fullMessages[0]?.role);
         text = '{"assistant_message": "I apologize, but I received an empty response. Please check OpenAI API key configuration."}';
       }
     } catch (streamError) {
       console.error('Chat API: Stream error:', streamError);
-      console.error('OpenAI API Key present:', !!process.env.OPENAI_API_KEY);
+      console.error('Error type:', typeof streamError);
+      console.error('Error message:', (streamError as Error)?.message);
       text = '{"assistant_message": "I encountered an error while processing. Please check server logs."}';
     }
 
