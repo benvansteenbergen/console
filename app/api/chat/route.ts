@@ -107,8 +107,6 @@ export async function POST(req: NextRequest) {
     // 🟡 1️⃣  Fetch current document text
     // Use CONSOLE_BASE_URL to avoid self-referencing issues
     const baseUrl = process.env.CONSOLE_BASE_URL || 'http://localhost:3000';
-    console.log('Chat API: Using baseUrl:', baseUrl);
-    console.log('Chat API: Fetching document with fileId:', fileId);
 
     const docRes = await fetch(`${baseUrl}/api/drive/file?fileId=${fileId}`, {
       cache: "no-store",
@@ -121,14 +119,9 @@ export async function POST(req: NextRequest) {
     let documentText = "";
     if (!docRes.ok) {
       console.error("⚠️ Failed to load document content:", docRes.status);
-      console.error("⚠️ Document fetch URL:", `${baseUrl}/api/drive/file?fileId=${fileId}`);
     } else {
       const docData = await safeJsonParse<{ content?: string }>(docRes, 'Chat API - Document Fetch');
       documentText = docData?.content ?? "";
-      console.log('Chat API: Document fetched successfully, length:', documentText.length);
-      if (documentText.length === 0) {
-        console.warn('Chat API: WARNING - Document text is empty!');
-      }
     }
 
     // 🟡 2️⃣  Build system prompt with doc context
@@ -197,101 +190,23 @@ ${documentText}
     ];
 
     // 🟡 4️⃣  Request response
-    console.log('Chat API: Requesting from OpenAI with', fullMessages.length, 'messages');
-    console.log('Chat API: System prompt length:', fullMessages[0]?.content?.toString().length || 0);
-
-    let result;
-    try {
-      result = await streamText({
-        model: openai("gpt-4o-mini"),
-        messages: fullMessages,
-        temperature: 0.7,
-      });
-      console.log('Chat API: streamText result received');
-    } catch (openaiError) {
-      console.error('Chat API: OpenAI API error:', openaiError);
-      console.error('Error details:', JSON.stringify(openaiError, null, 2));
-      throw openaiError;
-    }
-
-    // Check if response has any warnings or errors
-    if (result.warnings) {
-      console.warn('Chat API: Warnings from OpenAI:', result.warnings);
-    }
+    const result = await streamText({
+      model: openai("gpt-4o-mini"),
+      messages: fullMessages,
+      temperature: 0.7,
+    });
 
     // 🟡 5️⃣  Get complete text from stream
-    let text: string;
-    try {
-      // Read the stream manually to avoid hanging
-      console.log('Chat API: Reading text stream...');
-      const chunks: string[] = [];
-      let chunkCount = 0;
-
-      for await (const chunk of result.textStream) {
-        chunkCount++;
-        chunks.push(chunk);
-        if (chunkCount === 1) {
-          console.log('Chat API: First chunk received, length:', chunk.length);
-        }
-      }
-
-      text = chunks.join('');
-      console.log('Chat API: Got text, length:', text?.length || 0, 'chunks:', chunks.length);
-
-      // Check finish reason
-      const finishReason = await result.finishReason;
-      console.log('Chat API: Finish reason:', finishReason);
-
-      // Check usage
-      const usage = await result.usage;
-      console.log('Chat API: Token usage:', JSON.stringify(usage));
-
-      if (!text || text.trim().length === 0) {
-        console.error('Chat API: Empty response from OpenAI');
-        console.error('OpenAI API Key format:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
-        console.error('Model:', 'gpt-4o-mini');
-        console.error('Messages count:', fullMessages.length);
-        console.error('First message role:', fullMessages[0]?.role);
-        console.error('Finish reason:', finishReason);
-        text = '{"assistant_message": "I apologize, but I received an empty response. Finish reason: ' + finishReason + '"}';
-      }
-    } catch (streamError) {
-      console.error('Chat API: Stream error:', streamError);
-      console.error('Error type:', typeof streamError);
-      console.error('Error message:', (streamError as Error)?.message);
-      console.error('Error stack:', (streamError as Error)?.stack);
-      text = '{"assistant_message": "I encountered an error while processing. Please check server logs."}';
-    }
+    const streamResponse = await result.toTextStreamResponse();
+    const text = await streamResponse.text();
 
     // 🟡 6️⃣  Robust JSON parsing with fallbacks
     const parsed = parseAIResponse(text, documentText);
 
-    // Add debug info to response so you can see what's happening
-    const responseWithDebug = {
-      ...parsed,
-      _debug: {
-        rawLength: text?.length || 0,
-        rawPreview: text?.substring(0, 500) || "",
-        rawType: typeof text,
-      }
-    };
-
-    // Safe JSON stringify
-    try {
-      return new Response(JSON.stringify(responseWithDebug), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (stringifyError) {
-      console.error('Chat API: JSON stringify error:', stringifyError);
-      return new Response(JSON.stringify({
-        assistant_message: "I encountered an error formatting the response. Please try again.",
-        suggested_text: documentText
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    return new Response(JSON.stringify(parsed), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response("Failed to connect to OpenAI API", { status: 500 });
