@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { safeJsonParse } from "@/lib/api-utils";
 
 export const runtime = "edge";
 
@@ -115,12 +116,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let documentText = "";
     if (!docRes.ok) {
-      console.warn("⚠️ Failed to load document content:", docRes.status);
+      console.error("⚠️ Failed to load document content:", docRes.status);
+    } else {
+      const docData = await safeJsonParse<{ content?: string }>(docRes, 'Chat API - Document Fetch');
+      documentText = docData?.content ?? "";
     }
-
-    const docData = (await docRes.json()) as { content?: string };
-    const documentText = docData?.content ?? "";
 
     // 🟡 2️⃣  Build system prompt with doc context
     const personaIntro = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.general;
@@ -195,7 +197,19 @@ ${documentText}
     });
 
     // 🟡 5️⃣  Get complete text from stream (ORIGINAL WORKING METHOD)
-    const text = await (await result.toTextStreamResponse()).text();
+    let text: string;
+    try {
+      const streamResponse = await result.toTextStreamResponse();
+      text = await streamResponse.text();
+
+      if (!text || text.trim().length === 0) {
+        console.error('Chat API: Empty response from OpenAI');
+        text = '{"assistant_message": "I apologize, but I received an empty response. Please try again."}';
+      }
+    } catch (streamError) {
+      console.error('Chat API: Stream error:', streamError);
+      text = '{"assistant_message": "I encountered an error while processing. Please try again."}';
+    }
 
     // 🟡 6️⃣  Robust JSON parsing with fallbacks
     const parsed = parseAIResponse(text, documentText);
@@ -210,10 +224,22 @@ ${documentText}
       }
     };
 
-    return new Response(JSON.stringify(responseWithDebug), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    // Safe JSON stringify
+    try {
+      return new Response(JSON.stringify(responseWithDebug), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (stringifyError) {
+      console.error('Chat API: JSON stringify error:', stringifyError);
+      return new Response(JSON.stringify({
+        assistant_message: "I encountered an error formatting the response. Please try again.",
+        suggested_text: documentText
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response("Failed to connect to OpenAI API", { status: 500 });
