@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { safeJsonParse, fetchFromN8n } from "@/lib/api-utils";
 
 interface CreditsResponse {
     plan: string;
@@ -16,16 +17,19 @@ export async function GET() {
     if (!jwt)
         return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    const res = await fetch(`${process.env.N8N_BASE_URL}/webhook/portal-usage`, {
-        headers: { cookie: `auth=${jwt};` },
+    const res = await fetchFromN8n('/webhook/portal-usage', jwt, {
         cache: "no-store",
     });
 
     if (!res.ok) {
+        console.error(`Credits API: n8n returned ${res.status}`);
         return NextResponse.json({ error: "Upstream error" }, { status: 502 });
     }
 
-    let data = await res.json();
+    let data = await safeJsonParse(res, 'Credits API');
+    if (!data) {
+        return NextResponse.json({ error: "Invalid response from upstream" }, { status: 502 });
+    }
 
     // n8n returns an array, take first element
     if (Array.isArray(data) && data.length > 0) {
@@ -33,11 +37,13 @@ export async function GET() {
     }
 
     // Ensure numbers are actually numbers (n8n might return strings)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawData = data as any;
     const credits: CreditsResponse = {
-        plan: data.plan,
-        credits_used: Number(data.credits_used) || 0,
-        plan_credits: Number(data.plan_credits) || 0,
-        over_limit: Boolean(data.over_limit),
+        plan: rawData.plan,
+        credits_used: Number(rawData.credits_used) || 0,
+        plan_credits: Number(rawData.plan_credits) || 0,
+        over_limit: Boolean(rawData.over_limit),
     };
 
     return NextResponse.json(credits);

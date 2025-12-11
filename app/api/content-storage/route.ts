@@ -42,9 +42,26 @@ export async function GET(req: NextRequest) {
         `${process.env.N8N_BASE_URL}/webhook/content-storage?folder=${encodeURIComponent(folder)}`,
         { headers: { cookie: `auth=${token};` } },
     );
-    if (!res.ok)  return new Response('upstream error', { status: 502 });
+    if (!res.ok) {
+        console.error(`Content-storage API: n8n returned ${res.status}`);
+        return new Response('upstream error', { status: 502 });
+    }
 
-    const raw: UpstreamPayload[] = await res.json();
+    // Check if response has content
+    const text = await res.text();
+    if (!text || text.trim().length === 0) {
+        console.error('Content-storage API: Empty response from n8n');
+        return new Response('Empty response from upstream', { status: 502 });
+    }
+
+    // Try to parse JSON
+    let raw: UpstreamPayload[];
+    try {
+        raw = JSON.parse(text);
+    } catch {
+        console.error('Content-storage API: Invalid JSON from n8n:', text.substring(0, 200));
+        return new Response('Invalid response from upstream', { status: 502 });
+    }
     const flat: FolderStat[] = raw.map((obj) => {
         const [key] = Object.keys(obj);
         return { folder: key, unseen: obj[key].newFiles, items: obj[key].items };
