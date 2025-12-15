@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     n8nFormData.append('title', formData.get('title') as string || file.name);
     n8nFormData.append('description', formData.get('description') as string || '');
     n8nFormData.append('tags', formData.get('tags') as string || '');
+    n8nFormData.append('visibility', formData.get('visibility') as string || 'private');
 
     const response = await fetch(n8nUrl, {
       method: 'POST',
