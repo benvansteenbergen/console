@@ -4,14 +4,10 @@ import { useState } from 'react';
 import useSWR from 'swr';
 
 interface Document {
-  documentId: string;
+  document_id: string;
   title: string;
-  description: string;
-  tags: string[];
-  filename: string;
-  fileType: string;
-  uploadedAt: string;
-  totalChunks: number;
+  chunks: number;
+  creationTimeUnix: number;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -99,7 +95,7 @@ export default function DocumentLibrary() {
         <div className="space-y-3">
           {documents.map((doc) => (
             <div
-              key={doc.documentId}
+              key={doc.document_id}
               className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div className="flex-1 min-w-0">
@@ -117,36 +113,19 @@ export default function DocumentLibrary() {
                   </svg>
                   <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
                 </div>
-                {doc.description && (
-                  <p className="text-sm text-gray-600 mt-1 truncate">{doc.description}</p>
-                )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                  <span>{doc.filename}</span>
+                  <span>{doc.chunks} chunks</span>
                   <span>•</span>
-                  <span>{doc.totalChunks} chunks</span>
-                  <span>•</span>
-                  <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                  <span>{new Date(doc.creationTimeUnix).toLocaleDateString()}</span>
                 </div>
-                {doc.tags && doc.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {doc.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-block px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <button
-                onClick={() => handleDelete(doc.documentId, doc.title)}
-                disabled={deleting === doc.documentId}
+                onClick={() => handleDelete(doc.document_id, doc.title)}
+                disabled={deleting === doc.document_id}
                 className="ml-4 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               >
-                {deleting === doc.documentId ? (
+                {deleting === doc.document_id ? (
                   <span className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></div>
                     Deleting...
