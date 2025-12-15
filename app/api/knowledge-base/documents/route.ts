@@ -7,7 +7,7 @@ interface N8nDocument {
   chunks: number;
   date: number;
   visibility: 'private' | 'shared';
-  uploaded_by: string;
+  canDelete: boolean;
 }
 
 export async function GET(_request: NextRequest) {
@@ -54,7 +54,7 @@ export async function GET(_request: NextRequest) {
         chunks: doc.chunks,
         creationTimeUnix: doc.date,
         visibility: doc.visibility,
-        uploaded_by: doc.uploaded_by,
+        canDelete: doc.canDelete,
       }));
     }
 

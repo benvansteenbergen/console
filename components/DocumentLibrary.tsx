@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { useSession } from './SessionProvider';
 
 interface Document {
   document_id: string;
@@ -10,13 +9,12 @@ interface Document {
   chunks: number;
   creationTimeUnix: number;
   visibility: 'private' | 'shared';
-  uploaded_by: string;
+  canDelete: boolean;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function DocumentLibrary() {
-  const { data: sessionData } = useSession();
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; documents: Document[] }>(
     '/api/knowledge-base/documents',
     fetcher,
@@ -127,7 +125,7 @@ export default function DocumentLibrary() {
                 </div>
               </div>
 
-              {sessionData?.email && doc.uploaded_by === sessionData.email && (
+              {doc.canDelete && (
                 <button
                   onClick={() => handleDelete(doc.document_id, doc.title)}
                   disabled={deleting === doc.document_id}
