@@ -1,6 +1,13 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+interface N8nDocument {
+  id: string;
+  title: string;
+  chunks: number;
+  date: number;
+}
+
 export async function GET(_request: NextRequest) {
   const cookieStore = await cookies();
   const jwt = cookieStore.get('session')?.value;
@@ -30,7 +37,27 @@ export async function GET(_request: NextRequest) {
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
+
+    // Transform n8n response to expected format
+    // n8n returns: [{ "doc-id": { chunks, id, title, date } }]
+    // We need: { success: true, documents: [{ document_id, title, chunks, creationTimeUnix }] }
+
+    let documents = [];
+
+    if (Array.isArray(result) && result.length > 0) {
+      const docsObject = result[0];
+      documents = Object.values(docsObject).map((doc: N8nDocument) => ({
+        document_id: doc.id,
+        title: doc.title,
+        chunks: doc.chunks,
+        creationTimeUnix: doc.date,
+      }));
+    }
+
+    return NextResponse.json({
+      success: true,
+      documents
+    });
   } catch (error) {
     console.error('List documents error:', error);
     return NextResponse.json({
