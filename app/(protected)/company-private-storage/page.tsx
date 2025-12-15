@@ -14,6 +14,7 @@ export default function CompanyPrivateStorage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
+  const [visibility, setVisibility] = useState<'private' | 'shared'>('private');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,6 +98,7 @@ export default function CompanyPrivateStorage() {
       formData.append('title', title);
       formData.append('description', description);
       formData.append('tags', tags);
+      formData.append('visibility', visibility);
 
       const response = await fetch('/api/knowledge-base/upload', {
         method: 'POST',
@@ -115,6 +117,7 @@ export default function CompanyPrivateStorage() {
         setTitle('');
         setDescription('');
         setTags('');
+        setVisibility('private');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -241,6 +244,40 @@ export default function CompanyPrivateStorage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="product, features, pricing (comma-separated)"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Visibility *
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="private"
+                    checked={visibility === 'private'}
+                    onChange={(e) => setVisibility(e.target.value as 'private' | 'shared')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-3 flex items-center">
+                    <span className="text-gray-900 font-medium">🔒 Private</span>
+                    <span className="ml-2 text-sm text-gray-500">(only you can access)</span>
+                  </span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="shared"
+                    checked={visibility === 'shared'}
+                    onChange={(e) => setVisibility(e.target.value as 'private' | 'shared')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-3 flex items-center">
+                    <span className="text-gray-900 font-medium">👥 Organization</span>
+                    <span className="ml-2 text-sm text-gray-500">(shared with your team)</span>
+                  </span>
+                </label>
+              </div>
             </div>
 
             <button

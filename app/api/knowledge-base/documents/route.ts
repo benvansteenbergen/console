@@ -6,6 +6,8 @@ interface N8nDocument {
   title: string;
   chunks: number;
   date: number;
+  visibility: 'private' | 'shared';
+  uploaded_by: string;
 }
 
 export async function GET(_request: NextRequest) {
@@ -51,6 +53,8 @@ export async function GET(_request: NextRequest) {
         title: doc.title,
         chunks: doc.chunks,
         creationTimeUnix: doc.date,
+        visibility: doc.visibility,
+        uploaded_by: doc.uploaded_by,
       }));
     }
 

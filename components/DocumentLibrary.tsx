@@ -2,17 +2,21 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { useSession } from './SessionProvider';
 
 interface Document {
   document_id: string;
   title: string;
   chunks: number;
   creationTimeUnix: number;
+  visibility: 'private' | 'shared';
+  uploaded_by: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function DocumentLibrary() {
+  const { data: sessionData } = useSession();
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; documents: Document[] }>(
     '/api/knowledge-base/documents',
     fetcher,
@@ -112,6 +116,9 @@ export default function DocumentLibrary() {
                     />
                   </svg>
                   <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
+                  <span className="text-lg" title={doc.visibility === 'private' ? 'Private document' : 'Shared with organization'}>
+                    {doc.visibility === 'private' ? '🔒' : '👥'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                   <span>{doc.chunks} chunks</span>
@@ -120,20 +127,22 @@ export default function DocumentLibrary() {
                 </div>
               </div>
 
-              <button
-                onClick={() => handleDelete(doc.document_id, doc.title)}
-                disabled={deleting === doc.document_id}
-                className="ml-4 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-              >
-                {deleting === doc.document_id ? (
-                  <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></div>
-                    Deleting...
-                  </span>
-                ) : (
-                  'Delete'
-                )}
-              </button>
+              {sessionData?.email && doc.uploaded_by === sessionData.email && (
+                <button
+                  onClick={() => handleDelete(doc.document_id, doc.title)}
+                  disabled={deleting === doc.document_id}
+                  className="ml-4 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  {deleting === doc.document_id ? (
+                    <span className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></div>
+                      Deleting...
+                    </span>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              )}
             </div>
           ))}
         </div>
