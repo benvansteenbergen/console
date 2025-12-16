@@ -110,7 +110,7 @@ export default function CompanyPrivateStorage() {
       if (result.success) {
         setUploadStatus({
           type: 'success',
-          message: `Document uploaded successfully! ${result.totalChunks} chunks created.`
+          message: 'Document uploaded successfully!'
         });
         // Reset form
         setSelectedFile(null);
