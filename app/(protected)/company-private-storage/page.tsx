@@ -4,16 +4,35 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import DocumentLibrary from '@/components/DocumentLibrary';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+}
+
+const CLUSTER_OPTIONS = [
+  { value: 'general_company_info', label: 'General Company Info' },
+  { value: 'product_sheets', label: 'Product Sheets' },
+  { value: 'pricing_sales', label: 'Pricing & Sales' },
+  { value: 'documentation', label: 'Documentation' },
+  { value: 'marketing_materials', label: 'Marketing Materials' },
+  { value: 'case_studies', label: 'Case Studies' },
+  { value: 'technical_specs', label: 'Technical Specs' },
+  { value: 'training_materials', label: 'Training Materials' },
+  { value: 'no_cluster', label: 'No Cluster' },
+];
 
 export default function CompanyPrivateStorage() {
   const { loading } = useSession();
   const branding = useBranding();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
+  const [cluster, setCluster] = useState('no_cluster');
   const [visibility, setVisibility] = useState<'private' | 'shared'>('private');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +66,59 @@ export default function CompanyPrivateStorage() {
     return null;
   };
 
-  const handleFileSelect = (file: File) => {
+  const extractPDFText = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let text = '';
+      // Extract text from first 3 pages max
+      const numPages = Math.min(pdf.numPages, 3);
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map((item: pdfjsLib.TextItem) => {
+          if ('str' in item) {
+            return item.str;
+          }
+          return '';
+        }).join(' ');
+        text += pageText + '\n';
+      }
+
+      return text.substring(0, 2000); // First 2000 chars
+    } catch (error) {
+      console.error('PDF text extraction failed:', error);
+      return '';
+    }
+  };
+
+  const analyzeDocument = async (excerpt: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('excerpt', excerpt);
+
+      const response = await fetch('/api/knowledge-base/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDescription(result.description);
+        setCluster(result.suggested_cluster);
+      } else {
+        setUploadStatus({ type: 'error', message: result.error });
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setUploadStatus({ type: 'error', message: 'Cannot connect to helper agent. But can proceed.' });
+    }
+  };
+
+  const handleFileSelect = async (file: File) => {
     const error = validateFile(file);
     if (error) {
       setUploadStatus({ type: 'error', message: error });
@@ -57,6 +128,16 @@ export default function CompanyPrivateStorage() {
     setSelectedFile(file);
     setTitle(file.name.replace(/\.[^.]+$/, '')); // Remove extension for default title
     setUploadStatus(null);
+
+    // Auto-analyze document
+    setAnalyzing(true);
+    const excerpt = await extractPDFText(file);
+    if (excerpt) {
+      await analyzeDocument(excerpt);
+    } else {
+      setUploadStatus({ type: 'error', message: 'Cannot connect to helper agent. But can proceed.' });
+    }
+    setAnalyzing(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -97,7 +178,7 @@ export default function CompanyPrivateStorage() {
       formData.append('file', selectedFile);
       formData.append('title', title);
       formData.append('description', description);
-      formData.append('tags', tags);
+      formData.append('cluster', cluster);
       formData.append('visibility', visibility);
 
       const response = await fetch('/api/knowledge-base/upload', {
@@ -116,7 +197,7 @@ export default function CompanyPrivateStorage() {
         setSelectedFile(null);
         setTitle('');
         setDescription('');
-        setTags('');
+        setCluster('no_cluster');
         setVisibility('private');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -235,15 +316,23 @@ export default function CompanyPrivateStorage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tags
+                Document Cluster *
               </label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
+              <select
+                value={cluster}
+                onChange={(e) => setCluster(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="product, features, pricing (comma-separated)"
-              />
+                disabled={analyzing}
+              >
+                {CLUSTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {analyzing && (
+                <p className="text-xs text-gray-500 mt-1">Analyzing document...</p>
+              )}
             </div>
 
             <div>
