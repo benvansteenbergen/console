@@ -62,30 +62,22 @@ export default function CompanyPrivateStorage() {
 
   const extractPDFText = async (file: File): Promise<string> => {
     try {
-      // Dynamic import to avoid server-side bundling issues
-      const pdfjsLib = await import('pdfjs-dist');
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Configure worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const response = await fetch('/api/knowledge-base/extract-text', {
+        method: 'POST',
+        body: formData,
+      });
 
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const result = await response.json();
 
-      let text = '';
-      // Extract text from first 3 pages max
-      const numPages = Math.min(pdf.numPages, 3);
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items
-          .filter((item): item is typeof item & { str: string } => 'str' in item)
-          .map(item => item.str)
-          .join(' ');
-        text += pageText + '\n';
+      if (result.success && result.text) {
+        return result.text;
+      } else {
+        console.error('Text extraction failed:', result.error);
+        return '';
       }
-
-      return text.substring(0, 2000); // First 2000 chars
     } catch (error) {
       console.error('PDF text extraction failed:', error);
       return '';
