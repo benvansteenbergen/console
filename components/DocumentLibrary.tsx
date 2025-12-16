@@ -10,20 +10,52 @@ interface Document {
   creationTimeUnix: number;
   visibility: 'private' | 'shared';
   canDelete: boolean;
+  cluster?: string;
 }
+
+interface ClusterStat {
+  docs: number;
+  chunks: number;
+}
+
+interface DocumentLibraryProps {
+  onDataLoaded?: (clusterStats: { [key: string]: ClusterStat }) => void;
+}
+
+const CLUSTER_LABELS: { [key: string]: string } = {
+  general_company_info: 'General Company Info',
+  product_sheets: 'Product Sheets',
+  pricing_sales: 'Pricing & Sales',
+  documentation: 'Documentation',
+  marketing_materials: 'Marketing Materials',
+  case_studies: 'Case Studies',
+  technical_specs: 'Technical Specs',
+  training_materials: 'Training Materials',
+  no_cluster: 'Uncategorized',
+};
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export default function DocumentLibrary() {
-  const { data, error, isLoading, mutate } = useSWR<{ success: boolean; documents: Document[] }>(
+export default function DocumentLibrary({ onDataLoaded }: DocumentLibraryProps) {
+  const { data, error, isLoading, mutate } = useSWR<{
+    success: boolean;
+    documents: Document[];
+    clusterStats?: { [key: string]: ClusterStat };
+  }>(
     '/api/knowledge-base/documents',
     fetcher,
     {
-      refreshInterval: 0, // Only fetch on mount and manual refresh
+      refreshInterval: 0,
+      onSuccess: (data) => {
+        if (data?.clusterStats && onDataLoaded) {
+          onDataLoaded(data.clusterStats);
+        }
+      },
     }
   );
 
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedCluster, setSelectedCluster] = useState<string>('all');
 
   const handleDelete = async (documentId: string, title: string) => {
     if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
@@ -75,23 +107,53 @@ export default function DocumentLibrary() {
     );
   }
 
-  const documents = data?.documents || [];
+  const allDocuments = data?.documents || [];
+
+  // Filter documents by selected cluster
+  const documents = selectedCluster === 'all'
+    ? allDocuments
+    : allDocuments.filter(doc => doc.cluster === selectedCluster);
+
+  // Get unique clusters from documents for filter dropdown
+  const availableClusters = Array.from(
+    new Set(allDocuments.map(doc => doc.cluster).filter(Boolean))
+  ).sort();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Your Documents</h2>
-        <button
-          onClick={() => mutate()}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-4">
+          {availableClusters.length > 0 && (
+            <select
+              value={selectedCluster}
+              onChange={(e) => setSelectedCluster(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Clusters</option>
+              {availableClusters.map((cluster) => (
+                <option key={cluster} value={cluster}>
+                  {CLUSTER_LABELS[cluster as string] || cluster}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => mutate()}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {documents.length === 0 ? (
+      {allDocuments.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No documents uploaded yet. Upload your first PDF above to get started.
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No documents found in this cluster.
         </div>
       ) : (
         <div className="space-y-3">

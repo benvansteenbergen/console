@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import DocumentLibrary from '@/components/DocumentLibrary';
+import KnowledgeBaseOverview from '@/components/KnowledgeBaseOverview';
 
 const CLUSTER_OPTIONS = [
   { value: 'general_company_info', label: 'General Company Info' },
@@ -17,6 +18,11 @@ const CLUSTER_OPTIONS = [
   { value: 'no_cluster', label: 'No Cluster' },
 ];
 
+interface ClusterStat {
+  docs: number;
+  chunks: number;
+}
+
 export default function CompanyPrivateStorage() {
   const { loading } = useSession();
   const branding = useBranding();
@@ -29,6 +35,7 @@ export default function CompanyPrivateStorage() {
   const [cluster, setCluster] = useState('no_cluster');
   const [visibility, setVisibility] = useState<'private' | 'shared'>('private');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [clusterStats, setClusterStats] = useState<{ [key: string]: ClusterStat } | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -383,14 +390,11 @@ export default function CompanyPrivateStorage() {
         )}
       </div>
 
-      {/* Document Library */}
-      <DocumentLibrary />
+      {/* Knowledge Base Overview */}
+      <KnowledgeBaseOverview clusterStats={clusterStats} />
 
-      {/* Coming Soon: Test Search */}
-      <div className="bg-gray-50 rounded-lg shadow-md p-6 border-2 border-dashed border-gray-300">
-        <h2 className="text-xl font-semibold mb-2 text-gray-500">Test Search</h2>
-        <p className="text-gray-400">Chat with your knowledge base to test search quality (coming soon)</p>
-      </div>
+      {/* Document Library */}
+      <DocumentLibrary onDataLoaded={setClusterStats} />
     </div>
   );
 }
