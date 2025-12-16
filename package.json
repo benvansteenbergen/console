@@ -1,6 +1,7 @@
 {
   "name": "wingsuite-console",
   "private": true,
+  "packageManager": "npm@10.5.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
