@@ -4,12 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import DocumentLibrary from '@/components/DocumentLibrary';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js worker
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
 
 const CLUSTER_OPTIONS = [
   { value: 'general_company_info', label: 'General Company Info' },
@@ -68,6 +62,12 @@ export default function CompanyPrivateStorage() {
 
   const extractPDFText = async (file: File): Promise<string> => {
     try {
+      // Dynamic import to avoid server-side bundling issues
+      const pdfjsLib = await import('pdfjs-dist');
+
+      // Configure worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
@@ -78,12 +78,10 @@ export default function CompanyPrivateStorage() {
       for (let i = 1; i <= numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const pageText = content.items.map((item: pdfjsLib.TextItem) => {
-          if ('str' in item) {
-            return item.str;
-          }
-          return '';
-        }).join(' ');
+        const pageText = content.items
+          .filter((item): item is typeof item & { str: string } => 'str' in item)
+          .map(item => item.str)
+          .join(' ');
         text += pageText + '\n';
       }
 

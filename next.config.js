@@ -14,4 +14,15 @@ module.exports = {
             },
         ],
     },
+    webpack: (config, { isServer }) => {
+        // Ignore canvas module (used by pdfjs-dist but not needed in browser)
+        if (!isServer) {
+            config.resolve.alias.canvas = false;
+        }
+        config.externals = config.externals || [];
+        config.externals.push({
+            canvas: 'commonjs canvas',
+        });
+        return config;
+    },
 };
