@@ -15,6 +15,7 @@ import {
     FolderIcon,
     Cog6ToothIcon,
     ServerIcon,
+    BoltIcon,
 } from "@heroicons/react/24/outline";
 import { useBranding } from "@/components/BrandingProvider";
 import useSWR, { useSWRConfig } from "swr";
@@ -63,6 +64,7 @@ export default function Sidebar() {
 
     const nav = [
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
+        {href: "/live", label: "Live", icon: BoltIcon},
         {href: "/company-private-storage", label: "Private Storage (beta)", icon: ServerIcon},
         {href: "/executions", label: "Logboek", icon: ClockIcon},
         {href: "/settings", label: "Settings", icon: Cog6ToothIcon},
