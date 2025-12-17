@@ -8,6 +8,7 @@ interface N8nDocument {
   date: number;
   visibility: 'private' | 'shared';
   canDelete: boolean;
+  cluster?: string;
 }
 
 export async function GET(_request: NextRequest) {
@@ -55,6 +56,7 @@ export async function GET(_request: NextRequest) {
         creationTimeUnix: doc.date,
         visibility: doc.visibility,
         canDelete: doc.canDelete,
+        cluster: doc.cluster || 'no_cluster',
       }));
     }
 
