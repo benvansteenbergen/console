@@ -53,6 +53,7 @@ export default function LiveChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
   const [excludedDocuments, setExcludedDocuments] = useState<string[]>([]);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -174,8 +175,12 @@ export default function LiveChat() {
     }
   };
 
-  const copyToClipboard = (content: string) => {
+  const copyToClipboard = (content: string, messageId: string) => {
     navigator.clipboard.writeText(content);
+    setCopiedMessageId(messageId);
+    setTimeout(() => {
+      setCopiedMessageId(null);
+    }, 2000);
   };
 
   return (
@@ -310,10 +315,10 @@ export default function LiveChat() {
                   </div>
                   <div className="flex gap-2 pt-4 border-t border-gray-300">
                     <button
-                      onClick={() => copyToClipboard(message.content)}
+                      onClick={() => copyToClipboard(message.content, message.id)}
                       className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                     >
-                      Copy Content
+                      {copiedMessageId === message.id ? 'Copied ✓' : 'Copy Content'}
                     </button>
                     {message.sources && message.sources.length > 0 && (
                       <span className="text-xs text-gray-500 self-center">
