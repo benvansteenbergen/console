@@ -72,19 +72,28 @@ export default function LiveChat() {
     documents: Document[];
   }>('/api/knowledge-base/documents', fetcher);
 
-  const { data: contentFormatsData } = useSWR<{
+  const { data: contentFormatsData, isLoading: formatsLoading } = useSWR<{
     success: boolean;
     formats: { value: string; label: string }[];
   }>('/api/content-formats', fetcher);
 
-  const { data: toneOfVoiceData } = useSWR<{
+  const { data: toneOfVoiceData, isLoading: tonesLoading } = useSWR<{
     success: boolean;
     tones: { value: string; label: string }[];
   }>('/api/tone-of-voice', fetcher);
 
   const documents = documentsData?.documents || [];
-  const contentFormats = contentFormatsData?.formats || [{ value: '', label: 'None (Regular Chat)' }];
-  const toneOfVoiceOptions = toneOfVoiceData?.tones || [{ value: '', label: 'None' }];
+
+  // Always start with "None" option and add fetched options
+  const contentFormats = [
+    { value: '', label: 'None (Regular Chat)' },
+    ...(contentFormatsData?.formats?.filter(f => f.value !== '') || [])
+  ];
+
+  const toneOfVoiceOptions = [
+    { value: '', label: 'None' },
+    ...(toneOfVoiceData?.tones?.filter(t => t.value !== '') || [])
+  ];
 
   // Group documents by cluster
   const documentsByCluster = documents.reduce((acc, doc) => {
@@ -227,7 +236,8 @@ export default function LiveChat() {
           <select
             value={contentFormat}
             onChange={(e) => setContentFormat(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={formatsLoading}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             {contentFormats.map((format) => (
               <option key={format.value} value={format.value}>
@@ -235,7 +245,12 @@ export default function LiveChat() {
               </option>
             ))}
           </select>
-          {contentFormat && (
+          {formatsLoading && (
+            <p className="text-xs text-gray-500 mt-1">
+              Loading formats...
+            </p>
+          )}
+          {!formatsLoading && contentFormat && (
             <p className="text-xs text-gray-500 mt-1">
               Agent will ask format-specific questions
             </p>
@@ -248,7 +263,8 @@ export default function LiveChat() {
           <select
             value={toneOfVoice}
             onChange={(e) => setToneOfVoice(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={tonesLoading}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             {toneOfVoiceOptions.map((tone) => (
               <option key={tone.value} value={tone.value}>
@@ -256,6 +272,11 @@ export default function LiveChat() {
               </option>
             ))}
           </select>
+          {tonesLoading && (
+            <p className="text-xs text-gray-500 mt-1">
+              Loading tones...
+            </p>
+          )}
         </div>
 
         <div className="border-t border-gray-200 mb-6"></div>
