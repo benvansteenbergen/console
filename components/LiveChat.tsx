@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
+import { capitalize } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -241,7 +242,7 @@ export default function LiveChat() {
           >
             {contentFormats.map((format) => (
               <option key={format.value} value={format.value}>
-                {format.label}
+                {capitalize(format.label)}
               </option>
             ))}
           </select>
@@ -268,7 +269,7 @@ export default function LiveChat() {
           >
             {toneOfVoiceOptions.map((tone) => (
               <option key={tone.value} value={tone.value}>
-                {tone.label}
+                {capitalize(tone.label)}
               </option>
             ))}
           </select>
