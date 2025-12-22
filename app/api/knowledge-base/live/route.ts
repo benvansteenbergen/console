@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { query, selectedClusters, excludedDocuments } = body;
+    const { sessionId, query, selectedClusters, excludedDocuments, contentFormat, toneOfVoice } = body;
 
     if (!query) {
       return NextResponse.json({ success: false, error: 'Query is required' }, { status: 400 });
@@ -27,9 +27,12 @@ export async function POST(request: NextRequest) {
         cookie: `auth=${jwt};`,
       },
       body: JSON.stringify({
+        sessionId,
         query,
         selectedClusters: selectedClusters || [],
         excludedDocuments: excludedDocuments || [],
+        contentFormat: contentFormat || null,
+        toneOfVoice: toneOfVoice || null,
       }),
     });
 

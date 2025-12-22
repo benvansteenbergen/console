@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 
 interface Message {
@@ -47,6 +47,11 @@ const SAMPLE_QUESTIONS = [
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+// Generate unique session ID
+const generateSessionId = () => {
+  return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
 export default function LiveChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -54,15 +59,32 @@ export default function LiveChat() {
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
   const [excludedDocuments, setExcludedDocuments] = useState<string[]>([]);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [contentFormat, setContentFormat] = useState('');
+  const [toneOfVoice, setToneOfVoice] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Generate session ID once and keep it for the session
+  const sessionId = useMemo(() => generateSessionId(), []);
 
   const { data: documentsData } = useSWR<{
     success: boolean;
     documents: Document[];
   }>('/api/knowledge-base/documents', fetcher);
 
+  const { data: contentFormatsData } = useSWR<{
+    success: boolean;
+    formats: { value: string; label: string }[];
+  }>('/api/content-formats', fetcher);
+
+  const { data: toneOfVoiceData } = useSWR<{
+    success: boolean;
+    tones: { value: string; label: string }[];
+  }>('/api/tone-of-voice', fetcher);
+
   const documents = documentsData?.documents || [];
+  const contentFormats = contentFormatsData?.formats || [{ value: '', label: 'None (Regular Chat)' }];
+  const toneOfVoiceOptions = toneOfVoiceData?.tones || [{ value: '', label: 'None' }];
 
   // Group documents by cluster
   const documentsByCluster = documents.reduce((acc, doc) => {
@@ -106,6 +128,15 @@ export default function LiveChat() {
     inputRef.current?.focus();
   };
 
+  const handleNewChat = () => {
+    if (messages.length > 0 && !confirm('Start a new chat? Current conversation will be cleared.')) {
+      return;
+    }
+    setMessages([]);
+    setInput('');
+    // Note: sessionId stays the same - n8n will handle new conversation logic
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
@@ -126,9 +157,12 @@ export default function LiveChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sessionId,
           query: userMessage.content,
           selectedClusters,
           excludedDocuments,
+          contentFormat: contentFormat || null,
+          toneOfVoice: toneOfVoice || null,
         }),
       });
 
@@ -187,6 +221,46 @@ export default function LiveChat() {
     <div className="flex gap-6 h-[calc(100vh-200px)]">
       {/* Left Sidebar - Filters */}
       <div className="w-80 bg-white rounded-lg shadow-md p-6 overflow-y-auto flex-shrink-0">
+        {/* Content Format */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-900 mb-2">Content Format</h3>
+          <select
+            value={contentFormat}
+            onChange={(e) => setContentFormat(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {contentFormats.map((format) => (
+              <option key={format.value} value={format.value}>
+                {format.label}
+              </option>
+            ))}
+          </select>
+          {contentFormat && (
+            <p className="text-xs text-gray-500 mt-1">
+              Agent will ask format-specific questions
+            </p>
+          )}
+        </div>
+
+        {/* Tone of Voice */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-900 mb-2">Tone of Voice</h3>
+          <select
+            value={toneOfVoice}
+            onChange={(e) => setToneOfVoice(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {toneOfVoiceOptions.map((tone) => (
+              <option key={tone.value} value={tone.value}>
+                {tone.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="border-t border-gray-200 mb-6"></div>
+
+        {/* Knowledge Sources */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-900">Knowledge Sources</h3>
@@ -371,9 +445,19 @@ export default function LiveChat() {
               Send
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Press Enter to send, Shift+Enter for new line
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-gray-500">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+            {messages.length > 0 && (
+              <button
+                onClick={handleNewChat}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                New Chat
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>
