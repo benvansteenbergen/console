@@ -1,7 +1,7 @@
 // app/(protected)/settings/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import { useBranding } from "@/components/BrandingProvider";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,23 @@ interface SettingsData {
         activeAgents: number;
         activeAutomations: number;
     };
+    dataSources: {
+        linkedinPersonal: {
+            connected: boolean;
+            lastSynced?: string;
+            slug?: string;
+        };
+        linkedinCompany: {
+            connected: boolean;
+            lastSynced?: string;
+            slug?: string;
+        };
+        website: {
+            connected: boolean;
+            lastSynced?: string;
+            url?: string;
+        };
+    };
 }
 
 interface CreditsData {
@@ -39,12 +56,25 @@ export default function SettingsPage() {
     const branding = useBranding();
     const router = useRouter();
 
-    const { data: settings, error: settingsError } = useSWR<SettingsData>(
+    const { data: settings, error: settingsError, mutate: mutateSettings } = useSWR<SettingsData>(
         "/api/settings",
         fetcher
     );
 
     const { data: credits } = useSWR<CreditsData>("/api/credits", fetcher);
+
+    // Connection states
+    const [connectingLinkedinPersonal, setConnectingLinkedinPersonal] = useState(false);
+    const [connectingLinkedinCompany, setConnectingLinkedinCompany] = useState(false);
+    const [connectingWebsite, setConnectingWebsite] = useState(false);
+
+    const [linkedinPersonalSlug, setLinkedinPersonalSlug] = useState('');
+    const [linkedinCompanySlug, setLinkedinCompanySlug] = useState('');
+    const [websiteUrl, setWebsiteUrl] = useState('');
+
+    const [showLinkedinPersonalInput, setShowLinkedinPersonalInput] = useState(false);
+    const [showLinkedinCompanyInput, setShowLinkedinCompanyInput] = useState(false);
+    const [showWebsiteInput, setShowWebsiteInput] = useState(false);
 
     useEffect(() => {
         document.title = `${branding.name} - Settings`;
@@ -74,6 +104,75 @@ export default function SettingsPage() {
     const usagePercent = credits
         ? Math.min((credits.credits_used / credits.plan_credits) * 100, 100)
         : 0;
+
+    const handleConnectLinkedinPersonal = async () => {
+        if (!linkedinPersonalSlug.trim()) return;
+
+        setConnectingLinkedinPersonal(true);
+        try {
+            const response = await fetch('/api/datasources/linkedin-personal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug: linkedinPersonalSlug }),
+            });
+
+            if (response.ok) {
+                await mutateSettings();
+                setShowLinkedinPersonalInput(false);
+                setLinkedinPersonalSlug('');
+            }
+        } catch (error) {
+            console.error('Failed to connect LinkedIn personal:', error);
+        } finally {
+            setConnectingLinkedinPersonal(false);
+        }
+    };
+
+    const handleConnectLinkedinCompany = async () => {
+        if (!linkedinCompanySlug.trim()) return;
+
+        setConnectingLinkedinCompany(true);
+        try {
+            const response = await fetch('/api/datasources/linkedin-company', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug: linkedinCompanySlug }),
+            });
+
+            if (response.ok) {
+                await mutateSettings();
+                setShowLinkedinCompanyInput(false);
+                setLinkedinCompanySlug('');
+            }
+        } catch (error) {
+            console.error('Failed to connect LinkedIn company:', error);
+        } finally {
+            setConnectingLinkedinCompany(false);
+        }
+    };
+
+    const handleConnectWebsite = async () => {
+        if (!websiteUrl.trim()) return;
+
+        setConnectingWebsite(true);
+        try {
+            const response = await fetch('/api/datasources/website', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: websiteUrl }),
+            });
+
+            if (response.ok) {
+                await mutateSettings();
+                setShowWebsiteInput(false);
+                setWebsiteUrl('');
+            }
+        } catch (error) {
+            console.error('Failed to connect website:', error);
+        } finally {
+            setConnectingWebsite(false);
+        }
+    };
 
     return (
         <main className="flex flex-1 flex-col p-6 space-y-6">
@@ -128,6 +227,23 @@ export default function SettingsPage() {
                                 })}
                             </dd>
                         </div>
+                        <div className="border-t border-gray-200 pt-3 mt-3">
+                            <dt className="text-xs font-medium text-gray-500 uppercase mb-2">Data Sources</dt>
+                            <dd className="space-y-1.5">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-700">LinkedIn Company</span>
+                                    <span className={`text-xs font-medium ${settings.dataSources.linkedinCompany.connected ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {settings.dataSources.linkedinCompany.connected ? '✓ Connected' : '✗ Not Connected'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-700">Company Website</span>
+                                    <span className={`text-xs font-medium ${settings.dataSources.website.connected ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {settings.dataSources.website.connected ? '✓ Connected' : '✗ Not Connected'}
+                                    </span>
+                                </div>
+                            </dd>
+                        </div>
                     </dl>
                 </div>
 
@@ -170,6 +286,17 @@ export default function SettingsPage() {
                                 <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
                                     {settings.user.plan}
                                 </span>
+                            </dd>
+                        </div>
+                        <div className="border-t border-gray-200 pt-3 mt-3">
+                            <dt className="text-xs font-medium text-gray-500 uppercase mb-2">Data Sources</dt>
+                            <dd className="space-y-1.5">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-700">LinkedIn Profile</span>
+                                    <span className={`text-xs font-medium ${settings.dataSources.linkedinPersonal.connected ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {settings.dataSources.linkedinPersonal.connected ? '✓ Connected' : '✗ Not Connected'}
+                                    </span>
+                                </div>
                             </dd>
                         </div>
                     </dl>
@@ -269,6 +396,186 @@ export default function SettingsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Data Sources Card */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100">
+                        <svg
+                            className="h-6 w-6 text-indigo-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+                            />
+                        </svg>
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Data Sources</h2>
+                </div>
+
+                <div className="space-y-6">
+                    {/* LinkedIn Personal */}
+                    <div className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">LinkedIn Profile</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Connect your personal LinkedIn profile</p>
+                            </div>
+                            {settings.dataSources.linkedinPersonal.connected && settings.dataSources.linkedinPersonal.lastSynced && (
+                                <span className="text-xs text-gray-500">
+                                    Last synced: {new Date(settings.dataSources.linkedinPersonal.lastSynced).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+
+                        {!showLinkedinPersonalInput ? (
+                            <button
+                                onClick={() => setShowLinkedinPersonalInput(true)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                {settings.dataSources.linkedinPersonal.connected ? 'Reconnect' : 'Connect'}
+                            </button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={linkedinPersonalSlug}
+                                    onChange={(e) => setLinkedinPersonalSlug(e.target.value)}
+                                    placeholder="your-linkedin-slug"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={connectingLinkedinPersonal}
+                                />
+                                <button
+                                    onClick={handleConnectLinkedinPersonal}
+                                    disabled={connectingLinkedinPersonal || !linkedinPersonalSlug.trim()}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {connectingLinkedinPersonal ? 'Connecting...' : 'Save'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowLinkedinPersonalInput(false);
+                                        setLinkedinPersonalSlug('');
+                                    }}
+                                    disabled={connectingLinkedinPersonal}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* LinkedIn Company */}
+                    <div className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">LinkedIn Company Page</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Connect your company LinkedIn page</p>
+                            </div>
+                            {settings.dataSources.linkedinCompany.connected && settings.dataSources.linkedinCompany.lastSynced && (
+                                <span className="text-xs text-gray-500">
+                                    Last synced: {new Date(settings.dataSources.linkedinCompany.lastSynced).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+
+                        {!showLinkedinCompanyInput ? (
+                            <button
+                                onClick={() => setShowLinkedinCompanyInput(true)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                {settings.dataSources.linkedinCompany.connected ? 'Reconnect' : 'Connect'}
+                            </button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={linkedinCompanySlug}
+                                    onChange={(e) => setLinkedinCompanySlug(e.target.value)}
+                                    placeholder="company-slug"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={connectingLinkedinCompany}
+                                />
+                                <button
+                                    onClick={handleConnectLinkedinCompany}
+                                    disabled={connectingLinkedinCompany || !linkedinCompanySlug.trim()}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {connectingLinkedinCompany ? 'Connecting...' : 'Save'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowLinkedinCompanyInput(false);
+                                        setLinkedinCompanySlug('');
+                                    }}
+                                    disabled={connectingLinkedinCompany}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Website */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Company Website</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Connect your company website</p>
+                            </div>
+                            {settings.dataSources.website.connected && settings.dataSources.website.lastSynced && (
+                                <span className="text-xs text-gray-500">
+                                    Last synced: {new Date(settings.dataSources.website.lastSynced).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+
+                        {!showWebsiteInput ? (
+                            <button
+                                onClick={() => setShowWebsiteInput(true)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                {settings.dataSources.website.connected ? 'Reconnect' : 'Connect'}
+                            </button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <input
+                                    type="url"
+                                    value={websiteUrl}
+                                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                                    placeholder="https://yourcompany.com"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={connectingWebsite}
+                                />
+                                <button
+                                    onClick={handleConnectWebsite}
+                                    disabled={connectingWebsite || !websiteUrl.trim()}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {connectingWebsite ? 'Connecting...' : 'Save'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowWebsiteInput(false);
+                                        setWebsiteUrl('');
+                                    }}
+                                    disabled={connectingWebsite}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
         </main>
     );
 }
