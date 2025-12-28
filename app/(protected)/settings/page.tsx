@@ -58,10 +58,21 @@ export default function SettingsPage() {
 
     const { data: settings, error: settingsError, mutate: mutateSettings } = useSWR<SettingsData>(
         "/api/settings",
-        fetcher
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+        }
     );
 
-    const { data: credits } = useSWR<CreditsData>("/api/credits", fetcher);
+    const { data: credits } = useSWR<CreditsData>(
+        "/api/credits",
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+        }
+    );
 
     // Connection states
     const [connectingLinkedinPersonal, setConnectingLinkedinPersonal] = useState(false);
@@ -441,32 +452,37 @@ export default function SettingsPage() {
                                 {settings.dataSources.linkedinPersonal.connected ? 'Reconnect' : 'Connect'}
                             </button>
                         ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={linkedinPersonalSlug}
-                                    onChange={(e) => setLinkedinPersonalSlug(e.target.value)}
-                                    placeholder="your-linkedin-slug"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    disabled={connectingLinkedinPersonal}
-                                />
-                                <button
-                                    onClick={handleConnectLinkedinPersonal}
-                                    disabled={connectingLinkedinPersonal || !linkedinPersonalSlug.trim()}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                >
-                                    {connectingLinkedinPersonal ? 'Connecting...' : 'Save'}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowLinkedinPersonalInput(false);
-                                        setLinkedinPersonalSlug('');
-                                    }}
-                                    disabled={connectingLinkedinPersonal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
+                            <div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={linkedinPersonalSlug}
+                                        onChange={(e) => setLinkedinPersonalSlug(e.target.value)}
+                                        placeholder="john-doe"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        disabled={connectingLinkedinPersonal}
+                                    />
+                                    <button
+                                        onClick={handleConnectLinkedinPersonal}
+                                        disabled={connectingLinkedinPersonal || !linkedinPersonalSlug.trim()}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    >
+                                        {connectingLinkedinPersonal ? 'Connecting...' : 'Save'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowLinkedinPersonalInput(false);
+                                            setLinkedinPersonalSlug('');
+                                        }}
+                                        disabled={connectingLinkedinPersonal}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1.5">
+                                    Enter your slug from linkedin.com/in/<span className="font-medium">your-slug-here</span>
+                                </p>
                             </div>
                         )}
                     </div>
@@ -493,32 +509,37 @@ export default function SettingsPage() {
                                 {settings.dataSources.linkedinCompany.connected ? 'Reconnect' : 'Connect'}
                             </button>
                         ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={linkedinCompanySlug}
-                                    onChange={(e) => setLinkedinCompanySlug(e.target.value)}
-                                    placeholder="company-slug"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    disabled={connectingLinkedinCompany}
-                                />
-                                <button
-                                    onClick={handleConnectLinkedinCompany}
-                                    disabled={connectingLinkedinCompany || !linkedinCompanySlug.trim()}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                >
-                                    {connectingLinkedinCompany ? 'Connecting...' : 'Save'}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowLinkedinCompanyInput(false);
-                                        setLinkedinCompanySlug('');
-                                    }}
-                                    disabled={connectingLinkedinCompany}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
+                            <div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={linkedinCompanySlug}
+                                        onChange={(e) => setLinkedinCompanySlug(e.target.value)}
+                                        placeholder="acme-corporation"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        disabled={connectingLinkedinCompany}
+                                    />
+                                    <button
+                                        onClick={handleConnectLinkedinCompany}
+                                        disabled={connectingLinkedinCompany || !linkedinCompanySlug.trim()}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    >
+                                        {connectingLinkedinCompany ? 'Connecting...' : 'Save'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowLinkedinCompanyInput(false);
+                                            setLinkedinCompanySlug('');
+                                        }}
+                                        disabled={connectingLinkedinCompany}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1.5">
+                                    Enter your company slug from linkedin.com/company/<span className="font-medium">company-name</span>
+                                </p>
                             </div>
                         )}
                     </div>
@@ -545,32 +566,37 @@ export default function SettingsPage() {
                                 {settings.dataSources.website.connected ? 'Reconnect' : 'Connect'}
                             </button>
                         ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="url"
-                                    value={websiteUrl}
-                                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                                    placeholder="https://yourcompany.com"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    disabled={connectingWebsite}
-                                />
-                                <button
-                                    onClick={handleConnectWebsite}
-                                    disabled={connectingWebsite || !websiteUrl.trim()}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                >
-                                    {connectingWebsite ? 'Connecting...' : 'Save'}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowWebsiteInput(false);
-                                        setWebsiteUrl('');
-                                    }}
-                                    disabled={connectingWebsite}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
+                            <div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="url"
+                                        value={websiteUrl}
+                                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                                        placeholder="https://yourcompany.com"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        disabled={connectingWebsite}
+                                    />
+                                    <button
+                                        onClick={handleConnectWebsite}
+                                        disabled={connectingWebsite || !websiteUrl.trim()}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    >
+                                        {connectingWebsite ? 'Connecting...' : 'Save'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowWebsiteInput(false);
+                                            setWebsiteUrl('');
+                                        }}
+                                        disabled={connectingWebsite}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1.5">
+                                    Enter your full website URL including https://
+                                </p>
                             </div>
                         )}
                     </div>
