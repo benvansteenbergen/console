@@ -39,8 +39,8 @@ const toSlug = (name: string) =>
 
 export default function Sidebar() {
     const [open, setOpen] = useState(false);
-    const [formsExpanded, setFormsExpanded] = useState(true);
-    const [foldersExpanded, setFoldersExpanded] = useState(true);
+    const [formsExpanded, setFormsExpanded] = useState(false);
+    const [foldersExpanded, setFoldersExpanded] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
     const branding = useBranding();
