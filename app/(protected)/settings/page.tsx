@@ -87,6 +87,11 @@ export default function SettingsPage() {
     const [showLinkedinCompanyInput, setShowLinkedinCompanyInput] = useState(false);
     const [showWebsiteInput, setShowWebsiteInput] = useState(false);
 
+    // Screenshot capture states
+    const [capturedScreenshot, setCapturedScreenshot] = useState<string | null>(null);
+    const [showScreenshotPreview, setShowScreenshotPreview] = useState(false);
+    const [capturingScreenshot, setCapturingScreenshot] = useState(false);
+
     useEffect(() => {
         document.title = `${branding.name} - Settings`;
     }, [branding.name]);
@@ -182,6 +187,86 @@ export default function SettingsPage() {
             console.error('Failed to connect website:', error);
         } finally {
             setConnectingWebsite(false);
+        }
+    };
+
+    const captureScreenshot = async () => {
+        setCapturingScreenshot(true);
+        try {
+            // Request screen capture permission
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: { mediaSource: 'screen' } as MediaTrackConstraints,
+                audio: false
+            });
+
+            // Create video element to capture frame
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+
+            // Wait for video to be ready
+            await new Promise((resolve) => {
+                video.onloadedmetadata = resolve;
+            });
+
+            await video.play();
+
+            // Create canvas and capture frame
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(video, 0, 0);
+            }
+
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+
+            // Convert to data URL
+            const dataUrl = canvas.toDataURL('image/png');
+            setCapturedScreenshot(dataUrl);
+            setShowScreenshotPreview(true);
+        } catch (error) {
+            console.error('Screenshot capture failed:', error);
+            alert('Failed to capture screenshot. Please try again or use manual entry.');
+        } finally {
+            setCapturingScreenshot(false);
+        }
+    };
+
+    const uploadScreenshot = async () => {
+        if (!capturedScreenshot) return;
+
+        setConnectingLinkedinPersonal(true);
+        try {
+            // Convert data URL to blob
+            const response = await fetch(capturedScreenshot);
+            const blob = await response.blob();
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('screenshot', blob, 'linkedin-profile.png');
+
+            // Upload to server
+            const uploadResponse = await fetch('/api/datasources/linkedin-screenshot', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (uploadResponse.ok) {
+                await mutateSettings();
+                setShowScreenshotPreview(false);
+                setCapturedScreenshot(null);
+                setShowLinkedinPersonalInput(false);
+            } else {
+                alert('Failed to process screenshot. Please try again.');
+            }
+        } catch (error) {
+            console.error('Failed to upload screenshot:', error);
+            alert('Failed to upload screenshot. Please try again.');
+        } finally {
+            setConnectingLinkedinPersonal(false);
         }
     };
 
@@ -445,12 +530,21 @@ export default function SettingsPage() {
                         </div>
 
                         {!showLinkedinPersonalInput ? (
-                            <button
-                                onClick={() => setShowLinkedinPersonalInput(true)}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                                {settings.dataSources.linkedinPersonal.connected ? 'Reconnect' : 'Connect'}
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowLinkedinPersonalInput(true)}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                    {settings.dataSources.linkedinPersonal.connected ? 'Reconnect' : 'Connect'}
+                                </button>
+                                <button
+                                    onClick={captureScreenshot}
+                                    disabled={capturingScreenshot}
+                                    className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                                >
+                                    {capturingScreenshot ? 'Capturing...' : '📸 Capture Screenshot'}
+                                </button>
+                            </div>
                         ) : (
                             <div>
                                 <div className="flex gap-2">
@@ -602,6 +696,55 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Screenshot Preview Modal */}
+            {showScreenshotPreview && capturedScreenshot && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">Review Your Screenshot</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Make sure your LinkedIn profile is clearly visible before uploading
+                            </p>
+                        </div>
+
+                        <div className="flex-1 overflow-auto p-6">
+                            <img
+                                src={capturedScreenshot}
+                                alt="Captured LinkedIn profile"
+                                className="w-full h-auto border border-gray-200 rounded-lg"
+                            />
+                        </div>
+
+                        <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowScreenshotPreview(false);
+                                    setCapturedScreenshot(null);
+                                }}
+                                disabled={connectingLinkedinPersonal}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={captureScreenshot}
+                                disabled={connectingLinkedinPersonal}
+                                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                            >
+                                Retake Screenshot
+                            </button>
+                            <button
+                                onClick={uploadScreenshot}
+                                disabled={connectingLinkedinPersonal}
+                                className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                            >
+                                {connectingLinkedinPersonal ? 'Processing...' : 'Upload & Process'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
