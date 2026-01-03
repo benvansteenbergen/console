@@ -1,7 +1,7 @@
 // app/(protected)/settings/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/components/SessionProvider";
 import { useBranding } from "@/components/BrandingProvider";
 import { useRouter } from "next/navigation";
@@ -87,14 +87,34 @@ export default function SettingsPage() {
     const [showLinkedinCompanyInput, setShowLinkedinCompanyInput] = useState(false);
     const [showWebsiteInput, setShowWebsiteInput] = useState(false);
 
-    // Screenshot capture states
-    const [capturedScreenshot, setCapturedScreenshot] = useState<string | null>(null);
-    const [showScreenshotPreview, setShowScreenshotPreview] = useState(false);
-    const [capturingScreenshot, setCapturingScreenshot] = useState(false);
+    // Scroll capture states
+    const [scrollCaptureMode, setScrollCaptureMode] = useState<'idle' | 'validating' | 'ready' | 'capturing' | 'done'>('idle');
+    const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
+    const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+    const [validationResult, setValidationResult] = useState<{ isLinkedIn: boolean; detectedName?: string } | null>(null);
+    const [scrollCaptureInterval, setScrollCaptureInterval] = useState<NodeJS.Timeout | null>(null);
+    const [noChangeCount, setNoChangeCount] = useState(0);
+
+    // Refs for interval callback (to avoid stale closure)
+    const lastFrameDataRef = useRef<ImageData | null>(null);
+    const activeVideoRef = useRef<HTMLVideoElement | null>(null);
+    const noChangeCountRef = useRef(0);
 
     useEffect(() => {
         document.title = `${branding.name} - Settings`;
     }, [branding.name]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (scrollCaptureInterval) {
+                clearInterval(scrollCaptureInterval);
+            }
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [scrollCaptureInterval, activeStream]);
 
     if (sessionLoading || !settings) {
         return (
@@ -190,65 +210,212 @@ export default function SettingsPage() {
         }
     };
 
-    const captureScreenshot = async () => {
-        setCapturingScreenshot(true);
+    
+    // Helper to capture a single frame from video
+    const captureFrameFromVideo = (video: HTMLVideoElement): { dataUrl: string; imageData: ImageData } | null => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        ctx.drawImage(video, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        return { dataUrl, imageData };
+    };
+
+    // Compare two frames to detect significant change (returns percentage of different pixels)
+    const compareFrames = (frame1: ImageData, frame2: ImageData): number => {
+        if (frame1.width !== frame2.width || frame1.height !== frame2.height) return 100;
+
+        const data1 = frame1.data;
+        const data2 = frame2.data;
+        let diffPixels = 0;
+        const totalPixels = frame1.width * frame1.height;
+
+        // Sample every 10th pixel for performance
+        for (let i = 0; i < data1.length; i += 40) {
+            const rDiff = Math.abs(data1[i] - data2[i]);
+            const gDiff = Math.abs(data1[i + 1] - data2[i + 1]);
+            const bDiff = Math.abs(data1[i + 2] - data2[i + 2]);
+
+            // Consider pixel different if any channel differs by more than 30
+            if (rDiff > 30 || gDiff > 30 || bDiff > 30) {
+                diffPixels++;
+            }
+        }
+
+        return (diffPixels / (totalPixels / 10)) * 100;
+    };
+
+    // Simple LinkedIn detection by looking for LinkedIn blue color in the frame
+    const detectLinkedIn = (imageData: ImageData): { isLinkedIn: boolean; detectedName: string } => {
+        const data = imageData.data;
+        let linkedInBlueCount = 0;
+        const totalSamples = Math.floor(data.length / 40);
+
+        // LinkedIn's brand blue is approximately rgb(0, 119, 181) or #0077B5
+        for (let i = 0; i < data.length; i += 40) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            // Check for LinkedIn blue range
+            if (r < 30 && g >= 100 && g <= 140 && b >= 160 && b <= 200) {
+                linkedInBlueCount++;
+            }
+        }
+
+        const bluePercentage = (linkedInBlueCount / totalSamples) * 100;
+
+        // If more than 0.5% of pixels are LinkedIn blue, likely a LinkedIn page
+        const isLinkedIn = bluePercentage > 0.5;
+
+        return {
+            isLinkedIn,
+            detectedName: isLinkedIn ? 'LinkedIn Profile Detected' : 'Not a LinkedIn page'
+        };
+    };
+
+    // Start scroll capture flow
+    const startScrollCapture = async () => {
+        setScrollCaptureMode('validating');
+        setCapturedFrames([]);
+        setValidationResult(null);
+        lastFrameDataRef.current = null;
+        noChangeCountRef.current = 0;
+        setNoChangeCount(0);
+
         try {
-            // Request screen capture permission
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 video: { mediaSource: 'screen' } as MediaTrackConstraints,
                 audio: false
             });
 
-            // Create video element to capture frame
             const video = document.createElement('video');
             video.srcObject = stream;
             video.autoplay = true;
 
-            // Wait for video to be ready
             await new Promise((resolve) => {
                 video.onloadedmetadata = resolve;
             });
-
             await video.play();
 
-            // Create canvas and capture frame
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.drawImage(video, 0, 0);
+            // Capture first frame and validate
+            const frameResult = captureFrameFromVideo(video);
+            if (!frameResult) {
+                throw new Error('Failed to capture frame');
             }
 
-            // Stop all tracks
-            stream.getTracks().forEach(track => track.stop());
+            const validation = detectLinkedIn(frameResult.imageData);
+            setValidationResult(validation);
+            setActiveStream(stream);
+            activeVideoRef.current = video;
 
-            // Convert to data URL
-            const dataUrl = canvas.toDataURL('image/png');
-            setCapturedScreenshot(dataUrl);
-            setShowScreenshotPreview(true);
+            if (validation.isLinkedIn) {
+                // Store first frame
+                setCapturedFrames([frameResult.dataUrl]);
+                lastFrameDataRef.current = frameResult.imageData;
+                setScrollCaptureMode('ready');
+            } else {
+                // Not LinkedIn, stop stream
+                stream.getTracks().forEach(track => track.stop());
+                setScrollCaptureMode('idle');
+            }
         } catch (error) {
-            console.error('Screenshot capture failed:', error);
-            alert('Failed to capture screenshot. Please try again or use manual entry.');
-        } finally {
-            setCapturingScreenshot(false);
+            console.error('Scroll capture failed:', error);
+            setScrollCaptureMode('idle');
+            alert('Failed to start screen capture. Please try again.');
         }
     };
 
-    const uploadScreenshot = async () => {
-        if (!capturedScreenshot) return;
+    // Begin continuous capture while user scrolls
+    const beginScrollCapture = () => {
+        if (!activeVideoRef.current || !lastFrameDataRef.current) return;
+
+        setScrollCaptureMode('capturing');
+        noChangeCountRef.current = 0;
+
+        const interval = setInterval(() => {
+            const video = activeVideoRef.current;
+            if (!video) return;
+
+            const frameResult = captureFrameFromVideo(video);
+            if (!frameResult) return;
+
+            // Compare with last frame
+            const lastFrame = lastFrameDataRef.current;
+            const diffPercent = lastFrame ? compareFrames(lastFrame, frameResult.imageData) : 100;
+
+            if (diffPercent > 20) {
+                // Significant change - new content visible
+                setCapturedFrames(prev => [...prev, frameResult.dataUrl]);
+                lastFrameDataRef.current = frameResult.imageData;
+                noChangeCountRef.current = 0;
+                setNoChangeCount(0);
+            } else {
+                // No significant change
+                noChangeCountRef.current += 1;
+                setNoChangeCount(noChangeCountRef.current);
+                // If no change for 4 consecutive checks (2 seconds), user likely done scrolling
+                if (noChangeCountRef.current >= 4) {
+                    setScrollCaptureMode('done');
+                }
+            }
+        }, 500);
+
+        setScrollCaptureInterval(interval);
+    };
+
+    // Stop scroll capture
+    const stopScrollCapture = () => {
+        if (scrollCaptureInterval) {
+            clearInterval(scrollCaptureInterval);
+            setScrollCaptureInterval(null);
+        }
+        if (activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+            setActiveStream(null);
+        }
+        activeVideoRef.current = null;
+        setScrollCaptureMode('done');
+    };
+
+    // Cancel scroll capture entirely
+    const cancelScrollCapture = () => {
+        if (scrollCaptureInterval) {
+            clearInterval(scrollCaptureInterval);
+            setScrollCaptureInterval(null);
+        }
+        if (activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+            setActiveStream(null);
+        }
+        activeVideoRef.current = null;
+        setScrollCaptureMode('idle');
+        setCapturedFrames([]);
+        setValidationResult(null);
+        lastFrameDataRef.current = null;
+        noChangeCountRef.current = 0;
+        setNoChangeCount(0);
+    };
+
+    // Upload multiple frames
+    const uploadScrollCapture = async () => {
+        if (capturedFrames.length === 0) return;
 
         setConnectingLinkedinPersonal(true);
         try {
-            // Convert data URL to blob
-            const response = await fetch(capturedScreenshot);
-            const blob = await response.blob();
-
-            // Create form data
             const formData = new FormData();
-            formData.append('screenshot', blob, 'linkedin-profile.png');
 
-            // Upload to server
+            // Convert each frame to blob and append
+            for (let i = 0; i < capturedFrames.length; i++) {
+                const response = await fetch(capturedFrames[i]);
+                const blob = await response.blob();
+                formData.append('screenshots', blob, `linkedin-profile-${i}.png`);
+            }
+
             const uploadResponse = await fetch('/api/datasources/linkedin-screenshot', {
                 method: 'POST',
                 body: formData,
@@ -256,15 +423,14 @@ export default function SettingsPage() {
 
             if (uploadResponse.ok) {
                 await mutateSettings();
-                setShowScreenshotPreview(false);
-                setCapturedScreenshot(null);
+                cancelScrollCapture();
                 setShowLinkedinPersonalInput(false);
             } else {
-                alert('Failed to process screenshot. Please try again.');
+                alert('Failed to process screenshots. Please try again.');
             }
         } catch (error) {
-            console.error('Failed to upload screenshot:', error);
-            alert('Failed to upload screenshot. Please try again.');
+            console.error('Failed to upload screenshots:', error);
+            alert('Failed to upload screenshots. Please try again.');
         } finally {
             setConnectingLinkedinPersonal(false);
         }
@@ -538,11 +704,11 @@ export default function SettingsPage() {
                                     {settings.dataSources.linkedinPersonal.connected ? 'Reconnect' : 'Connect'}
                                 </button>
                                 <button
-                                    onClick={captureScreenshot}
-                                    disabled={capturingScreenshot}
+                                    onClick={startScrollCapture}
+                                    disabled={scrollCaptureMode !== 'idle'}
                                     className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                                 >
-                                    {capturingScreenshot ? 'Capturing...' : '📸 Capture Screenshot'}
+                                    {scrollCaptureMode !== 'idle' ? 'Capturing...' : '📸 Capture Profile'}
                                 </button>
                             </div>
                         ) : (
@@ -697,50 +863,156 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Screenshot Preview Modal */}
-            {showScreenshotPreview && capturedScreenshot && (
+            {/* Scroll Capture Modal */}
+            {scrollCaptureMode !== 'idle' && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Header */}
                         <div className="p-6 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">Review Your Screenshot</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {scrollCaptureMode === 'validating' && 'Validating...'}
+                                {scrollCaptureMode === 'ready' && 'LinkedIn Profile Detected'}
+                                {scrollCaptureMode === 'capturing' && 'Capturing Profile...'}
+                                {scrollCaptureMode === 'done' && 'Capture Complete'}
+                            </h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Make sure your LinkedIn profile is clearly visible before uploading
+                                {scrollCaptureMode === 'validating' && 'Checking if this is a LinkedIn page...'}
+                                {scrollCaptureMode === 'ready' && 'Click "Start Scrolling" then slowly scroll through your profile'}
+                                {scrollCaptureMode === 'capturing' && 'Scroll slowly through your entire profile. We\'ll capture as you go.'}
+                                {scrollCaptureMode === 'done' && `Captured ${capturedFrames.length} section${capturedFrames.length !== 1 ? 's' : ''} of your profile`}
                             </p>
                         </div>
 
-                        <div className="flex-1 overflow-auto p-6">
-                            <img
-                                src={capturedScreenshot}
-                                alt="Captured LinkedIn profile"
-                                className="w-full h-auto border border-gray-200 rounded-lg"
-                            />
+                        {/* Content */}
+                        <div className="flex-1 overflow-hidden flex">
+                            {/* Main preview area */}
+                            <div className="flex-1 overflow-auto p-6">
+                                {scrollCaptureMode === 'validating' && (
+                                    <div className="flex items-center justify-center h-64">
+                                        <div className="text-center">
+                                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+                                            <p className="text-sm text-gray-600">Analyzing screen...</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {validationResult && !validationResult.isLinkedIn && (
+                                    <div className="flex items-center justify-center h-64">
+                                        <div className="text-center">
+                                            <div className="text-4xl mb-4">❌</div>
+                                            <p className="text-lg font-semibold text-red-600">Not a LinkedIn Page</p>
+                                            <p className="text-sm text-gray-500 mt-2">
+                                                Please navigate to your LinkedIn profile and try again
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(scrollCaptureMode === 'ready' || scrollCaptureMode === 'capturing' || scrollCaptureMode === 'done') && capturedFrames.length > 0 && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-2">First captured section:</p>
+                                        <img
+                                            src={capturedFrames[0]}
+                                            alt="First captured section"
+                                            className="w-full h-auto border border-gray-200 rounded-lg"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sidebar with captured thumbnails */}
+                            {capturedFrames.length > 0 && (scrollCaptureMode === 'capturing' || scrollCaptureMode === 'done') && (
+                                <div className="w-48 border-l border-gray-200 p-4 overflow-y-auto bg-gray-50">
+                                    <p className="text-xs font-semibold text-gray-600 mb-3">
+                                        Captured Sections ({capturedFrames.length})
+                                    </p>
+                                    <div className="space-y-2">
+                                        {capturedFrames.map((frame, index) => (
+                                            <div key={index} className="relative">
+                                                <img
+                                                    src={frame}
+                                                    alt={`Section ${index + 1}`}
+                                                    className="w-full h-auto border border-gray-300 rounded"
+                                                />
+                                                <span className="absolute top-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                                                    {index + 1}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {scrollCaptureMode === 'capturing' && (
+                                        <div className="mt-4 p-2 bg-blue-50 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></div>
+                                                <span className="text-xs text-blue-700">Recording...</span>
+                                            </div>
+                                            {noChangeCount > 0 && (
+                                                <p className="text-xs text-blue-600 mt-1">
+                                                    {noChangeCount >= 3 ? 'Almost done...' : 'Keep scrolling...'}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {scrollCaptureMode === 'done' && (
+                                        <div className="mt-4 p-2 bg-green-50 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-green-600">✓</span>
+                                                <span className="text-xs text-green-700">Capture complete!</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
+                        {/* Footer */}
                         <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
                             <button
-                                onClick={() => {
-                                    setShowScreenshotPreview(false);
-                                    setCapturedScreenshot(null);
-                                }}
+                                onClick={cancelScrollCapture}
                                 disabled={connectingLinkedinPersonal}
                                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={captureScreenshot}
-                                disabled={connectingLinkedinPersonal}
-                                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                            >
-                                Retake Screenshot
-                            </button>
-                            <button
-                                onClick={uploadScreenshot}
-                                disabled={connectingLinkedinPersonal}
-                                className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
-                            >
-                                {connectingLinkedinPersonal ? 'Processing...' : 'Upload & Process'}
-                            </button>
+
+                            {scrollCaptureMode === 'ready' && (
+                                <button
+                                    onClick={beginScrollCapture}
+                                    className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                    Start Scrolling
+                                </button>
+                            )}
+
+                            {scrollCaptureMode === 'capturing' && (
+                                <button
+                                    onClick={stopScrollCapture}
+                                    className="px-6 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
+                                >
+                                    Done Scrolling
+                                </button>
+                            )}
+
+                            {scrollCaptureMode === 'done' && capturedFrames.length > 0 && (
+                                <>
+                                    <button
+                                        onClick={startScrollCapture}
+                                        disabled={connectingLinkedinPersonal}
+                                        className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                                    >
+                                        Recapture
+                                    </button>
+                                    <button
+                                        onClick={uploadScrollCapture}
+                                        disabled={connectingLinkedinPersonal}
+                                        className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                                    >
+                                        {connectingLinkedinPersonal ? 'Processing...' : `Upload ${capturedFrames.length} Section${capturedFrames.length !== 1 ? 's' : ''}`}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

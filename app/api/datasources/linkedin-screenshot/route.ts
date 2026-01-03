@@ -11,17 +11,37 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    const screenshot = formData.get('screenshot') as File;
 
-    if (!screenshot) {
-      return NextResponse.json({ success: false, error: 'Screenshot is required' }, { status: 400 });
+    // Handle both single screenshot (legacy) and multiple screenshots
+    const singleScreenshot = formData.get('screenshot') as File | null;
+    const multipleScreenshots = formData.getAll('screenshots') as File[];
+
+    const screenshots: File[] = [];
+
+    if (singleScreenshot) {
+      screenshots.push(singleScreenshot);
+    }
+
+    if (multipleScreenshots.length > 0) {
+      screenshots.push(...multipleScreenshots);
+    }
+
+    if (screenshots.length === 0) {
+      return NextResponse.json({ success: false, error: 'At least one screenshot is required' }, { status: 400 });
     }
 
     // Forward to n8n webhook with multipart/form-data
     const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/datasource-linkedin-screenshot`;
 
     const n8nFormData = new FormData();
-    n8nFormData.append('screenshot', screenshot);
+
+    // Append all screenshots
+    screenshots.forEach((screenshot, index) => {
+      n8nFormData.append(`screenshot_${index}`, screenshot);
+    });
+
+    // Also send count for n8n to know how many to process
+    n8nFormData.append('screenshot_count', screenshots.length.toString());
 
     const response = await fetch(n8nUrl, {
       method: 'POST',
