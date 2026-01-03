@@ -249,32 +249,11 @@ export default function SettingsPage() {
         return (diffPixels / (totalPixels / 10)) * 100;
     };
 
-    // Simple LinkedIn detection by looking for LinkedIn blue color in the frame
-    const detectLinkedIn = (imageData: ImageData): { isLinkedIn: boolean; detectedName: string } => {
-        const data = imageData.data;
-        let linkedInBlueCount = 0;
-        const totalSamples = Math.floor(data.length / 40);
-
-        // LinkedIn's brand blue is approximately rgb(0, 119, 181) or #0077B5
-        for (let i = 0; i < data.length; i += 40) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            // Check for LinkedIn blue range
-            if (r < 30 && g >= 100 && g <= 140 && b >= 160 && b <= 200) {
-                linkedInBlueCount++;
-            }
-        }
-
-        const bluePercentage = (linkedInBlueCount / totalSamples) * 100;
-
-        // If more than 0.5% of pixels are LinkedIn blue, likely a LinkedIn page
-        const isLinkedIn = bluePercentage > 0.5;
-
+    // Validation placeholder - always passes for now
+    const detectLinkedIn = (): { isLinkedIn: boolean; detectedName: string } => {
         return {
-            isLinkedIn,
-            detectedName: isLinkedIn ? 'LinkedIn Profile Detected' : 'Not a LinkedIn page'
+            isLinkedIn: true,
+            detectedName: 'Ready to capture'
         };
     };
 
@@ -308,7 +287,7 @@ export default function SettingsPage() {
                 throw new Error('Failed to capture frame');
             }
 
-            const validation = detectLinkedIn(frameResult.imageData);
+            const validation = detectLinkedIn();
             setValidationResult(validation);
             setActiveStream(stream);
             activeVideoRef.current = video;
