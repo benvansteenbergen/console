@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import { useSession } from "@/components/SessionProvider";
+import PageLoader from "@/components/ui/PageLoader";
 
 interface Agent {
     id: string;
@@ -51,14 +52,7 @@ export default function AdminPage() {
     };
 
     if (sessionLoading) {
-        return (
-            <main className="flex flex-1 items-center justify-center p-6">
-                <div className="text-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent mx-auto mb-4"></div>
-                    <p className="text-sm text-gray-600">Loading...</p>
-                </div>
-            </main>
-        );
+        return <PageLoader />;
     }
 
     if (error) {

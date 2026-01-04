@@ -5,6 +5,7 @@ import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import DocumentLibrary from '@/components/DocumentLibrary';
 import KnowledgeBaseOverview from '@/components/KnowledgeBaseOverview';
+import PageLoader from '@/components/ui/PageLoader';
 
 const CLUSTER_OPTIONS = [
   { value: 'general_company_info', label: 'General Company Info' },
@@ -43,11 +44,7 @@ export default function CompanyPrivateStorage() {
   }, [branding.name]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   const validateFile = (file: File): string | null => {
@@ -281,8 +278,41 @@ export default function CompanyPrivateStorage() {
           )}
         </div>
 
+        {/* Analyzing State */}
+        {selectedFile && analyzing && (
+          <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent flex-shrink-0"></div>
+              <div>
+                <h3 className="font-semibold text-blue-900">Analyzing your document...</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Our AI is reading your document to suggest a description and category. This usually takes a few seconds.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Document uploaded</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Text extracted</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                <span>Suggesting category...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Metadata Fields */}
-        {selectedFile && (
+        {selectedFile && !analyzing && (
           <div className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -319,7 +349,6 @@ export default function CompanyPrivateStorage() {
                 value={cluster}
                 onChange={(e) => setCluster(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={analyzing}
               >
                 {CLUSTER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -327,9 +356,6 @@ export default function CompanyPrivateStorage() {
                   </option>
                 ))}
               </select>
-              {analyzing && (
-                <p className="text-xs text-gray-500 mt-1">Analyzing document...</p>
-              )}
             </div>
 
             <div>

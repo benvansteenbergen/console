@@ -6,12 +6,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 export function ChatPane({
                              fileId,
+                             currentContent,
                              onPreview,
                              onAccept,
                              onLoadingChange,
                              hasChanges,
                          }: {
     fileId: string;
+    currentContent: string;
     onPreview: (proposed: string) => void;
     onAccept: () => void;
     onLoadingChange?: (loading: boolean) => void;
@@ -20,6 +22,7 @@ export function ChatPane({
     const [messages, setMessages] = useState<
         { role: "user" | "assistant"; content: string }[]
     >([]);
+    const [conversationId, setConversationId] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [persona, setPersona] = useState<string>("general");
@@ -33,8 +36,11 @@ export function ChatPane({
 
     const sendMessage = async () => {
         if (!input.trim()) return;
-        const userMsg = { role: "user" as const, content: input };
-        setMessages((m) => [...m, userMsg]);
+        const userMessage = input.trim();
+
+        // Add user message to UI immediately
+        setMessages((m) => [...m, { role: "user", content: userMessage }]);
+        setInput("");
         setLoading(true);
         onLoadingChange?.(true);
 
@@ -42,10 +48,22 @@ export function ChatPane({
             const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fileId, messages: [...messages, userMsg], persona, mode }),
+                body: JSON.stringify({
+                    conversationId,
+                    fileId,
+                    documentText: currentContent,
+                    message: userMessage,
+                    persona,
+                    mode
+                }),
             });
 
             const data = await res.json();
+
+            // Store conversation ID for subsequent messages
+            if (data.conversationId) {
+                setConversationId(data.conversationId);
+            }
 
             // Update chat (assistant message)
             if (data.assistant_message) {
@@ -60,11 +78,12 @@ export function ChatPane({
                 onPreview(data.suggested_text);
             }
 
-            // ✅ Clear input after sending
-            setInput("");
-
         } catch (error) {
             console.error("Chat error:", error);
+            setMessages((m) => [
+                ...m,
+                { role: "assistant", content: "Something went wrong. Please try again." },
+            ]);
         } finally {
             setLoading(false);
             onLoadingChange?.(false);

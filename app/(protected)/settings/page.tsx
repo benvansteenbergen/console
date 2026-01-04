@@ -6,6 +6,7 @@ import { useSession } from "@/components/SessionProvider";
 import { useBranding } from "@/components/BrandingProvider";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
+import PageLoader from "@/components/ui/PageLoader";
 
 interface SettingsData {
     client: {
@@ -154,14 +155,7 @@ export default function SettingsPage() {
     }, []);
 
     if (sessionLoading || !settings) {
-        return (
-            <main className="flex flex-1 items-center justify-center p-6">
-                <div className="text-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-                    <p className="text-sm text-gray-600">Loading settings...</p>
-                </div>
-            </main>
-        );
+        return <PageLoader />;
     }
 
     if (settingsError) {

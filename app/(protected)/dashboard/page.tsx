@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useBranding } from '@/components/BrandingProvider';
-import RecentExecutions from '@/components/RecentExecutions';
 import ContentWriterGrid from "@/components/Agents/ContentwriterGrid";
 import ContentFormGrid from "@/components/Agents/ContentformGrid";
 import ContentautomationGrid from "@/components/Agents/ContentautomationGrid";
@@ -210,14 +209,6 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500">No API endpoints configured yet</p>
             </div>
           </div>
-        </div>
-
-        {/* Recent executions */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">
-            Recent Activity
-          </h2>
-          <RecentExecutions limit={5} showTitle={false} />
         </div>
       </section>
   );

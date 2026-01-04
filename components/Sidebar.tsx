@@ -7,7 +7,6 @@ import {
     Bars3Icon,
     XMarkIcon,
     HomeIcon,
-    ClockIcon,
     ArrowRightOnRectangleIcon,
     PlusCircleIcon,
     ChevronDownIcon,
@@ -18,6 +17,7 @@ import {
     BoltIcon,
 } from "@heroicons/react/24/outline";
 import { useBranding } from "@/components/BrandingProvider";
+import { useNavigation } from "@/components/NavigationProgress";
 import useSWR, { useSWRConfig } from "swr";
 
 interface ContentForm {
@@ -44,9 +44,17 @@ export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const branding = useBranding();
+    const { startNavigation } = useNavigation();
     const { mutate } = useSWRConfig();
     const { data: forms } = useSWR<ContentForm[]>('/api/content-forms', fetcher);
     const { data: folders } = useSWR<FolderStat[]>('/api/content-storage', fetcher);
+
+    const handleNavClick = (href: string) => {
+        setOpen(false);
+        if (pathname !== href) {
+            startNavigation();
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -66,7 +74,6 @@ export default function Sidebar() {
         {href: "/dashboard", label: "Dashboard", icon: HomeIcon},
         {href: "/live", label: "Live", icon: BoltIcon},
         {href: "/company-private-storage", label: "Private Storage (beta)", icon: ServerIcon},
-        {href: "/executions", label: "Logboek", icon: ClockIcon},
         {href: "/settings", label: "Settings", icon: Cog6ToothIcon},
     ];
 
@@ -120,7 +127,7 @@ export default function Sidebar() {
                                         ? "bg-blue-600 text-white"
                                         : "text-gray-600 hover:bg-gray-100"
                                 }`}
-                                onClick={() => setOpen(false)}
+                                onClick={() => handleNavClick(href)}
                             >
                                 <Icon className="h-5 w-5"/>
                                 {label}
@@ -163,17 +170,18 @@ export default function Sidebar() {
                                 <div className="px-3 py-2 text-xs text-gray-400">No forms available</div>
                             ) : (
                                 forms.map((form) => {
-                                    const formActive = pathname.startsWith(`/create/${form.slug}`);
+                                    const formHref = `/create/${form.slug}`;
+                                    const formActive = pathname.startsWith(formHref);
                                     return (
                                         <Link
                                             key={form.id}
-                                            href={`/create/${form.slug}`}
+                                            href={formHref}
                                             className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
                                                 formActive
                                                     ? "bg-blue-50 text-blue-600 font-medium"
                                                     : "text-gray-600 hover:bg-gray-50"
                                             }`}
-                                            onClick={() => setOpen(false)}
+                                            onClick={() => handleNavClick(formHref)}
                                         >
                                             {form.name}
                                         </Link>
@@ -210,17 +218,18 @@ export default function Sidebar() {
                             ) : (
                                 folders.map((folder) => {
                                     const folderSlug = toSlug(folder.folder);
-                                    const folderActive = pathname.startsWith(`/content/${folderSlug}`);
+                                    const folderHref = `/content/${folderSlug}`;
+                                    const folderActive = pathname.startsWith(folderHref);
                                     return (
                                         <Link
                                             key={folder.folder}
-                                            href={`/content/${folderSlug}`}
+                                            href={folderHref}
                                             className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
                                                 folderActive
                                                     ? "bg-blue-50 text-blue-600 font-medium"
                                                     : "text-gray-600 hover:bg-gray-50"
                                             }`}
-                                            onClick={() => setOpen(false)}
+                                            onClick={() => handleNavClick(folderHref)}
                                         >
                                             <span className="capitalize">{folder.folder}</span>
                                             {folder.unseen > 0 && (

@@ -6,6 +6,7 @@ import { ChatPane } from "@/components/editor/ChatPane";
 import { DocCanvas } from "@/components/editor/DocCanvas";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import PageLoader from "@/components/ui/PageLoader";
 
 type DocumentSnapshot = {
     fileId: string;
@@ -68,10 +69,9 @@ export default function EditorPage() {
         }
     };
 
-    if (loading || !doc)
-        return (
-            <div className="p-6 text-sm text-muted-foreground">Loading document…</div>
-        );
+    if (loading || !doc) {
+        return <PageLoader />;
+    }
 
     return (
         <div className="flex flex-col h-screen">
@@ -121,6 +121,7 @@ export default function EditorPage() {
             )}>
                 <ChatPane
                     fileId={doc.fileId}
+                    currentContent={preview ?? doc.content}
                     onPreview={handlePreview}
                     onAccept={handleAccept}
                     onLoadingChange={setSaving}

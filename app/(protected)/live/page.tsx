@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import LiveChat from '@/components/LiveChat';
+import PageLoader from '@/components/ui/PageLoader';
 
 export default function LivePage() {
   const { loading } = useSession();
@@ -14,11 +15,7 @@ export default function LivePage() {
   }, [branding.name]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
