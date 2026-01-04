@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const screenshot = formData.get('screenshot') as File | null;
+    const type = formData.get('type') as string || 'personal';
 
     if (!screenshot) {
       return NextResponse.json({ success: false, error: 'Screenshot is required' }, { status: 400 });
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
 
     const n8nFormData = new FormData();
     n8nFormData.append('screenshot', screenshot);
+    n8nFormData.append('type', type);
 
     const response = await fetch(n8nUrl, {
       method: 'POST',

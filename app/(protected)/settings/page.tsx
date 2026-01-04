@@ -49,6 +49,16 @@ interface CreditsData {
     over_limit: boolean;
 }
 
+interface RecentActivity {
+    posts: Array<{
+        content: string;
+        type: string;
+        engagement: string | null;
+        date: string | null;
+    }>;
+    activity_summary: string;
+}
+
 interface LinkedInProfile {
     full_name: string;
     headline: string;
@@ -57,16 +67,23 @@ interface LinkedInProfile {
     connection_count: string;
     follower_count: string | null;
     about: string;
-    recent_activity?: {
-        posts: Array<{
-            content: string;
-            type: string;
-            engagement: string | null;
-            date: string | null;
-        }>;
-        activity_summary: string;
-    };
+    recent_activity?: RecentActivity;
     profile_summary: string;
+}
+
+interface CompanyProfile {
+    company_name: string;
+    tagline: string;
+    industry: string;
+    company_size: string;
+    headquarters: string;
+    founded: string | null;
+    website: string | null;
+    follower_count: string;
+    about: string;
+    specialties: string | null;
+    recent_activity?: RecentActivity;
+    company_summary: string;
 }
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -94,60 +111,40 @@ export default function SettingsPage() {
         }
     );
 
-    // Connection states
-    const [connectingLinkedinCompany, setConnectingLinkedinCompany] = useState(false);
+    // Website data source
     const [connectingWebsite, setConnectingWebsite] = useState(false);
-
-    const [linkedinCompanySlug, setLinkedinCompanySlug] = useState('');
     const [websiteUrl, setWebsiteUrl] = useState('');
-
-    const [showLinkedinCompanyInput, setShowLinkedinCompanyInput] = useState(false);
     const [showWebsiteInput, setShowWebsiteInput] = useState(false);
+
+    // Profile view modals
     const [showLinkedinProfileView, setShowLinkedinProfileView] = useState(false);
     const [linkedinProfile, setLinkedinProfile] = useState<LinkedInProfile | null>(null);
     const [loadingLinkedinProfile, setLoadingLinkedinProfile] = useState(false);
+    const [showCompanyProfileView, setShowCompanyProfileView] = useState(false);
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+    const [loadingCompanyProfile, setLoadingCompanyProfile] = useState(false);
 
-    // Scroll capture states
-    // Flow: idle -> intro -> previewing -> validating -> ready -> capturing -> done -> processing -> result
+    // LinkedIn capture - flow: idle → intro → previewing → validating → ready → capturing → done → processing → result
+    const [captureType, setCaptureType] = useState<'personal' | 'company'>('personal');
     const [scrollCaptureMode, setScrollCaptureMode] = useState<'idle' | 'intro' | 'previewing' | 'validating' | 'ready' | 'capturing' | 'done' | 'processing' | 'result'>('idle');
     const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
     const [validationResult, setValidationResult] = useState<{ isLinkedIn: boolean; detectedName?: string } | null>(null);
     const [scrollCaptureInterval, setScrollCaptureInterval] = useState<NodeJS.Timeout | null>(null);
     const [noChangeCount, setNoChangeCount] = useState(0);
     const [videoReady, setVideoReady] = useState(false);
-    const [profileResult, setProfileResult] = useState<{
-        full_name: string;
-        headline: string;
-        location: string;
-        industry: string | null;
-        connection_count: string;
-        follower_count: string | null;
-        about: string;
-        recent_activity?: {
-            posts: Array<{
-                content: string;
-                type: string;
-                engagement: string | null;
-                date: string | null;
-            }>;
-            activity_summary: string;
-        };
-        profile_summary: string;
-    } | null>(null);
+    const [profileResult, setProfileResult] = useState<LinkedInProfile | null>(null);
 
-    // Refs for interval callback (to avoid stale closure)
+    // Refs for capture callbacks
     const lastFrameDataRef = useRef<ImageData | null>(null);
     const activeVideoRef = useRef<HTMLVideoElement | null>(null);
     const noChangeCountRef = useRef(0);
+    const activeStreamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => {
         document.title = `${branding.name} - Settings`;
     }, [branding.name]);
 
-    // Use ref for stream to avoid cleanup issues
-    const activeStreamRef = useRef<MediaStream | null>(null);
-
-    // Cleanup on unmount only
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (activeStreamRef.current) {
@@ -181,29 +178,6 @@ export default function SettingsPage() {
         ? Math.min((credits.credits_used / credits.plan_credits) * 100, 100)
         : 0;
 
-    const handleConnectLinkedinCompany = async () => {
-        if (!linkedinCompanySlug.trim()) return;
-
-        setConnectingLinkedinCompany(true);
-        try {
-            const response = await fetch('/api/datasources/linkedin-company', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slug: linkedinCompanySlug }),
-            });
-
-            if (response.ok) {
-                await mutateSettings();
-                setShowLinkedinCompanyInput(false);
-                setLinkedinCompanySlug('');
-            }
-        } catch (error) {
-            console.error('Failed to connect LinkedIn company:', error);
-        } finally {
-            setConnectingLinkedinCompany(false);
-        }
-    };
-
     const handleConnectWebsite = async () => {
         if (!websiteUrl.trim()) return;
 
@@ -227,7 +201,6 @@ export default function SettingsPage() {
         }
     };
 
-    
     // Helper to capture a single frame from video (with compression)
     const captureFrameFromVideo = (video: HTMLVideoElement): { dataUrl: string; imageData: ImageData } | null => {
         // Ensure video is ready and has valid dimensions
@@ -303,8 +276,29 @@ export default function SettingsPage() {
         }
     };
 
+    // Fetch and show company profile
+    const viewCompanyProfile = async () => {
+        setShowCompanyProfileView(true);
+        setLoadingCompanyProfile(true);
+
+        try {
+            const response = await fetch('/api/datasources/linkedin-company-profile');
+            if (response.ok) {
+                const data = await response.json();
+                setCompanyProfile(data);
+            } else {
+                console.error('Failed to fetch company profile');
+            }
+        } catch (error) {
+            console.error('Error fetching company profile:', error);
+        } finally {
+            setLoadingCompanyProfile(false);
+        }
+    };
+
     // Start scroll capture flow - show intro modal first
-    const startScrollCapture = () => {
+    const startScrollCapture = (type: 'personal' | 'company') => {
+        setCaptureType(type);
         setScrollCaptureMode('intro');
         setCapturedFrames([]);
         setValidationResult(null);
@@ -364,12 +358,13 @@ export default function SettingsPage() {
         lastFrameDataRef.current = frameResult.imageData;
 
         try {
-            // Send to validation endpoint
+            // Send to validation endpoint with type parameter
             const response = await fetch(frameResult.dataUrl);
             const blob = await response.blob();
 
             const formData = new FormData();
             formData.append('screenshot', blob, 'validation.jpg');
+            formData.append('type', captureType);
 
             const validateResponse = await fetch('/api/datasources/linkedin-validate', {
                 method: 'POST',
@@ -504,13 +499,18 @@ export default function SettingsPage() {
             const formData = new FormData();
 
             // Convert each frame to blob and append
+            const filePrefix = captureType === 'company' ? 'linkedin-company' : 'linkedin-profile';
             for (let i = 0; i < capturedFrames.length; i++) {
                 const response = await fetch(capturedFrames[i]);
                 const blob = await response.blob();
-                formData.append('screenshots', blob, `linkedin-profile-${i}.jpg`);
+                formData.append('screenshots', blob, `${filePrefix}-${i}.jpg`);
             }
 
-            const uploadResponse = await fetch('/api/datasources/linkedin-screenshot', {
+            const uploadEndpoint = captureType === 'company'
+                ? '/api/datasources/linkedin-company-analyse'
+                : '/api/datasources/linkedin-profile-analyse';
+
+            const uploadResponse = await fetch(uploadEndpoint, {
                 method: 'POST',
                 body: formData,
             });
@@ -824,7 +824,7 @@ export default function SettingsPage() {
                                     View
                                 </button>
                                 <button
-                                    onClick={startScrollCapture}
+                                    onClick={() => startScrollCapture('personal')}
                                     disabled={scrollCaptureMode !== 'idle'}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
                                     title="Recapture profile"
@@ -837,7 +837,7 @@ export default function SettingsPage() {
                             </div>
                         ) : (
                             <button
-                                onClick={startScrollCapture}
+                                onClick={() => startScrollCapture('personal')}
                                 disabled={scrollCaptureMode !== 'idle'}
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                             >
@@ -851,7 +851,7 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between mb-3">
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900">LinkedIn Company Page</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">Connect your company LinkedIn page</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Capture your company's LinkedIn page</p>
                             </div>
                             {settings.dataSources.linkedinCompany.connected && settings.dataSources.linkedinCompany.lastSynced && (
                                 <span className="text-xs text-gray-500">
@@ -860,46 +860,45 @@ export default function SettingsPage() {
                             )}
                         </div>
 
-                        {!showLinkedinCompanyInput ? (
-                            <button
-                                onClick={() => setShowLinkedinCompanyInput(true)}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                                {settings.dataSources.linkedinCompany.connected ? 'Reconnect' : 'Connect'}
-                            </button>
-                        ) : (
-                            <div>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={linkedinCompanySlug}
-                                        onChange={(e) => setLinkedinCompanySlug(e.target.value)}
-                                        placeholder="acme-corporation"
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        disabled={connectingLinkedinCompany}
-                                    />
-                                    <button
-                                        onClick={handleConnectLinkedinCompany}
-                                        disabled={connectingLinkedinCompany || !linkedinCompanySlug.trim()}
-                                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                    >
-                                        {connectingLinkedinCompany ? 'Connecting...' : 'Save'}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setShowLinkedinCompanyInput(false);
-                                            setLinkedinCompanySlug('');
-                                        }}
-                                        disabled={connectingLinkedinCompany}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1.5">
-                                    Enter your company slug from linkedin.com/company/<span className="font-medium">company-name</span>
-                                </p>
+                        {settings.dataSources.linkedinCompany.connected ? (
+                            <div className="flex items-center gap-3">
+                                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Captured
+                                </span>
+                                <button
+                                    onClick={viewCompanyProfile}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                                    title="View company page"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    View
+                                </button>
+                                <button
+                                    onClick={() => startScrollCapture('company')}
+                                    disabled={scrollCaptureMode !== 'idle'}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                    title="Recapture company page"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    {scrollCaptureMode !== 'idle' ? 'Capturing...' : 'Recapture'}
+                                </button>
                             </div>
+                        ) : (
+                            <button
+                                onClick={() => startScrollCapture('company')}
+                                disabled={scrollCaptureMode !== 'idle'}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                                {scrollCaptureMode !== 'idle' ? 'Capturing...' : 'Capture Company Page'}
+                            </button>
                         )}
                     </div>
 
@@ -969,24 +968,24 @@ export default function SettingsPage() {
                         {/* Header */}
                         <div className="p-6 border-b border-gray-200">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {scrollCaptureMode === 'intro' && 'Capture your LinkedIn Profile'}
-                                {scrollCaptureMode === 'previewing' && 'Is this your LinkedIn profile?'}
+                                {scrollCaptureMode === 'intro' && (captureType === 'company' ? 'Capture your LinkedIn Company Page' : 'Capture your LinkedIn Profile')}
+                                {scrollCaptureMode === 'previewing' && (captureType === 'company' ? 'Is this your LinkedIn company page?' : 'Is this your LinkedIn profile?')}
                                 {scrollCaptureMode === 'validating' && 'Validating...'}
                                 {scrollCaptureMode === 'ready' && 'Ready to capture'}
-                                {scrollCaptureMode === 'capturing' && 'Capturing Profile...'}
+                                {scrollCaptureMode === 'capturing' && (captureType === 'company' ? 'Capturing Company Page...' : 'Capturing Profile...')}
                                 {scrollCaptureMode === 'done' && 'Capture Complete'}
-                                {scrollCaptureMode === 'processing' && 'Analyzing Profile...'}
-                                {scrollCaptureMode === 'result' && 'Profile Scanned'}
+                                {scrollCaptureMode === 'processing' && (captureType === 'company' ? 'Analyzing Company Page...' : 'Analyzing Profile...')}
+                                {scrollCaptureMode === 'result' && (captureType === 'company' ? 'Company Page Scanned' : 'Profile Scanned')}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                {scrollCaptureMode === 'intro' && 'We\'ll scan your LinkedIn profile to personalize your content'}
-                                {scrollCaptureMode === 'previewing' && 'Confirm this is your LinkedIn profile page to continue'}
-                                {scrollCaptureMode === 'validating' && 'Checking if this is a LinkedIn page...'}
+                                {scrollCaptureMode === 'intro' && (captureType === 'company' ? 'We\'ll scan your company\'s LinkedIn page to personalize your content' : 'We\'ll scan your LinkedIn profile to personalize your content')}
+                                {scrollCaptureMode === 'previewing' && (captureType === 'company' ? 'Confirm this is your company\'s LinkedIn page to continue' : 'Confirm this is your LinkedIn profile page to continue')}
+                                {scrollCaptureMode === 'validating' && (captureType === 'company' ? 'Checking if this is a LinkedIn company page...' : 'Checking if this is a LinkedIn page...')}
                                 {scrollCaptureMode === 'ready' && 'Go to your LinkedIn tab and scroll slowly from top to bottom'}
-                                {scrollCaptureMode === 'capturing' && 'Scroll slowly through your entire profile. We\'ll capture as you go.'}
-                                {scrollCaptureMode === 'done' && `Captured ${capturedFrames.length} section${capturedFrames.length !== 1 ? 's' : ''} of your profile`}
-                                {scrollCaptureMode === 'processing' && 'Our AI is extracting your profile information...'}
-                                {scrollCaptureMode === 'result' && 'Here\'s what we found on your LinkedIn profile'}
+                                {scrollCaptureMode === 'capturing' && (captureType === 'company' ? 'Scroll slowly through the entire company page. We\'ll capture as you go.' : 'Scroll slowly through your entire profile. We\'ll capture as you go.')}
+                                {scrollCaptureMode === 'done' && `Captured ${capturedFrames.length} section${capturedFrames.length !== 1 ? 's' : ''} of your ${captureType === 'company' ? 'company page' : 'profile'}`}
+                                {scrollCaptureMode === 'processing' && (captureType === 'company' ? 'Our AI is extracting your company information...' : 'Our AI is extracting your profile information...')}
+                                {scrollCaptureMode === 'result' && (captureType === 'company' ? 'Here\'s what we found on your company\'s LinkedIn page' : 'Here\'s what we found on your LinkedIn profile')}
                             </p>
                         </div>
 
@@ -1007,22 +1006,22 @@ export default function SettingsPage() {
                                         <div className="max-w-md space-y-4 text-left">
                                             <div className="flex gap-3">
                                                 <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">1</span>
-                                                <p className="text-gray-600">Select the <strong>browser window</strong> with your LinkedIn profile open</p>
+                                                <p className="text-gray-600">Select the <strong>browser window</strong> with your {captureType === 'company' ? 'LinkedIn company page' : 'LinkedIn profile'} open</p>
                                             </div>
                                             <div className="flex gap-3">
                                                 <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">2</span>
-                                                <p className="text-gray-600">Confirm it's your LinkedIn profile page</p>
+                                                <p className="text-gray-600">Confirm it's your {captureType === 'company' ? 'company\'s LinkedIn page' : 'LinkedIn profile page'}</p>
                                             </div>
                                             <div className="flex gap-3">
                                                 <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">3</span>
-                                                <p className="text-gray-600">Scroll slowly through your profile - we'll capture it automatically</p>
+                                                <p className="text-gray-600">Scroll slowly through the {captureType === 'company' ? 'company page' : 'profile'} - we'll capture it automatically</p>
                                             </div>
                                             <div className="flex gap-3">
                                                 <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">4</span>
-                                                <p className="text-gray-600">Our AI extracts your profile info to personalize your content</p>
+                                                <p className="text-gray-600">Our AI extracts {captureType === 'company' ? 'company info' : 'your profile info'} to personalize your content</p>
                                             </div>
                                         </div>
-                                        <p className="mt-6 text-sm text-gray-500">Make sure you have your LinkedIn profile open in another browser window before continuing.</p>
+                                        <p className="mt-6 text-sm text-gray-500">Make sure you have your {captureType === 'company' ? 'company\'s LinkedIn page' : 'LinkedIn profile'} open in another browser window before continuing.</p>
                                     </div>
                                 )}
 
@@ -1060,12 +1059,11 @@ export default function SettingsPage() {
                                         {validationResult && !validationResult.isLinkedIn && scrollCaptureMode === 'previewing' && (
                                             <div className="absolute bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 px-4 py-3 rounded-b-lg">
                                                 <p className="text-amber-800 text-sm font-medium">{validationResult.detectedName}</p>
-                                                <p className="text-amber-600 text-xs mt-0.5">Please navigate to your LinkedIn profile and try again.</p>
+                                                <p className="text-amber-600 text-xs mt-0.5">Please navigate to your {captureType === 'company' ? 'company\'s LinkedIn page' : 'LinkedIn profile'} and try again.</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
-
 
                                 {(scrollCaptureMode === 'capturing' || scrollCaptureMode === 'done') && capturedFrames.length > 0 && (
                                     <div>
@@ -1256,7 +1254,7 @@ export default function SettingsPage() {
                                     onClick={confirmLinkedInPage}
                                     className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                                 >
-                                    Yes, this is my LinkedIn profile
+                                    {captureType === 'company' ? 'Yes, this is my company page' : 'Yes, this is my LinkedIn profile'}
                                 </button>
                             )}
 
@@ -1281,7 +1279,7 @@ export default function SettingsPage() {
                             {scrollCaptureMode === 'done' && capturedFrames.length > 0 && (
                                 <>
                                     <button
-                                        onClick={startScrollCapture}
+                                        onClick={() => startScrollCapture(captureType)}
                                         className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
                                     >
                                         Recapture
@@ -1429,6 +1427,162 @@ export default function SettingsPage() {
                         <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
                             <button
                                 onClick={() => setShowLinkedinProfileView(false)}
+                                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Company Profile View Modal */}
+            {showCompanyProfileView && (
+                <div className="fixed top-0 left-0 w-[100vw] h-[100vh] z-[100] flex items-center justify-center bg-black/50 p-4" style={{ margin: 0 }}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">LinkedIn Company Page</h3>
+                                <p className="text-sm text-gray-500 mt-1">Your saved company information</p>
+                            </div>
+                            <button
+                                onClick={() => setShowCompanyProfileView(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-auto p-6 space-y-6">
+                            {loadingCompanyProfile ? (
+                                <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                                    <p className="mt-4 text-sm text-gray-600">Loading company page...</p>
+                                </div>
+                            ) : companyProfile ? (
+                                <>
+                                    {/* Company header */}
+                                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
+                                        <h4 className="text-2xl font-bold text-gray-900">{companyProfile.company_name}</h4>
+                                        <p className="text-lg text-gray-700 mt-1">{companyProfile.tagline}</p>
+                                        <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">
+                                            {companyProfile.headquarters && (
+                                                <span className="flex items-center gap-1">
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    {companyProfile.headquarters}
+                                                </span>
+                                            )}
+                                            {companyProfile.industry && (
+                                                <span className="flex items-center gap-1">
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                    {companyProfile.industry}
+                                                </span>
+                                            )}
+                                            {companyProfile.founded && (
+                                                <span className="flex items-center gap-1">
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    Founded {companyProfile.founded}
+                                                </span>
+                                            )}
+                                            {companyProfile.website && (
+                                                <a href={companyProfile.website.startsWith('http') ? companyProfile.website : `https://${companyProfile.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                    </svg>
+                                                    Website
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-3 mt-3">
+                                            {companyProfile.company_size && (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                                                    {companyProfile.company_size}
+                                                </span>
+                                            )}
+                                            {companyProfile.follower_count && (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                                    {companyProfile.follower_count}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* About section */}
+                                    {companyProfile.about && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                            <h5 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">About</h5>
+                                            <p className="text-gray-700 whitespace-pre-line">{companyProfile.about}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Specialties */}
+                                    {companyProfile.specialties && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                            <h5 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Specialties</h5>
+                                            <p className="text-gray-700">{companyProfile.specialties}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Recent Activity */}
+                                    {companyProfile.recent_activity && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                            <h5 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Recent Activity</h5>
+                                            {companyProfile.recent_activity.activity_summary && (
+                                                <p className="text-gray-600 text-sm mb-4 italic">{companyProfile.recent_activity.activity_summary}</p>
+                                            )}
+                                            {companyProfile.recent_activity.posts && companyProfile.recent_activity.posts.length > 0 && (
+                                                <div className="space-y-3">
+                                                    {companyProfile.recent_activity.posts.map((post, index) => (
+                                                        <div key={index} className="border-l-2 border-indigo-200 pl-3 py-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 capitalize">
+                                                                    {post.type}
+                                                                </span>
+                                                                {post.date && (
+                                                                    <span className="text-xs text-gray-400">{post.date}</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-700">{post.content}</p>
+                                                            {post.engagement && (
+                                                                <p className="text-xs text-gray-500 mt-1">{post.engagement}</p>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Company Summary */}
+                                    {companyProfile.company_summary && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                            <h5 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Company Summary</h5>
+                                            <p className="text-gray-700 whitespace-pre-line leading-relaxed">{companyProfile.company_summary}</p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-gray-500">
+                                    <p>No company data available</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowCompanyProfileView(false)}
                                 className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                             >
                                 Close

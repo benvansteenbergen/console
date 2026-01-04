@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward to n8n webhook with multipart/form-data
-    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/datasource-linkedin-screenshot`;
+    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/datasource-linkedin-profile-analyse`;
 
     const n8nFormData = new FormData();
 
@@ -53,20 +53,20 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('n8n LinkedIn screenshot processing error:', errorText);
+      console.error('n8n LinkedIn profile analyse error:', errorText);
       return NextResponse.json({
         success: false,
-        error: 'Failed to process LinkedIn screenshot.'
+        error: 'Failed to analyse LinkedIn profile.'
       }, { status: response.status });
     }
 
     const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
-    console.error('LinkedIn screenshot processing error:', error);
+    console.error('LinkedIn profile analyse error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to process LinkedIn screenshot.'
+      error: 'Failed to analyse LinkedIn profile.'
     }, { status: 500 });
   }
 }
