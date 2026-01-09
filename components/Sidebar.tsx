@@ -33,6 +33,11 @@ interface FolderStat {
     items: unknown[];
 }
 
+interface UnreadCount {
+    success: boolean;
+    count: number;
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const toSlug = (name: string) =>
     name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -48,6 +53,11 @@ export default function Sidebar() {
     const { mutate } = useSWRConfig();
     const { data: forms } = useSWR<ContentForm[]>('/api/content-forms', fetcher);
     const { data: folders } = useSWR<FolderStat[]>('/api/content-storage', fetcher);
+    const { data: unreadData } = useSWR<UnreadCount>('/api/live/unread-count', fetcher, {
+        refreshInterval: 30000, // Refresh every 30 seconds
+    });
+
+    const liveUnreadCount = unreadData?.count || 0;
 
     const handleNavClick = (href: string) => {
         setOpen(false);
@@ -118,6 +128,7 @@ export default function Sidebar() {
                         const active = pathname === href;
                         const common =
                             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium";
+                        const showBadge = href === '/live' && liveUnreadCount > 0;
                         return (
                             <Link
                                 key={href}
@@ -130,7 +141,14 @@ export default function Sidebar() {
                                 onClick={() => handleNavClick(href)}
                             >
                                 <Icon className="h-5 w-5"/>
-                                {label}
+                                <span className="flex-1">{label}</span>
+                                {showBadge && (
+                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                                        active ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+                                    }`}>
+                                        {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
