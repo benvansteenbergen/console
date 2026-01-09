@@ -9,6 +9,7 @@ export function ChatPane({
                              currentContent,
                              onPreview,
                              onAccept,
+                             onDiscard,
                              onLoadingChange,
                              hasChanges,
                          }: {
@@ -16,6 +17,7 @@ export function ChatPane({
     currentContent: string;
     onPreview: (proposed: string) => void;
     onAccept: () => void;
+    onDiscard: () => void;
     onLoadingChange?: (loading: boolean) => void;
     hasChanges?: boolean;
 }) {
@@ -125,6 +127,13 @@ export function ChatPane({
                         </div>
                     </div>
                 ))}
+                {/* Loading indicator */}
+                {loading && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                        <span className="text-sm">Generating response...</span>
+                    </div>
+                )}
                 {/* Invisible div to scroll to */}
                 <div ref={messagesEndRef} />
             </div>
@@ -158,6 +167,7 @@ export function ChatPane({
                         >
                             <option value="general">General Assistant</option>
                             <option value="seo">SEO Expert</option>
+                            <option value="geoaeo">GEO/AEO Expert</option>
                             <option value="marketing">Marketing Expert</option>
                             <option value="proofreader">Proof Reader</option>
                         </select>
@@ -167,6 +177,12 @@ export function ChatPane({
                     placeholder="Ask AI to suggest edits..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendMessage();
+                        }
+                    }}
                     disabled={loading}
                 />
                 <div className="flex gap-2">
@@ -180,13 +196,24 @@ export function ChatPane({
                         )}
                         {loading ? "Thinking..." : "Send"}
                     </Button>
-                    <Button
-                        variant="outline"
-                        onClick={acceptChanges}
-                        disabled={!hasChanges}
-                    >
-                        Accept Changes
-                    </Button>
+                    {hasChanges && (
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={onDiscard}
+                                className="text-gray-600"
+                            >
+                                Discard
+                            </Button>
+                            <Button
+                                variant="default"
+                                onClick={acceptChanges}
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                Accept
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

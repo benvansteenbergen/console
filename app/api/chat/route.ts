@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      conversationId,
+      conversationId: incomingConversationId,
       fileId,
       documentText,
       message,
@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
       persona?: string;
       mode?: 'edit' | 'feedback';
     };
+
+    // Generate conversation ID if not provided
+    const conversationId = incomingConversationId || crypto.randomUUID();
 
     // Forward to n8n webhook
     const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/review-chat`;

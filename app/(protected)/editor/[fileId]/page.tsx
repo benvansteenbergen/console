@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChatPane } from "@/components/editor/ChatPane";
 import { DocCanvas } from "@/components/editor/DocCanvas";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import PageLoader from "@/components/ui/PageLoader";
 
@@ -18,6 +17,8 @@ export type EditOperation =
     | { type: "insertAt"; pos: number; text: string }
     | { type: "deleteRange"; start: number; end: number };
 
+type ViewMode = "balanced" | "chat-expanded" | "doc-expanded";
+
 export default function EditorPage() {
     const params = useParams<{ fileId: string }>();
     const router = useRouter();
@@ -26,6 +27,7 @@ export default function EditorPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>("balanced");
 
     useEffect(() => {
         const fetchDoc = async () => {
@@ -73,6 +75,9 @@ export default function EditorPage() {
         return <PageLoader />;
     }
 
+    const docHeight = viewMode === "doc-expanded" ? "80%" : viewMode === "chat-expanded" ? "20%" : "50%";
+    const chatHeight = viewMode === "chat-expanded" ? "80%" : viewMode === "doc-expanded" ? "20%" : "50%";
+
     return (
         <div className="flex flex-col h-screen">
             {/* Header with Breadcrumb and Close */}
@@ -100,50 +105,82 @@ export default function EditorPage() {
                 </button>
             </div>
 
-            {/* Editor Content */}
-            <div className="relative flex flex-1 min-h-0">
+            {/* Editor Content - Vertical Layout */}
+            <div className="relative flex flex-col flex-1 min-h-0">
                 {/* Progress Bar */}
-            {saving && (
-                <div className="absolute top-0 left-0 right-0 z-50 h-1 bg-blue-600 animate-pulse">
-                    <div className="h-full bg-blue-400 animate-[shimmer_1s_ease-in-out_infinite]"
-                         style={{
-                             background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                             backgroundSize: '200% 100%',
-                             animation: 'shimmer 1.5s infinite'
-                         }}
+                {saving && (
+                    <div className="absolute top-0 left-0 right-0 z-50 h-1 bg-blue-600 animate-pulse" />
+                )}
+
+                {/* Document Panel - Top */}
+                <div
+                    className={cn(
+                        "overflow-y-auto bg-white transition-all duration-300 ease-in-out",
+                        saving && "blur-sm opacity-75"
+                    )}
+                    style={{ height: docHeight }}
+                >
+                    <DocCanvas content={doc.content} preview={preview} showSaved={showSaved} />
+                </div>
+
+                {/* Resize Bar with Controls */}
+                <div className="flex items-center justify-center gap-2 py-1 border-y bg-gray-100 shrink-0">
+                    <button
+                        onClick={() => setViewMode("chat-expanded")}
+                        className={cn(
+                            "p-1.5 rounded transition-colors",
+                            viewMode === "chat-expanded" ? "bg-blue-600 text-white" : "hover:bg-gray-200 text-gray-600"
+                        )}
+                        title="Expand chat"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => setViewMode("balanced")}
+                        className={cn(
+                            "p-1.5 rounded transition-colors",
+                            viewMode === "balanced" ? "bg-blue-600 text-white" : "hover:bg-gray-200 text-gray-600"
+                        )}
+                        title="Balanced view"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => setViewMode("doc-expanded")}
+                        className={cn(
+                            "p-1.5 rounded transition-colors",
+                            viewMode === "doc-expanded" ? "bg-blue-600 text-white" : "hover:bg-gray-200 text-gray-600"
+                        )}
+                        title="Expand document"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Chat Panel - Bottom */}
+                <div
+                    className={cn(
+                        "bg-gray-50 flex flex-col transition-all duration-300 ease-in-out",
+                        saving && "pointer-events-none"
+                    )}
+                    style={{ height: chatHeight }}
+                >
+                    <ChatPane
+                        fileId={doc.fileId}
+                        currentContent={preview ?? doc.content}
+                        onPreview={handlePreview}
+                        onAccept={handleAccept}
+                        onDiscard={() => setPreview(null)}
+                        onLoadingChange={setSaving}
+                        hasChanges={preview !== null}
                     />
                 </div>
-            )}
-
-            <div className={cn(
-                "w-[30%] border-r bg-gray-50 flex flex-col min-h-0",
-                saving && "pointer-events-none"
-            )}>
-                <ChatPane
-                    fileId={doc.fileId}
-                    currentContent={preview ?? doc.content}
-                    onPreview={handlePreview}
-                    onAccept={handleAccept}
-                    onLoadingChange={setSaving}
-                    hasChanges={preview !== null}
-                />
-            </div>
-
-            <Separator orientation="vertical" />
-
-            <div className={cn(
-                "flex-1 overflow-y-auto bg-white transition-all duration-200 min-h-0",
-                saving && "blur-sm opacity-75"
-            )}>
-                <DocCanvas content={doc.content} preview={preview} showSaved={showSaved} />
-            </div>
-
-            <style jsx>{`
-                @keyframes shimmer {
-                    0% { background-position: -200% 0; }
-                    100% { background-position: 200% 0; }
-                }
-            `}</style>
             </div>
         </div>
     );
