@@ -62,13 +62,14 @@ export default function LiveChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [contentFormat, setContentFormat] = useState('');
   const [toneOfVoice, setToneOfVoice] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showSources, setShowSources] = useState(true);
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
-  const [excludedDocuments, setExcludedDocuments] = useState<string[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<AssistantProfile>({
     name: 'Senior Marketing Assistant',
@@ -139,13 +140,13 @@ export default function LiveChat() {
 
   const availableClusters = Object.keys(documentsByCluster).sort();
 
-  // Load conversation ID from localStorage on mount and mark as read
+  // Load conversation ID from localStorage on mount and start loading immediately
   useEffect(() => {
     const savedId = localStorage.getItem(STORAGE_KEY);
     if (savedId) {
       setCurrentConversationId(savedId);
+      setIsLoadingMessages(true);
     }
-    // Mark any unread messages as read when opening the Live chat page
     globalMutate('/api/live/unread-count');
   }, [globalMutate]);
 
@@ -155,6 +156,7 @@ export default function LiveChat() {
       loadMessages(currentConversationId);
     } else {
       setMessages([]);
+      setIsLoadingMessages(false);
     }
   }, [currentConversationId]);
 
@@ -164,16 +166,18 @@ export default function LiveChat() {
   }, [messages]);
 
   const loadMessages = async (conversationId: string) => {
+    setIsLoadingMessages(true);
     try {
       const response = await fetch(`/api/live/messages?conversationId=${conversationId}`);
       const result = await response.json();
       if (result.success) {
         setMessages(result.messages || []);
-        // Mark messages as read and refresh unread count
         markAsRead(conversationId);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -206,19 +210,35 @@ export default function LiveChat() {
   };
 
   const toggleCluster = (cluster: string) => {
-    setSelectedClusters((prev) =>
-      prev.includes(cluster) ? prev.filter((c) => c !== cluster) : [...prev, cluster]
-    );
+    const isSelected = selectedClusters.includes(cluster);
+    const clusterDocIds = (documentsByCluster[cluster] || []).map(d => d.document_id);
+
+    if (isSelected) {
+      // Deselecting cluster - remove cluster and its documents
+      setSelectedClusters((prev) => prev.filter((c) => c !== cluster));
+      setSelectedDocuments((prev) => prev.filter((d) => !clusterDocIds.includes(d)));
+    } else {
+      // Selecting cluster - add cluster and all its documents
+      setSelectedClusters((prev) => [...prev, cluster]);
+      setSelectedDocuments((prev) => [...new Set([...prev, ...clusterDocIds])]);
+    }
   };
 
   const toggleDocument = (docId: string) => {
-    setExcludedDocuments((prev) =>
+    setSelectedDocuments((prev) =>
       prev.includes(docId) ? prev.filter((d) => d !== docId) : [...prev, docId]
     );
   };
 
-  const selectAllClusters = () => setSelectedClusters(availableClusters);
-  const clearAllClusters = () => setSelectedClusters([]);
+  const selectAllClusters = () => {
+    setSelectedClusters(availableClusters);
+    const allDocIds = documents.map(d => d.document_id);
+    setSelectedDocuments(allDocIds);
+  };
+  const clearAllClusters = () => {
+    setSelectedClusters([]);
+    setSelectedDocuments([]);
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -248,7 +268,7 @@ export default function LiveChat() {
           contentFormat: contentFormat || null,
           toneOfVoice: toneOfVoice || null,
           selectedClusters,
-          excludedDocuments,
+          selectedDocuments,
         }),
       });
 
@@ -361,20 +381,28 @@ export default function LiveChat() {
               <p className="text-sm text-gray-500 text-center py-8">No conversations yet</p>
             ) : (
               <div className="space-y-1">
-                {conversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => selectConversation(conv.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                      currentConversationId === conv.id
-                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200'
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div className="text-sm font-medium truncate">{conv.preview || 'New conversation'}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{formatDate(conv.last_message_at)}</div>
-                  </button>
-                ))}
+                {conversations.map((conv) => {
+                  const date = new Date(conv.last_message_at);
+                  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const preview = conv.preview || 'New conversation';
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => selectConversation(conv.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                        currentConversationId === conv.id
+                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium truncate flex-1">{preview}</div>
+                        <div className="text-xs text-gray-400 whitespace-nowrap">{timeStr}</div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDate(conv.last_message_at)}</div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -432,7 +460,7 @@ export default function LiveChat() {
                         <label key={doc.document_id} className="flex items-center gap-2 cursor-pointer py-1">
                           <input
                             type="checkbox"
-                            checked={!excludedDocuments.includes(doc.document_id)}
+                            checked={selectedDocuments.includes(doc.document_id)}
                             onChange={() => toggleDocument(doc.document_id)}
                             className="h-3 w-3 text-blue-600 rounded border-gray-300"
                           />
@@ -534,7 +562,21 @@ export default function LiveChat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 && (
+          {/* Loading state */}
+          {isLoadingMessages && (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold mb-4 shadow-lg animate-pulse">
+                {assistantInitials}
+              </div>
+              <div className="flex items-center gap-2 text-gray-500">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                <span>Loading conversation...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Intro screen - only show when not loading and no messages */}
+          {!isLoadingMessages && messages.length === 0 && !currentConversationId && (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <button
                 onClick={() => setShowProfileModal(true)}

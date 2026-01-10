@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { conversationId, message, contentFormat, toneOfVoice } = body;
+    const { conversationId, message, contentFormat, toneOfVoice, selectedClusters, selectedDocuments } = body;
 
     if (!message) {
       return NextResponse.json({ success: false, error: 'Message required' }, { status: 400 });
@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
         message,
         contentFormat: contentFormat || null,
         toneOfVoice: toneOfVoice || null,
+        selectedClusters: selectedClusters || [],
+        selectedDocuments: selectedDocuments || [],
       }),
     });
 
