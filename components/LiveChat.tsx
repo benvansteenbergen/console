@@ -208,12 +208,6 @@ export default function LiveChat() {
       if (conversation) {
         setMode(conversation.mode || 'sandbox');
         setBrief(conversation.brief || {});
-        if (conversation.brief?.specs?.selectedClusters) {
-          setSelectedClusters(conversation.brief.specs.selectedClusters);
-        }
-        if (conversation.brief?.specs?.selectedDocuments) {
-          setSelectedDocuments(conversation.brief.specs.selectedDocuments);
-        }
         if (conversation.mode === 'planning' || conversation.mode === 'production') {
           setShowSettings(true);
         }
@@ -306,13 +300,6 @@ export default function LiveChat() {
     if (conversation) {
       setMode(conversation.mode || 'sandbox');
       setBrief(conversation.brief || {});
-      // Restore selections from brief if available
-      if (conversation.brief?.specs?.selectedClusters) {
-        setSelectedClusters(conversation.brief.specs.selectedClusters);
-      }
-      if (conversation.brief?.specs?.selectedDocuments) {
-        setSelectedDocuments(conversation.brief.specs.selectedDocuments);
-      }
       // Open settings panel if in planning mode
       if (conversation.mode === 'planning' || conversation.mode === 'production') {
         setShowSettings(true);
