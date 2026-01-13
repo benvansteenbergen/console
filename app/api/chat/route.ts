@@ -59,7 +59,11 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
+    // Always include the conversationId we used (ensures frontend can track it)
+    return NextResponse.json({
+      ...result,
+      conversationId,
+    });
   } catch (error) {
     console.error('Chat API error:', error);
     return NextResponse.json({

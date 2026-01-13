@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET - Get messages for a conversation
+// GET - Get brief and mode for a conversation
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const jwt = cookieStore.get('session')?.value;
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/live-messages?conversationId=${conversationId}`;
+    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/live-brief?conversationId=${conversationId}`;
 
     const response = await fetch(n8nUrl, {
       method: 'GET',
@@ -28,25 +28,30 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error('n8n live messages error:', response.status);
       return NextResponse.json({
-        success: false,
-        error: 'Failed to load messages'
-      }, { status: response.status });
+        success: true,
+        mode: 'sandbox',
+        brief: {}
+      });
     }
 
     const result = await response.json();
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('Live messages error:', error);
     return NextResponse.json({
-      success: false,
-      error: 'Failed to load messages'
-    }, { status: 500 });
+      success: true,
+      mode: result.mode || 'sandbox',
+      brief: result.brief || {}
+    });
+  } catch (error) {
+    console.error('Live brief error:', error);
+    return NextResponse.json({
+      success: true,
+      mode: 'sandbox',
+      brief: {}
+    });
   }
 }
 
-// POST - Send a message (creates conversation if needed)
+// POST - Update brief or mode for a conversation
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const jwt = cookieStore.get('session')?.value;
@@ -57,13 +62,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { conversationId, message, mode, selectedClusters, selectedDocuments } = body;
+    const { conversationId, mode, brief } = body;
 
-    if (!message) {
-      return NextResponse.json({ success: false, error: 'Message required' }, { status: 400 });
+    if (!conversationId) {
+      return NextResponse.json({ success: false, error: 'conversationId required' }, { status: 400 });
     }
 
-    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/live-message`;
+    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/live-brief`;
 
     const response = await fetch(n8nUrl, {
       method: 'POST',
@@ -72,29 +77,27 @@ export async function POST(request: NextRequest) {
         cookie: `auth=${jwt};`,
       },
       body: JSON.stringify({
-        conversationId: conversationId || null,
-        message,
-        mode: mode || 'sandbox',
-        selectedClusters: selectedClusters || [],
-        selectedDocuments: selectedDocuments || [],
+        conversationId,
+        mode: mode || null,
+        brief: brief || null,
       }),
     });
 
     if (!response.ok) {
-      console.error('n8n live message error:', response.status);
+      console.error('n8n live brief update error:', response.status);
       return NextResponse.json({
         success: false,
-        error: 'Failed to send message'
+        error: 'Failed to update brief'
       }, { status: response.status });
     }
 
     const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Live message error:', error);
+    console.error('Live brief update error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to send message'
+      error: 'Failed to update brief'
     }, { status: 500 });
   }
 }

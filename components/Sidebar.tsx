@@ -143,9 +143,7 @@ export default function Sidebar() {
                                 <Icon className="h-5 w-5"/>
                                 <span className="flex-1">{label}</span>
                                 {showBadge && (
-                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                        active ? "bg-white text-blue-600" : "bg-blue-600 text-white"
-                                    }`}>
+                                    <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-red-500 text-white">
                                         {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                                     </span>
                                 )}

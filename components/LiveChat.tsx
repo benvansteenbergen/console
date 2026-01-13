@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import useSWR, { mutate, useSWRConfig } from 'swr';
+import ReactMarkdown from 'react-markdown';
 
 const STORAGE_KEY = 'live_conversation_id';
 
@@ -34,6 +35,10 @@ interface Conversation {
   created_at: string;
   last_message_at: string;
   preview?: string;
+  mode?: ConversationMode;
+  brief?: Brief;
+  unread?: boolean;
+  status?: string;
 }
 
 interface Document {
@@ -41,6 +46,41 @@ interface Document {
   title: string;
   cluster?: string;
   visibility: 'private' | 'shared';
+}
+
+type ConversationMode = 'sandbox' | 'planning' | 'production';
+
+interface Brief {
+  meta?: {
+    planningTurn?: number;
+  };
+  deliverable?: {
+    type?: string;
+    channel?: string;
+    length?: string;
+  };
+  audience?: {
+    headline?: string;
+    detail?: string;
+    stage?: string;
+  };
+  outcome?: {
+    goal?: string;
+    cta?: string;
+  };
+  message?: {
+    keyPoints?: string[];
+    outline?: string[];
+  };
+  voice?: {
+    tone?: string;
+    constraints?: string[];
+  };
+  sources?: {
+    mustUse?: string[];
+    optional?: string[];
+  };
+  assumptions?: string[];
 }
 
 const CLUSTER_LABELS: { [key: string]: string } = {
@@ -57,6 +97,21 @@ const CLUSTER_LABELS: { [key: string]: string } = {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+// Strip markdown formatting from text
+const stripMarkdown = (text: string): string => {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')  // **bold**
+    .replace(/\*(.+?)\*/g, '$1')       // *italic*
+    .replace(/__(.+?)__/g, '$1')       // __bold__
+    .replace(/_(.+?)_/g, '$1')         // _italic_
+    .replace(/~~(.+?)~~/g, '$1')       // ~~strikethrough~~
+    .replace(/`(.+?)`/g, '$1')         // `code`
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1') // [link](url)
+    .replace(/^#+\s*/gm, '')           // # headers
+    .replace(/^[-*]\s+/gm, '')         // - list items
+    .trim();
+};
+
 export default function LiveChat() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -64,12 +119,16 @@ export default function LiveChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [contentFormat, setContentFormat] = useState('');
-  const [toneOfVoice, setToneOfVoice] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [showSources, setShowSources] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [expandedClusters, setExpandedClusters] = useState<string[]>([]);
+  const [mode, setMode] = useState<ConversationMode>('sandbox');
+  const [brief, setBrief] = useState<Brief>({});
+  const [expandedBriefSections, setExpandedBriefSections] = useState<string[]>([]);
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<AssistantProfile>({
     name: 'Senior Marketing Assistant',
@@ -94,18 +153,6 @@ export default function LiveChat() {
     documents: Document[];
   }>('/api/knowledge-base/documents', fetcher);
 
-  // Fetch content formats
-  const { data: contentFormatsData } = useSWR<{
-    success: boolean;
-    formats: { value: string; label: string }[];
-  }>('/api/content-formats', fetcher);
-
-  // Fetch tone of voice options
-  const { data: toneOfVoiceData } = useSWR<{
-    success: boolean;
-    tones: { value: string; label: string }[];
-  }>('/api/tone-of-voice', fetcher);
-
   // Fetch assistant profile
   const { data: assistantProfileData, mutate: mutateProfile } = useSWR<{
     success: boolean;
@@ -121,14 +168,6 @@ export default function LiveChat() {
 
   const conversations = conversationsData?.conversations || [];
   const documents = documentsData?.documents || [];
-  const contentFormats = [
-    { value: '', label: 'Default' },
-    ...(contentFormatsData?.formats?.filter(f => f.value !== '') || [])
-  ];
-  const toneOfVoiceOptions = [
-    { value: '', label: 'Default' },
-    ...(toneOfVoiceData?.tones?.filter(t => t.value !== '') || [])
-  ];
 
   // Group documents by cluster
   const documentsByCluster = documents.reduce((acc, doc) => {
@@ -157,8 +196,30 @@ export default function LiveChat() {
     } else {
       setMessages([]);
       setIsLoadingMessages(false);
+      setMode('sandbox');
+      setBrief({});
     }
   }, [currentConversationId]);
+
+  // Set mode and brief from conversations data when available
+  useEffect(() => {
+    if (currentConversationId && conversations.length > 0) {
+      const conversation = conversations.find(c => c.id === currentConversationId);
+      if (conversation) {
+        setMode(conversation.mode || 'sandbox');
+        setBrief(conversation.brief || {});
+        if (conversation.brief?.specs?.selectedClusters) {
+          setSelectedClusters(conversation.brief.specs.selectedClusters);
+        }
+        if (conversation.brief?.specs?.selectedDocuments) {
+          setSelectedDocuments(conversation.brief.specs.selectedDocuments);
+        }
+        if (conversation.mode === 'planning' || conversation.mode === 'production') {
+          setShowSettings(true);
+        }
+      }
+    }
+  }, [currentConversationId, conversations]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -181,6 +242,45 @@ export default function LiveChat() {
     }
   };
 
+  const _updateBrief = async (updates: Partial<Brief>) => {
+    if (!currentConversationId) return;
+
+    const newBrief = { ...brief, ...updates };
+    setBrief(newBrief);
+
+    try {
+      await fetch('/api/live/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: currentConversationId,
+          brief: newBrief,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update brief:', error);
+    }
+  };
+
+  const updateMode = async (newMode: ConversationMode) => {
+    if (!currentConversationId) return;
+
+    setMode(newMode);
+
+    try {
+      await fetch('/api/live/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: currentConversationId,
+          mode: newMode,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update mode:', error);
+    }
+  };
+
   const markAsRead = async (conversationId: string | null) => {
     if (!conversationId) return;
     try {
@@ -197,9 +297,27 @@ export default function LiveChat() {
   };
 
   const selectConversation = (conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId);
     setCurrentConversationId(conversationId);
     localStorage.setItem(STORAGE_KEY, conversationId);
     setShowHistory(false);
+
+    // Set mode and brief from conversation data
+    if (conversation) {
+      setMode(conversation.mode || 'sandbox');
+      setBrief(conversation.brief || {});
+      // Restore selections from brief if available
+      if (conversation.brief?.specs?.selectedClusters) {
+        setSelectedClusters(conversation.brief.specs.selectedClusters);
+      }
+      if (conversation.brief?.specs?.selectedDocuments) {
+        setSelectedDocuments(conversation.brief.specs.selectedDocuments);
+      }
+      // Open settings panel if in planning mode
+      if (conversation.mode === 'planning' || conversation.mode === 'production') {
+        setShowSettings(true);
+      }
+    }
   };
 
   const startNewChat = () => {
@@ -207,6 +325,23 @@ export default function LiveChat() {
     setMessages([]);
     localStorage.removeItem(STORAGE_KEY);
     setShowHistory(false);
+  };
+
+  const archiveConversation = async (conversationId: string, archive: boolean) => {
+    try {
+      await fetch('/api/live/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, status: archive ? 'archived' : 'active' }),
+      });
+      mutate('/api/live/conversations');
+      // If archiving the current conversation, clear it
+      if (archive && conversationId === currentConversationId) {
+        startNewChat();
+      }
+    } catch (error) {
+      console.error('Failed to archive conversation:', error);
+    }
   };
 
   const toggleCluster = (cluster: string) => {
@@ -265,8 +400,7 @@ export default function LiveChat() {
         body: JSON.stringify({
           conversationId: currentConversationId,
           message: userMessage,
-          contentFormat: contentFormat || null,
-          toneOfVoice: toneOfVoice || null,
+          mode,
           selectedClusters,
           selectedDocuments,
         }),
@@ -278,6 +412,25 @@ export default function LiveChat() {
         if (result.conversationId && !currentConversationId) {
           setCurrentConversationId(result.conversationId);
           localStorage.setItem(STORAGE_KEY, result.conversationId);
+          mutate('/api/live/conversations');
+        }
+
+        // Handle mode change from AI
+        if (result.modeChange) {
+          setMode(result.modeChange);
+          // Auto-show settings panel when entering planning
+          if (result.modeChange === 'planning') {
+            setShowSettings(true);
+          }
+        }
+
+        // Handle brief update from AI
+        if (result.briefUpdate) {
+          setBrief(prev => ({ ...prev, ...result.briefUpdate }));
+        }
+
+        // Refresh conversations cache if mode or brief changed
+        if (result.modeChange || result.briefUpdate) {
           mutate('/api/live/conversations');
         }
 
@@ -365,7 +518,7 @@ export default function LiveChat() {
               </svg>
             </button>
           </div>
-          <div className="p-3">
+          <div className="p-3 space-y-2">
             <button
               onClick={startNewChat}
               className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium shadow-md"
@@ -375,32 +528,60 @@ export default function LiveChat() {
               </svg>
               New Chat
             </button>
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`w-full px-3 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                showArchived ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              {showArchived ? 'Hide Archived' : 'Show Archived'}
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {conversations.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No conversations yet</p>
+            {conversations.filter(c => showArchived ? c.status === 'archived' : c.status !== 'archived').length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">
+                {showArchived ? 'No archived conversations' : 'No conversations yet'}
+              </p>
             ) : (
               <div className="space-y-1">
-                {conversations.map((conv) => {
+                {conversations.filter(c => showArchived ? c.status === 'archived' : c.status !== 'archived').map((conv) => {
                   const date = new Date(conv.last_message_at);
                   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const preview = conv.preview || 'New conversation';
+                  const preview = stripMarkdown(conv.preview || 'New conversation');
                   return (
-                    <button
+                    <div
                       key={conv.id}
-                      onClick={() => selectConversation(conv.id)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                      className={`group flex items-center gap-1 rounded-lg transition-all ${
                         currentConversationId === conv.id
-                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200'
-                          : 'hover:bg-gray-50 text-gray-700'
+                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200'
+                          : 'hover:bg-gray-50'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium truncate flex-1">{preview}</div>
-                        <div className="text-xs text-gray-400 whitespace-nowrap">{timeStr}</div>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">{formatDate(conv.last_message_at)}</div>
-                    </button>
+                      <button
+                        onClick={() => selectConversation(conv.id)}
+                        className={`flex-1 min-w-0 text-left px-3 py-2.5 ${
+                          currentConversationId === conv.id ? 'text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <div className="text-sm font-medium truncate">{preview}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{formatDate(conv.last_message_at)} · {timeStr}</div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          archiveConversation(conv.id, conv.status !== 'archived');
+                        }}
+                        className="p-1.5 mr-2 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all flex-shrink-0"
+                        title={conv.status === 'archived' ? 'Unarchive' : 'Archive'}
+                      >
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -409,106 +590,324 @@ export default function LiveChat() {
         </div>
       </div>
 
-      {/* Knowledge Sources Panel */}
-      {showSources && (
-        <div className="w-72 bg-white rounded-xl shadow-lg flex flex-col overflow-hidden">
-          <div className="p-4 border-b flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-            <h3 className="font-semibold text-gray-900">Knowledge Sources</h3>
-            <button onClick={() => setShowSources(false)} className="p-1 hover:bg-gray-100 rounded">
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      {/* Right Panel - Contextual based on mode */}
+      <div className={`${showSettings || mode === 'planning' || mode === 'production' ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden order-2`}>
+        <div className="w-80 h-full bg-white rounded-xl shadow-lg flex flex-col overflow-hidden">
+        {/* Panel Header */}
+        <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Settings</h3>
+            {mode === 'sandbox' && (
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            )}
+            {mode === 'planning' && (
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                Planning
+              </span>
+            )}
+            {mode === 'production' && (
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-700">
+                Generating...
+              </span>
+            )}
           </div>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="px-4 py-2 border-b flex gap-2">
-            <button onClick={selectAllClusters} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-              Select All
-            </button>
-            <span className="text-gray-300">|</span>
-            <button onClick={clearAllClusters} className="text-xs text-gray-600 hover:text-gray-700">
-              Clear
-            </button>
-          </div>
+        {/* Scrollable Content Area */}
+        {(mode === 'sandbox' || mode === 'planning') && (
+          <div className="flex-1 overflow-y-auto">
+            {/* Knowledge Sources */}
+            <div className="border-b">
+              <button
+                onClick={() => setSourcesCollapsed(!sourcesCollapsed)}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <span className="font-medium text-sm text-gray-900">Knowledge Sources</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded ${selectedClusters.length > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {selectedClusters.length} selected
+                  </span>
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${sourcesCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
 
-          {/* Clusters */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {availableClusters.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No documents uploaded yet</p>
-            ) : (
-              availableClusters.map((cluster) => (
-                <div key={cluster} className="rounded-lg border border-gray-100 overflow-hidden">
-                  <label className="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={selectedClusters.includes(cluster)}
-                      onChange={() => toggleCluster(cluster)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="flex-1 font-medium text-sm text-gray-900">
-                      {CLUSTER_LABELS[cluster] || cluster}
-                    </span>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {documentsByCluster[cluster].length}
-                    </span>
-                  </label>
+              {!sourcesCollapsed && (
+                <>
+                  <div className="px-4 py-2 flex gap-2 border-t">
+                    <button onClick={selectAllClusters} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                      Select All
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button onClick={clearAllClusters} className="text-xs text-gray-600 hover:text-gray-700">
+                      Clear
+                    </button>
+                  </div>
 
-                  {selectedClusters.includes(cluster) && (
-                    <div className="px-3 pb-3 space-y-1 bg-gray-50">
-                      {documentsByCluster[cluster].map((doc) => (
-                        <label key={doc.document_id} className="flex items-center gap-2 cursor-pointer py-1">
-                          <input
-                            type="checkbox"
-                            checked={selectedDocuments.includes(doc.document_id)}
-                            onChange={() => toggleDocument(doc.document_id)}
-                            className="h-3 w-3 text-blue-600 rounded border-gray-300"
-                          />
-                          <span className="text-xs text-gray-700 truncate flex-1">{doc.title}</span>
-                          <span className="text-xs" title={doc.visibility === 'private' ? 'Private' : 'Shared'}>
-                            {doc.visibility === 'private' ? '🔒' : '👥'}
+                  <div className="p-3 pt-0 space-y-2">
+                    {availableClusters.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-8">No documents uploaded yet</p>
+                    ) : (
+                      availableClusters.map((cluster) => (
+                    <div key={cluster} className="rounded-lg border border-gray-100 overflow-hidden">
+                      <div className="flex items-center gap-2 p-3 hover:bg-gray-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedClusters.includes(cluster)}
+                          onChange={() => toggleCluster(cluster)}
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <button
+                          onClick={() => setExpandedClusters(prev =>
+                            prev.includes(cluster) ? prev.filter(c => c !== cluster) : [...prev, cluster]
+                          )}
+                          className="flex-1 flex items-center justify-between text-left"
+                        >
+                          <span className="font-medium text-sm text-gray-900">
+                            {CLUSTER_LABELS[cluster] || cluster}
                           </span>
-                        </label>
-                      ))}
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {documentsByCluster[cluster].length}
+                          </span>
+                        </button>
+                      </div>
+
+                      {expandedClusters.includes(cluster) && (
+                        <div className="px-3 pb-3 space-y-1 bg-gray-50">
+                          {documentsByCluster[cluster].map((doc) => (
+                            <label key={doc.document_id} className="flex items-center gap-2 cursor-pointer py-1">
+                              <input
+                                type="checkbox"
+                                checked={selectedDocuments.includes(doc.document_id)}
+                                onChange={() => toggleDocument(doc.document_id)}
+                                className="h-3 w-3 text-blue-600 rounded border-gray-300"
+                              />
+                              <span className="text-xs text-gray-700 truncate flex-1">{doc.title}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Brief Sections - Only in Planning Mode */}
+            {mode === 'planning' && (
+              <div className="p-3 space-y-1">
+              {/* Planning Progress */}
+              {brief.meta?.planningTurn !== undefined && (
+                <div className="mb-2 px-3 py-2 bg-blue-50 rounded-lg">
+                  <span className="text-xs text-blue-700">Planning turn: {brief.meta.planningTurn}</span>
+                </div>
+              )}
+
+              {/* Deliverable */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('deliverable') ? prev.filter(s => s !== 'deliverable') : [...prev, 'deliverable']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Deliverable</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.deliverable?.type ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {brief.deliverable?.type || 'Not set'}
+                  </span>
+                </button>
+                {expandedBriefSections.includes('deliverable') && brief.deliverable && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.deliverable.type && <p>Type: {brief.deliverable.type}</p>}
+                    {brief.deliverable.channel && <p>Channel: {brief.deliverable.channel}</p>}
+                    {brief.deliverable.length && <p>Length: {brief.deliverable.length}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Audience */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('audience') ? prev.filter(s => s !== 'audience') : [...prev, 'audience']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Audience</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.audience?.headline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {brief.audience?.headline || 'Not set'}
+                  </span>
+                </button>
+                {expandedBriefSections.includes('audience') && brief.audience && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.audience.headline && <p>Who: {brief.audience.headline}</p>}
+                    {brief.audience.detail && <p>Detail: {brief.audience.detail}</p>}
+                    {brief.audience.stage && <p>Stage: {brief.audience.stage}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Outcome */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('outcome') ? prev.filter(s => s !== 'outcome') : [...prev, 'outcome']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Outcome</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.outcome?.goal ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {brief.outcome?.goal || 'Not set'}
+                  </span>
+                </button>
+                {expandedBriefSections.includes('outcome') && brief.outcome && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.outcome.goal && <p>Goal: {brief.outcome.goal}</p>}
+                    {brief.outcome.cta && <p>CTA: {brief.outcome.cta}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Message */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('message') ? prev.filter(s => s !== 'message') : [...prev, 'message']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Message</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
+                    (brief.message?.keyPoints?.length || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {(brief.message?.keyPoints?.length || 0)} key points
+                  </span>
+                </button>
+                {expandedBriefSections.includes('message') && brief.message && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.message.keyPoints && brief.message.keyPoints.length > 0 && (
+                      <div>
+                        <p className="font-medium">Key Points:</p>
+                        <ul className="list-disc list-inside">
+                          {brief.message.keyPoints.map((point, i) => <li key={i}>{point}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {brief.message.outline && brief.message.outline.length > 0 && (
+                      <div>
+                        <p className="font-medium">Outline:</p>
+                        <ul className="list-decimal list-inside">
+                          {brief.message.outline.map((item, i) => <li key={i}>{item}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Voice */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('voice') ? prev.filter(s => s !== 'voice') : [...prev, 'voice']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Voice</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.voice?.tone ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {brief.voice?.tone || 'Not set'}
+                  </span>
+                </button>
+                {expandedBriefSections.includes('voice') && brief.voice && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.voice.tone && <p>Tone: {brief.voice.tone}</p>}
+                    {brief.voice.constraints && brief.voice.constraints.length > 0 && (
+                      <p>Constraints: {brief.voice.constraints.join(', ')}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Sources */}
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedBriefSections(prev =>
+                    prev.includes('sources') ? prev.filter(s => s !== 'sources') : [...prev, 'sources']
+                  )}
+                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Sources</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
+                    (brief.sources?.mustUse?.length || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {(brief.sources?.mustUse?.length || 0) + (brief.sources?.optional?.length || 0)} sources
+                  </span>
+                </button>
+                {expandedBriefSections.includes('sources') && brief.sources && (
+                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                    {brief.sources.mustUse && brief.sources.mustUse.length > 0 && (
+                      <p>Must use: {brief.sources.mustUse.join(', ')}</p>
+                    )}
+                    {brief.sources.optional && brief.sources.optional.length > 0 && (
+                      <p>Optional: {brief.sources.optional.join(', ')}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Assumptions */}
+              {brief.assumptions && brief.assumptions.length > 0 && (
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedBriefSections(prev =>
+                      prev.includes('assumptions') ? prev.filter(s => s !== 'assumptions') : [...prev, 'assumptions']
+                    )}
+                    className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="font-medium text-sm text-gray-900 flex-shrink-0">Assumptions</span>
+                    <span className="text-xs px-2 py-0.5 rounded truncate max-w-[70%] bg-amber-100 text-amber-700">
+                      {brief.assumptions.length} items
+                    </span>
+                  </button>
+                  {expandedBriefSections.includes('assumptions') && (
+                    <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50">
+                      <ul className="list-disc list-inside">
+                        {brief.assumptions.map((assumption, i) => <li key={i}>{assumption}</li>)}
+                      </ul>
                     </div>
                   )}
                 </div>
-              ))
+              )}
+            </div>
             )}
           </div>
+        )}
 
-          {/* Format & Tone */}
-          <div className="p-3 border-t bg-gray-50 space-y-3">
-            <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Content Format</label>
-              <select
-                value={contentFormat}
-                onChange={(e) => setContentFormat(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-              >
-                {contentFormats.map((format) => (
-                  <option key={format.value} value={format.value}>{format.label}</option>
-                ))}
-              </select>
+        {/* Production Mode: Status */}
+        {mode === 'production' && (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Tone of Voice</label>
-              <select
-                value={toneOfVoice}
-                onChange={(e) => setToneOfVoice(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-              >
-                {toneOfVoiceOptions.map((tone) => (
-                  <option key={tone.value} value={tone.value}>{tone.label}</option>
-                ))}
-              </select>
-            </div>
+            <h4 className="font-medium text-gray-900 mb-2">Generating Content</h4>
+            <p className="text-sm text-gray-500">
+              Your content is being created based on the brief. You can leave and come back.
+            </p>
           </div>
+        )}
         </div>
-      )}
+      </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden order-1">
         {/* Chat Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-gray-50 to-white">
           <div className="flex items-center gap-3">
@@ -546,16 +945,17 @@ export default function LiveChat() {
             </div>
           </div>
 
-          {/* Sources Toggle */}
-          {!showSources && (
+          {/* Settings Toggle */}
+          {mode === 'sandbox' && (
             <button
-              onClick={() => setShowSources(true)}
-              className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+              onClick={() => setShowSettings(!showSettings)}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                showSettings
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              Sources
+              Settings
             </button>
           )}
         </div>
@@ -639,8 +1039,8 @@ export default function LiveChat() {
                   </div>
                   <div className="flex-1">
                     <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 max-w-3xl">
-                      <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-800">
-                        {message.content}
+                      <div className="prose prose-sm max-w-none text-gray-800">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
                     </div>
                     <div className="flex gap-3 mt-2">
@@ -687,37 +1087,55 @@ export default function LiveChat() {
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="border-t p-4 bg-gray-50">
-          <div className="flex gap-3">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder="Ask me anything..."
-              disabled={isGenerating}
-              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
-              rows={1}
-            />
+        {mode === 'production' ? (
+          <div className="border-t p-4 bg-amber-50">
+            <div className="flex items-center justify-center gap-3 text-amber-700">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-600 border-t-transparent"></div>
+              <span className="text-sm font-medium">Content is being generated. Chat is locked.</span>
+            </div>
             <button
-              type="submit"
-              disabled={!input.trim() || isGenerating}
-              className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+              onClick={() => updateMode('sandbox')}
+              className="w-full mt-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-100 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+              Cancel and return to Sandbox
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            Press Enter to send · Shift+Enter for new line
-          </p>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="border-t p-4 bg-gray-50">
+            <div className="flex gap-3">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                placeholder={mode === 'planning' ? "Describe your content goals..." : "Ask me anything..."}
+                disabled={isGenerating}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
+                rows={1}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isGenerating}
+                className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              {mode === 'planning'
+                ? "I'll help you build your content brief step by step"
+                : "Press Enter to send · Shift+Enter for new line"
+              }
+            </p>
+          </form>
+        )}
       </div>
 
       {/* Assistant Profile Modal */}
