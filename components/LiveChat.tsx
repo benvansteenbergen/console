@@ -11,7 +11,10 @@ interface AssistantProfile {
   goals: string;
   instructions: string;
   personality: string;
+  defaultAudience?: string;
 }
+
+type PlanningMode = 'simple' | 'advanced';
 
 interface Message {
   id: string;
@@ -48,7 +51,7 @@ interface Document {
   visibility: 'private' | 'shared';
 }
 
-type ConversationMode = 'sandbox' | 'planning' | 'production';
+type ConversationMode = 'sandbox' | 'planning';
 
 interface Brief {
   meta?: {
@@ -129,6 +132,9 @@ export default function LiveChat() {
   const [expandedBriefSections, setExpandedBriefSections] = useState<string[]>([]);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [planningMode, setPlanningMode] = useState<PlanningMode>('simple');
+  const [productionReady, setProductionReady] = useState(false);
+  const [showInputAfterReady, setShowInputAfterReady] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<AssistantProfile>({
     name: 'Senior Marketing Assistant',
@@ -208,7 +214,7 @@ export default function LiveChat() {
       if (conversation) {
         setMode(conversation.mode || 'sandbox');
         setBrief(conversation.brief || {});
-        if (conversation.mode === 'planning' || conversation.mode === 'production') {
+        if (conversation.mode === 'planning') {
           setShowSettings(true);
         }
       }
@@ -256,7 +262,7 @@ export default function LiveChat() {
     }
   };
 
-  const updateMode = async (newMode: ConversationMode) => {
+  const _updateMode = async (newMode: ConversationMode) => {
     if (!currentConversationId) return;
 
     setMode(newMode);
@@ -301,7 +307,7 @@ export default function LiveChat() {
       setMode(conversation.mode || 'sandbox');
       setBrief(conversation.brief || {});
       // Open settings panel if in planning mode
-      if (conversation.mode === 'planning' || conversation.mode === 'production') {
+      if (conversation.mode === 'planning') {
         setShowSettings(true);
       }
     }
@@ -362,6 +368,73 @@ export default function LiveChat() {
     setSelectedDocuments([]);
   };
 
+  const handleGenerateDocument = async () => {
+    if (isGenerating || !currentConversationId) return;
+
+    setIsGenerating(true);
+
+    // Add a system message indicating generation started
+    const generatingMessage: Message = {
+      id: `generating-${Date.now()}`,
+      role: 'user',
+      content: '🚀 Generate document',
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, generatingMessage]);
+
+    try {
+      // Call the production endpoint with the brief and knowledge sources
+      const response = await fetch('/api/live/production', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: currentConversationId,
+          brief,
+          selectedClusters,
+          selectedDocuments,
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Generate document response:', result);
+
+      const data = result.object || result;
+
+      if (result.success !== false && data.content) {
+        const assistantMessage: Message = {
+          id: data.messageId || `msg-${Date.now()}`,
+          role: 'assistant',
+          content: data.content,
+          created_at: new Date().toISOString(),
+          metadata: { sources: data.sources },
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: `Error: ${result.error || 'Failed to generate document'}`,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Generate document error:', error);
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'An error occurred while generating the document. Please try again.',
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsGenerating(false);
+      // Reset production ready state after generating
+      setProductionReady(false);
+      setShowInputAfterReady(false);
+    }
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
@@ -388,45 +461,67 @@ export default function LiveChat() {
           conversationId: currentConversationId,
           message: userMessage,
           mode,
+          planningMode,
           selectedClusters,
           selectedDocuments,
         }),
       });
 
       const result = await response.json();
+      console.log('API response:', result);
 
-      if (result.success) {
-        if (result.conversationId && !currentConversationId) {
-          setCurrentConversationId(result.conversationId);
-          localStorage.setItem(STORAGE_KEY, result.conversationId);
+      // Handle nested response structure (n8n returns { object: { ... }, conversationId })
+      const data = result.object || result;
+      const conversationId = result.conversationId || data.conversationId;
+      console.log('Extracted data:', data);
+      console.log('production_ready value:', data.production_ready, 'type:', typeof data.production_ready);
+
+      // Handle production_ready flag from AI (runs regardless of success)
+      if (data.production_ready !== undefined) {
+        const isReady = data.production_ready === true || data.production_ready === 'true';
+        console.log('Setting productionReady to:', isReady);
+        setProductionReady(isReady);
+        // Reset input visibility when becoming production ready
+        if (isReady) {
+          setShowInputAfterReady(false);
+        }
+      } else {
+        console.log('production_ready is undefined in data');
+      }
+
+      if (result.success !== false) {
+        if (conversationId && !currentConversationId) {
+          setCurrentConversationId(conversationId);
+          localStorage.setItem(STORAGE_KEY, conversationId);
           mutate('/api/live/conversations');
         }
 
         // Handle mode change from AI
-        if (result.modeChange) {
-          setMode(result.modeChange);
+        if (data.modeChange) {
+          setMode(data.modeChange);
           // Auto-show settings panel when entering planning
-          if (result.modeChange === 'planning') {
+          if (data.modeChange === 'planning') {
             setShowSettings(true);
+            setProductionReady(false); // Reset when entering planning
           }
         }
 
         // Handle brief update from AI
-        if (result.briefUpdate) {
-          setBrief(prev => ({ ...prev, ...result.briefUpdate }));
+        if (data.briefUpdate) {
+          setBrief(prev => ({ ...prev, ...data.briefUpdate }));
         }
 
         // Refresh conversations cache if mode or brief changed
-        if (result.modeChange || result.briefUpdate) {
+        if (data.modeChange || data.briefUpdate) {
           mutate('/api/live/conversations');
         }
 
         const assistantMessage: Message = {
-          id: result.messageId || `msg-${Date.now()}`,
+          id: data.messageId || `msg-${Date.now()}`,
           role: 'assistant',
-          content: result.content,
+          content: data.content,
           created_at: new Date().toISOString(),
-          metadata: { sources: result.sources },
+          metadata: { sources: data.sources },
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
@@ -578,7 +673,7 @@ export default function LiveChat() {
       </div>
 
       {/* Right Panel - Contextual based on mode */}
-      <div className={`${showSettings || mode === 'planning' || mode === 'production' ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden order-2`}>
+      <div className={`${showSettings || mode === 'planning' ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden order-2`}>
         <div className="w-80 h-full bg-white rounded-xl shadow-lg flex flex-col overflow-hidden">
         {/* Panel Header */}
         <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
@@ -594,15 +689,39 @@ export default function LiveChat() {
             )}
             {mode === 'planning' && (
               <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
-                Planning
-              </span>
-            )}
-            {mode === 'production' && (
-              <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-700">
-                Generating...
+                Planning {planningMode === 'advanced' ? '(Advanced)' : ''}
               </span>
             )}
           </div>
+
+          {/* Planning Mode Toggle - Only show in planning mode */}
+          {mode === 'planning' && (
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-gray-500">Planning mode</span>
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => setPlanningMode('simple')}
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${
+                    planningMode === 'simple'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Simple
+                </button>
+                <button
+                  onClick={() => setPlanningMode('advanced')}
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${
+                    planningMode === 'advanced'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Advanced
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Content Area */}
@@ -688,17 +807,17 @@ export default function LiveChat() {
               )}
             </div>
 
-            {/* Brief Sections - Only in Planning Mode */}
+            {/* Briefing Sections - Only in Planning Mode */}
             {mode === 'planning' && (
               <div className="p-3 space-y-1">
-              {/* Planning Progress */}
-              {brief.meta?.planningTurn !== undefined && (
+              {/* Simple mode header */}
+              {planningMode === 'simple' && (
                 <div className="mb-2 px-3 py-2 bg-blue-50 rounded-lg">
-                  <span className="text-xs text-blue-700">Planning turn: {brief.meta.planningTurn}</span>
+                  <span className="text-xs text-blue-700">Quick planning - using your default settings</span>
                 </div>
               )}
 
-              {/* Deliverable */}
+              {/* Deliverable - Always shown */}
               <div className="border border-gray-100 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setExpandedBriefSections(prev =>
@@ -720,29 +839,7 @@ export default function LiveChat() {
                 )}
               </div>
 
-              {/* Audience */}
-              <div className="border border-gray-100 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedBriefSections(prev =>
-                    prev.includes('audience') ? prev.filter(s => s !== 'audience') : [...prev, 'audience']
-                  )}
-                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Audience</span>
-                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.audience?.headline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {brief.audience?.headline || 'Not set'}
-                  </span>
-                </button>
-                {expandedBriefSections.includes('audience') && brief.audience && (
-                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
-                    {brief.audience.headline && <p>Who: {brief.audience.headline}</p>}
-                    {brief.audience.detail && <p>Detail: {brief.audience.detail}</p>}
-                    {brief.audience.stage && <p>Stage: {brief.audience.stage}</p>}
-                  </div>
-                )}
-              </div>
-
-              {/* Outcome */}
+              {/* Outcome - Always shown */}
               <div className="border border-gray-100 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setExpandedBriefSections(prev =>
@@ -750,9 +847,11 @@ export default function LiveChat() {
                   )}
                   className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
                 >
-                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Outcome</span>
-                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.outcome?.goal ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {brief.outcome?.goal || 'Not set'}
+                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Goal</span>
+                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
+                    (brief.outcome?.goal || brief.outcome?.cta) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {brief.outcome?.goal || brief.outcome?.cta || 'Not set'}
                   </span>
                 </button>
                 {expandedBriefSections.includes('outcome') && brief.outcome && (
@@ -763,7 +862,7 @@ export default function LiveChat() {
                 )}
               </div>
 
-              {/* Message */}
+              {/* Message - Always shown */}
               <div className="border border-gray-100 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setExpandedBriefSections(prev =>
@@ -773,9 +872,15 @@ export default function LiveChat() {
                 >
                   <span className="font-medium text-sm text-gray-900 flex-shrink-0">Message</span>
                   <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
-                    (brief.message?.keyPoints?.length || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                    ((brief.message?.keyPoints?.length || 0) + (brief.message?.outline?.length || 0)) > 0
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-500'
                   }`}>
-                    {(brief.message?.keyPoints?.length || 0)} key points
+                    {(brief.message?.keyPoints?.length || 0) > 0
+                      ? `${brief.message?.keyPoints?.length} key points`
+                      : (brief.message?.outline?.length || 0) > 0
+                        ? `${brief.message?.outline?.length} outline items`
+                        : 'Not set'}
                   </span>
                 </button>
                 {expandedBriefSections.includes('message') && brief.message && (
@@ -800,96 +905,111 @@ export default function LiveChat() {
                 )}
               </div>
 
-              {/* Voice */}
-              <div className="border border-gray-100 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedBriefSections(prev =>
-                    prev.includes('voice') ? prev.filter(s => s !== 'voice') : [...prev, 'voice']
-                  )}
-                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Voice</span>
-                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.voice?.tone ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {brief.voice?.tone || 'Not set'}
-                  </span>
-                </button>
-                {expandedBriefSections.includes('voice') && brief.voice && (
-                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
-                    {brief.voice.tone && <p>Tone: {brief.voice.tone}</p>}
-                    {brief.voice.constraints && brief.voice.constraints.length > 0 && (
-                      <p>Constraints: {brief.voice.constraints.join(', ')}</p>
+              {/* Advanced sections - Only in advanced mode */}
+              {planningMode === 'advanced' && (
+                <>
+                  {/* Audience */}
+                  <div className="border border-gray-100 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedBriefSections(prev =>
+                        prev.includes('audience') ? prev.filter(s => s !== 'audience') : [...prev, 'audience']
+                      )}
+                      className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium text-sm text-gray-900 flex-shrink-0">Audience</span>
+                      <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.audience?.headline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {brief.audience?.headline || 'Not set'}
+                      </span>
+                    </button>
+                    {expandedBriefSections.includes('audience') && brief.audience && (
+                      <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                        {brief.audience.headline && <p>Who: {brief.audience.headline}</p>}
+                        {brief.audience.detail && <p>Detail: {brief.audience.detail}</p>}
+                        {brief.audience.stage && <p>Stage: {brief.audience.stage}</p>}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Sources */}
-              <div className="border border-gray-100 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedBriefSections(prev =>
-                    prev.includes('sources') ? prev.filter(s => s !== 'sources') : [...prev, 'sources']
-                  )}
-                  className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-medium text-sm text-gray-900 flex-shrink-0">Sources</span>
-                  <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
-                    (brief.sources?.mustUse?.length || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {(brief.sources?.mustUse?.length || 0) + (brief.sources?.optional?.length || 0)} sources
-                  </span>
-                </button>
-                {expandedBriefSections.includes('sources') && brief.sources && (
-                  <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
-                    {brief.sources.mustUse && brief.sources.mustUse.length > 0 && (
-                      <p>Must use: {brief.sources.mustUse.join(', ')}</p>
-                    )}
-                    {brief.sources.optional && brief.sources.optional.length > 0 && (
-                      <p>Optional: {brief.sources.optional.join(', ')}</p>
+                  {/* Voice */}
+                  <div className="border border-gray-100 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedBriefSections(prev =>
+                        prev.includes('voice') ? prev.filter(s => s !== 'voice') : [...prev, 'voice']
+                      )}
+                      className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium text-sm text-gray-900 flex-shrink-0">Voice</span>
+                      <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${brief.voice?.tone ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {brief.voice?.tone || 'Not set'}
+                      </span>
+                    </button>
+                    {expandedBriefSections.includes('voice') && brief.voice && (
+                      <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                        {brief.voice.tone && <p>Tone: {brief.voice.tone}</p>}
+                        {brief.voice.constraints && brief.voice.constraints.length > 0 && (
+                          <p>Constraints: {brief.voice.constraints.join(', ')}</p>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Assumptions */}
-              {brief.assumptions && brief.assumptions.length > 0 && (
-                <div className="border border-gray-100 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setExpandedBriefSections(prev =>
-                      prev.includes('assumptions') ? prev.filter(s => s !== 'assumptions') : [...prev, 'assumptions']
+                  {/* Sources */}
+                  <div className="border border-gray-100 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedBriefSections(prev =>
+                        prev.includes('sources') ? prev.filter(s => s !== 'sources') : [...prev, 'sources']
+                      )}
+                      className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium text-sm text-gray-900 flex-shrink-0">Sources</span>
+                      <span className={`text-xs px-2 py-0.5 rounded truncate max-w-[70%] ${
+                        (brief.sources?.mustUse?.length || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {(brief.sources?.mustUse?.length || 0) + (brief.sources?.optional?.length || 0)} sources
+                      </span>
+                    </button>
+                    {expandedBriefSections.includes('sources') && brief.sources && (
+                      <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50 space-y-1">
+                        {brief.sources.mustUse && brief.sources.mustUse.length > 0 && (
+                          <p>Must use: {brief.sources.mustUse.join(', ')}</p>
+                        )}
+                        {brief.sources.optional && brief.sources.optional.length > 0 && (
+                          <p>Optional: {brief.sources.optional.join(', ')}</p>
+                        )}
+                      </div>
                     )}
-                    className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="font-medium text-sm text-gray-900 flex-shrink-0">Assumptions</span>
-                    <span className="text-xs px-2 py-0.5 rounded truncate max-w-[70%] bg-amber-100 text-amber-700">
-                      {brief.assumptions.length} items
-                    </span>
-                  </button>
-                  {expandedBriefSections.includes('assumptions') && (
-                    <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50">
-                      <ul className="list-disc list-inside">
-                        {brief.assumptions.map((assumption, i) => <li key={i}>{assumption}</li>)}
-                      </ul>
+                  </div>
+
+                  {/* Assumptions */}
+                  {brief.assumptions && brief.assumptions.length > 0 && (
+                    <div className="border border-gray-100 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => setExpandedBriefSections(prev =>
+                          prev.includes('assumptions') ? prev.filter(s => s !== 'assumptions') : [...prev, 'assumptions']
+                        )}
+                        className="w-full flex items-center justify-between gap-2 p-3 hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="font-medium text-sm text-gray-900 flex-shrink-0">Assumptions</span>
+                        <span className="text-xs px-2 py-0.5 rounded truncate max-w-[70%] bg-amber-100 text-amber-700">
+                          {brief.assumptions.length} items
+                        </span>
+                      </button>
+                      {expandedBriefSections.includes('assumptions') && (
+                        <div className="px-3 pb-3 text-xs text-gray-600 bg-gray-50">
+                          <ul className="list-disc list-inside">
+                            {brief.assumptions.map((assumption, i) => <li key={i}>{assumption}</li>)}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
             )}
           </div>
         )}
 
-        {/* Production Mode: Status */}
-        {mode === 'production' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <h4 className="font-medium text-gray-900 mb-2">Generating Content</h4>
-            <p className="text-sm text-gray-500">
-              Your content is being created based on the brief. You can leave and come back.
-            </p>
-          </div>
-        )}
         </div>
       </div>
 
@@ -1074,55 +1194,104 @@ export default function LiveChat() {
         </div>
 
         {/* Input Area */}
-        {mode === 'production' ? (
-          <div className="border-t p-4 bg-amber-50">
-            <div className="flex items-center justify-center gap-3 text-amber-700">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-600 border-t-transparent"></div>
-              <span className="text-sm font-medium">Content is being generated. Chat is locked.</span>
-            </div>
-            <button
-              onClick={() => updateMode('sandbox')}
-              className="w-full mt-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-100 rounded-lg transition-colors"
-            >
-              Cancel and return to Sandbox
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="border-t p-4 bg-gray-50">
-            <div className="flex gap-3">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                placeholder={mode === 'planning' ? "Describe your content goals..." : "Ask me anything..."}
-                disabled={isGenerating}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
-                rows={1}
-              />
+        <div className="border-t p-4 bg-gray-50">
+          {/* Production ready state - prominent Generate button */}
+          {mode === 'planning' && productionReady && !showInputAfterReady ? (
+            <div className="space-y-3">
               <button
-                type="submit"
-                disabled={!input.trim() || isGenerating}
-                className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+                type="button"
+                onClick={handleGenerateDocument}
+                disabled={isGenerating}
+                className="w-full px-4 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md font-medium flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                {isGenerating ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Generate Document
+                  </>
+                )}
               </button>
+              <p className="text-xs text-center">
+                <span className="text-gray-500">Briefing is ready! </span>
+                <button
+                  type="button"
+                  onClick={() => setShowInputAfterReady(true)}
+                  className="text-blue-600 hover:text-blue-700 underline"
+                >
+                  Continue conversation
+                </button>
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              {mode === 'planning'
-                ? "I'll help you build your content brief step by step"
-                : "Press Enter to send · Shift+Enter for new line"
-              }
-            </p>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={handleSubmit}>
+              {/* Subtle Generate button when continuing conversation */}
+              {mode === 'planning' && productionReady && showInputAfterReady && (
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <button
+                    type="button"
+                    onClick={handleGenerateDocument}
+                    disabled={isGenerating}
+                    className="text-sm text-green-600 hover:text-green-700 disabled:text-gray-400 font-medium flex items-center gap-1"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Generate Document
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs text-gray-400">Briefing ready</span>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
+                  placeholder={mode === 'planning' ? "Describe your content goals..." : "Ask me anything..."}
+                  disabled={isGenerating}
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
+                  rows={1}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isGenerating}
+                  className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                {mode === 'planning'
+                  ? "I'll help you build your content briefing step by step"
+                  : "Press Enter to send · Shift+Enter for new line"
+                }
+              </p>
+            </form>
+          )}
+        </div>
       </div>
 
       {/* Assistant Profile Modal */}
