@@ -12,6 +12,7 @@ interface AssistantProfile {
   instructions: string;
   personality: string;
   defaultAudience?: string;
+  defaultLanguage?: string;
 }
 
 type PlanningMode = 'simple' | 'advanced';
@@ -141,6 +142,7 @@ export default function LiveChat() {
     goals: '',
     instructions: '',
     personality: 'professional',
+    defaultLanguage: 'nl',
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1353,6 +1355,22 @@ export default function LiveChat() {
                   <option value="educational">Educational & Detailed</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">How should the assistant communicate?</p>
+              </div>
+
+              {/* Default Language */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Default Language
+                </label>
+                <select
+                  value={profileForm.defaultLanguage || 'nl'}
+                  onChange={(e) => setProfileForm({ ...profileForm, defaultLanguage: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="nl">Nederlands (Dutch)</option>
+                  <option value="en">English</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">The language used for generating content</p>
               </div>
 
               {/* Goals */}

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, goals, instructions, personality } = body;
+    const { name, goals, instructions, personality, defaultAudience, defaultLanguage } = body;
 
     const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/live-assistant-profile`;
 
@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
         goals: goals || null,
         instructions: instructions || null,
         personality: personality || null,
+        defaultAudience: defaultAudience || null,
+        defaultLanguage: defaultLanguage || 'nl',
       }),
     });
 
