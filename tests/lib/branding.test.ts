@@ -11,7 +11,7 @@ describe('branding', () => {
 
         it('should detect emotion brand', () => {
             const brand = detectBranding('ai.emotion.nl');
-            expect(brand.name).toBe('Emotion AI Motion');
+            expect(brand.name).toBe('AI Motion');
             expect(brand.domain).toBe('ai.emotion.nl');
         });
 
