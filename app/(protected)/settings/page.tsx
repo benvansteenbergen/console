@@ -87,6 +87,26 @@ interface CompanyProfile {
     company_summary: string;
 }
 
+interface AssistantProfile {
+    personality: 'general' | 'me';
+    goals: string;
+    instructions: string;
+    defaultAudience: string;
+    defaultLanguage: string;
+    avatarUrl: string | null;
+    defaultTovFileId: string | null;
+}
+
+interface TovOption {
+    value: string;
+    label: string;
+}
+
+interface TovResponse {
+    success: boolean;
+    tones: TovOption[];
+}
+
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function SettingsPage() {
@@ -111,6 +131,37 @@ export default function SettingsPage() {
             revalidateOnReconnect: false,
         }
     );
+
+    const { data: assistantProfileData, mutate: mutateAssistantProfile } = useSWR<{
+        success: boolean;
+        profile: AssistantProfile;
+    }>('/api/live/assistant-profile', fetcher, {
+        revalidateOnFocus: false,
+    });
+
+    const { data: tovData } = useSWR<TovResponse>(
+        '/api/tone-of-voice',
+        fetcher,
+        {
+            revalidateOnFocus: false,
+        }
+    );
+
+    // Extract tones from response
+    const tovOptions = tovData?.tones || [];
+
+    // Assistant profile form state
+    const [avatarUrl, setAvatarUrl] = useState('');
+    const [selectedTovFileId, setSelectedTovFileId] = useState('');
+    const [savingProfile, setSavingProfile] = useState(false);
+
+    // Sync form state when profile data loads
+    useEffect(() => {
+        if (assistantProfileData?.profile) {
+            setAvatarUrl(assistantProfileData.profile.avatarUrl || '');
+            setSelectedTovFileId(assistantProfileData.profile.defaultTovFileId || '');
+        }
+    }, [assistantProfileData]);
 
     // Website data source
     const [connectingWebsite, setConnectingWebsite] = useState(false);
@@ -539,6 +590,30 @@ export default function SettingsPage() {
         setVideoReady(false);
     };
 
+    // Save assistant profile settings
+    const saveAssistantProfile = async () => {
+        setSavingProfile(true);
+        try {
+            const response = await fetch('/api/live/assistant-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...assistantProfileData?.profile,
+                    avatarUrl: avatarUrl || null,
+                    defaultTovFileId: selectedTovFileId || null,
+                }),
+            });
+
+            if (response.ok) {
+                await mutateAssistantProfile();
+            }
+        } catch (error) {
+            console.error('Failed to save assistant profile:', error);
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
     return (
         <main className="flex flex-1 flex-col p-6 space-y-6">
             <div className="flex items-center justify-between">
@@ -951,6 +1026,80 @@ export default function SettingsPage() {
                                 </p>
                             </div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Assistant Profile Card */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100">
+                        <svg
+                            className="h-6 w-6 text-pink-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                        </svg>
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Assistant Profile</h2>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Avatar URL */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Your Avatar URL
+                        </label>
+                        <input
+                            type="url"
+                            value={avatarUrl}
+                            onChange={(e) => setAvatarUrl(e.target.value)}
+                            placeholder="https://example.com/your-photo.jpg"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Used as your icon when selecting &quot;Me&quot; personality in Live Chat
+                        </p>
+                    </div>
+
+                    {/* Tone of Voice Selector */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Default Tone of Voice
+                        </label>
+                        <select
+                            value={selectedTovFileId}
+                            onChange={(e) => setSelectedTovFileId(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option value="">None (use General assistant)</option>
+                            {tovOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Select a tone-of-voice document to enable the &quot;Me&quot; personality in Live Chat
+                        </p>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="pt-2">
+                        <button
+                            onClick={saveAssistantProfile}
+                            disabled={savingProfile}
+                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        >
+                            {savingProfile ? 'Saving...' : 'Save Profile Settings'}
+                        </button>
                     </div>
                 </div>
             </div>

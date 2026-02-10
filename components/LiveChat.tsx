@@ -7,12 +7,13 @@ import ReactMarkdown from 'react-markdown';
 const STORAGE_KEY = 'live_conversation_id';
 
 interface AssistantProfile {
-  name: string;
   goals: string;
   instructions: string;
-  personality: string;
+  personality: 'general' | 'me';
   defaultAudience?: string;
   defaultLanguage?: string;
+  avatarUrl?: string | null;
+  defaultTovFileId?: string | null;
 }
 
 type PlanningMode = 'simple' | 'advanced';
@@ -138,10 +139,9 @@ export default function LiveChat() {
   const [showInputAfterReady, setShowInputAfterReady] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<AssistantProfile>({
-    name: 'Senior Marketing Assistant',
     goals: '',
     instructions: '',
-    personality: 'professional',
+    personality: 'general',
     defaultLanguage: 'nl',
   });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -586,8 +586,8 @@ export default function LiveChat() {
     }
   };
 
-  const assistantName = profileForm.name || 'Senior Marketing Assistant';
-  const assistantInitials = assistantName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const isGeneralMode = profileForm.personality === 'general';
+  const assistantInitials = isGeneralMode ? 'WS' : 'ME';
 
   return (
     <div className="flex h-[calc(100vh-200px)] gap-4">
@@ -1031,26 +1031,44 @@ export default function LiveChat() {
               </svg>
             </button>
 
-            <button
-              onClick={() => setShowProfileModal(true)}
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-              title="Edit assistant profile"
-            >
-              {assistantInitials}
-            </button>
-            <div>
+            {/* Profile Selector */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setShowProfileModal(true)}
-                className="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-left"
+                onClick={() => setProfileForm(prev => ({ ...prev, personality: 'general' }))}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  profileForm.personality === 'general'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                {assistantName}
+                <img src="/wingsuite/logo.svg" alt="Wingsuite" className="w-5 h-5" />
+                General
               </button>
-              <div className="text-xs text-gray-500">
-                {selectedClusters.length > 0
-                  ? `Using ${selectedClusters.length} knowledge source${selectedClusters.length > 1 ? 's' : ''}`
-                  : 'General assistant mode'
-                }
-              </div>
+              {profileForm.defaultTovFileId && (
+                <button
+                  onClick={() => setProfileForm(prev => ({ ...prev, personality: 'me' }))}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    profileForm.personality === 'me'
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {profileForm.avatarUrl ? (
+                    <img src={profileForm.avatarUrl} alt="Me" className="w-5 h-5 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-xs font-bold">
+                      ME
+                    </div>
+                  )}
+                  Me
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-gray-500 ml-2">
+              {selectedClusters.length > 0
+                ? `Using ${selectedClusters.length} source${selectedClusters.length > 1 ? 's' : ''}`
+                : profileForm.personality === 'me' ? 'Your voice' : 'General mode'
+              }
             </div>
           </div>
 
@@ -1087,14 +1105,18 @@ export default function LiveChat() {
           {/* Intro screen - only show when not loading and no messages */}
           {!isLoadingMessages && messages.length === 0 && !currentConversationId && (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-semibold mb-4 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-                title="Edit assistant profile"
-              >
-                {assistantInitials}
-              </button>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Hi! I'm your {assistantName}</h3>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-semibold mb-4 shadow-lg">
+                {isGeneralMode ? (
+                  <img src="/wingsuite/logo.svg" alt="Wingsuite" className="w-12 h-12" />
+                ) : profileForm.avatarUrl ? (
+                  <img src={profileForm.avatarUrl} alt="Me" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  'ME'
+                )}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {isGeneralMode ? 'Hi! I\'m your Wingsuite Assistant' : 'Ready to write in your voice'}
+              </h3>
               <p className="text-gray-500 max-w-md mb-6">
                 I can help you create content, brainstorm ideas, and answer questions using your knowledge base.
               </p>
@@ -1323,38 +1345,34 @@ export default function LiveChat() {
 
             {/* Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assistant Name
-                </label>
-                <input
-                  type="text"
-                  value={profileForm.name}
-                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  placeholder="e.g., Senior Marketing Assistant"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">Give your assistant a name that reflects its role</p>
-              </div>
-
-              {/* Personality */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Personality
-                </label>
-                <select
-                  value={profileForm.personality}
-                  onChange={(e) => setProfileForm({ ...profileForm, personality: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
-                  <option value="professional">Professional & Formal</option>
-                  <option value="friendly">Friendly & Approachable</option>
-                  <option value="creative">Creative & Innovative</option>
-                  <option value="concise">Concise & Direct</option>
-                  <option value="educational">Educational & Detailed</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">How should the assistant communicate?</p>
+              {/* Current Mode Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  {isGeneralMode ? (
+                    <>
+                      <img src="/wingsuite/logo.svg" alt="Wingsuite" className="w-10 h-10" />
+                      <div>
+                        <p className="font-medium text-gray-900">General Mode</p>
+                        <p className="text-sm text-gray-500">Standard Wingsuite assistant</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {profileForm.avatarUrl ? (
+                        <img src={profileForm.avatarUrl} alt="Me" className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 font-bold">
+                          ME
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">Your Voice</p>
+                        <p className="text-sm text-gray-500">Using your tone-of-voice document</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Switch modes using the selector in the header. Configure your avatar and tone-of-voice in Settings.</p>
               </div>
 
               {/* Default Language */}
