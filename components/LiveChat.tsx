@@ -1016,9 +1016,13 @@ export default function LiveChat() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden order-1">
+      <div className={`flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden order-1 transition-shadow duration-300 ${
+        !isGeneralMode ? 'ring-2 ring-purple-400 shadow-purple-200 shadow-xl' : ''
+      }`}>
         {/* Chat Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-gray-50 to-white">
+        <div className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${
+          !isGeneralMode ? 'bg-gradient-to-r from-purple-50 to-pink-50' : 'bg-gradient-to-r from-gray-50 to-white'
+        }`}>
           <div className="flex items-center gap-3">
             {/* History Toggle */}
             <button
@@ -1064,7 +1068,20 @@ export default function LiveChat() {
                 </button>
               )}
             </div>
-            <div className="text-xs text-gray-500 ml-2">
+
+            {/* Profile Settings Button */}
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+              title="Edit goals & instructions"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+            <div className="text-xs text-gray-500">
               {selectedClusters.length > 0
                 ? `Using ${selectedClusters.length} source${selectedClusters.length > 1 ? 's' : ''}`
                 : profileForm.personality === 'me' ? 'Your voice' : 'General mode'
