@@ -45,11 +45,19 @@ export async function GET(_request: NextRequest) {
     // n8n returns: [{ "doc-id": { chunks, id, title, date } }]
     // We need: { success: true, documents: [{ document_id, title, chunks, creationTimeUnix }] }
 
-    let documents = [];
+    let documents: Array<{
+      document_id: string;
+      title: string;
+      chunks: number;
+      creationTimeUnix: number;
+      visibility: 'private' | 'shared';
+      canDelete: boolean;
+      cluster: string;
+    }> = [];
 
     if (Array.isArray(result) && result.length > 0) {
-      const docsObject = result[0];
-      documents = Object.values(docsObject).map((doc: N8nDocument) => ({
+      const docsObject = result[0] as Record<string, N8nDocument>;
+      documents = Object.values(docsObject).map((doc) => ({
         document_id: doc.id,
         title: doc.title,
         chunks: doc.chunks,

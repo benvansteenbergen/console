@@ -52,7 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     const value: SessionState = {
         loading: isLoading,
-        unauth,
+        unauth: unauth ?? false,
         data,
     };
 

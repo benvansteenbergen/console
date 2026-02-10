@@ -65,6 +65,11 @@ npm test           # Run tests (currently placeholder)
 console/
 ├── .husky/                    # Git hooks (pre-commit, etc.)
 ├── adr/                       # Architecture Decision Records
+├── docs/                      # Detailed documentation
+│   └── n8n/                   # n8n integration docs
+│       ├── README.md          # Integration overview
+│       ├── database-schema.md # PostgreSQL table definitions
+│       └── workflows.md       # Key n8n workflow documentation
 ├── app/                       # Next.js 15 App Router
 │   ├── (public)/              # Unauthenticated routes
 │   │   └── login/             # Login page with branding
@@ -451,6 +456,11 @@ interface SessionData {
 ---
 
 ## 🔗 N8N Integration Details
+
+> **📚 Detailed Documentation:** See `docs/n8n/` for comprehensive n8n documentation:
+> - `docs/n8n/README.md` - Integration overview
+> - `docs/n8n/database-schema.md` - Complete PostgreSQL table definitions
+> - `docs/n8n/workflows.md` - Key workflow documentation
 
 ### Authentication Header Pattern
 All API routes pass JWT to n8n as:
