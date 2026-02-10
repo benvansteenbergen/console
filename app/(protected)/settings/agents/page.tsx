@@ -1,4 +1,4 @@
-// app/(protected)/admin/page.tsx
+// app/(protected)/settings/agents/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ interface Agent {
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
-export default function AdminPage() {
+export default function AgentsPage() {
     const router = useRouter();
     const { loading: sessionLoading } = useSession();
     const [toggling, setToggling] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function AdminPage() {
     const handleToggle = async (agentId: string, currentEnabled: boolean) => {
         setToggling(agentId);
         try {
-            const res = await fetch('/api/admin/toggle-agent', {
+            const res = await fetch('/api/settings/toggle-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ agentId, enabled: !currentEnabled }),

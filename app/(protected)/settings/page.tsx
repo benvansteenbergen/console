@@ -544,7 +544,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
                 <button
-                    onClick={() => router.push('/admin')}
+                    onClick={() => router.push('/settings/agents')}
                     className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
                 >
                     Manage Agents

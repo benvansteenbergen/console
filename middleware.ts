@@ -19,7 +19,6 @@ export const config = {
     '/content/:path*',
     '/live/:path*',
     '/settings/:path*',
-    '/admin/:path*',
     '/create/:path*',
     '/company-private-storage/:path*',
   ],

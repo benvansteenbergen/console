@@ -1,4 +1,4 @@
-// app/api/admin/toggle-agent/route.ts
+// app/api/settings/toggle-agent/route.ts
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
