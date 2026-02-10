@@ -464,6 +464,7 @@ export default function LiveChat() {
           message: userMessage,
           mode,
           planningMode,
+          personality: profileForm.personality,
           selectedClusters,
           selectedDocuments,
         }),

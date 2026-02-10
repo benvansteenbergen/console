@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { conversationId, message, mode, planningMode, selectedClusters, selectedDocuments } = body;
+    const { conversationId, message, mode, planningMode, personality, selectedClusters, selectedDocuments } = body;
 
     if (!message) {
       return NextResponse.json({ success: false, error: 'Message required' }, { status: 400 });
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
         message,
         mode: mode || 'sandbox',
         planningMode: planningMode || 'simple',
+        personality: personality || 'general',
         selectedClusters: selectedClusters || [],
         selectedDocuments: selectedDocuments || [],
       }),
