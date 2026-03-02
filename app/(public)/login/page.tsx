@@ -12,11 +12,13 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const branding = useBranding();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setError(params.get('error'));
+    setReturnTo(params.get('returnTo'));
   }, []);
 
   useEffect(() => {
@@ -59,6 +61,9 @@ export default function Login() {
               method="POST"
               className="mt-6 w-full max-w-sm space-y-4"
           >
+            {returnTo && (
+              <input type="hidden" name="returnTo" value={returnTo} />
+            )}
             <input
                 name="emailOrLdapLoginId"
                 type="email"

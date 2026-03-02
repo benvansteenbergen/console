@@ -33,8 +33,10 @@ export async function POST(req: Request) {
     return redirectToLogin('token-missing', host);
   }
 
+  const returnTo = form.get('returnTo') as string | null;
   const baseUrl = `https://${host}`;
-  const res = NextResponse.redirect(`${baseUrl}/dashboard`, 303);
+  const destination = returnTo && returnTo.startsWith('/') ? returnTo : '/dashboard';
+  const res = NextResponse.redirect(`${baseUrl}${destination}`, 303);
   res.cookies.set({
     name   : 'session',
     value  : n8nJwt,

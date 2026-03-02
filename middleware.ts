@@ -6,6 +6,7 @@ export function middleware(req: NextRequest) {
 
   if (!hasSession) {
     const login = new URL('/login', req.url);
+    login.searchParams.set('returnTo', req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
   return NextResponse.next();

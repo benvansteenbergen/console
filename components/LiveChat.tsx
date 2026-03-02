@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR, { mutate, useSWRConfig } from 'swr';
 import ReactMarkdown from 'react-markdown';
 
@@ -118,6 +119,7 @@ const stripMarkdown = (text: string): string => {
 };
 
 export default function LiveChat() {
+  const searchParams = useSearchParams();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -187,15 +189,17 @@ export default function LiveChat() {
 
   const availableClusters = Object.keys(documentsByCluster).sort();
 
-  // Load conversation ID from localStorage on mount and start loading immediately
+  // Load conversation ID from URL param or localStorage on mount
   useEffect(() => {
-    const savedId = localStorage.getItem(STORAGE_KEY);
-    if (savedId) {
-      setCurrentConversationId(savedId);
+    const urlConversation = searchParams.get('conversation');
+    const targetId = urlConversation || localStorage.getItem(STORAGE_KEY);
+    if (targetId) {
+      setCurrentConversationId(targetId);
+      localStorage.setItem(STORAGE_KEY, targetId);
       setIsLoadingMessages(true);
     }
     globalMutate('/api/live/unread-count');
-  }, [globalMutate]);
+  }, [globalMutate, searchParams]);
 
   // Load messages when conversation changes
   useEffect(() => {

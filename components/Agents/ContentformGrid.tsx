@@ -21,7 +21,8 @@ interface Props {
 }
 
 export default function ContentFormGrid({ className, showTitle = true }: Props) {
-    const { data, error } = useSWR<ContentForm[]>("/api/content-forms", fetcher);
+    const { data: raw, error } = useSWR("/api/content-forms", fetcher);
+    const data: ContentForm[] | undefined = Array.isArray(raw) ? raw : raw?.forms ?? raw?.data;
 
     if (error)
         return (

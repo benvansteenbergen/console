@@ -13,6 +13,26 @@ export interface DriveFile {
     new?: number;
     mimeType?: string;  // to detect folders
     isFolder?: boolean; // helper flag
+    createdTime?: string; // ISO date from Google Drive
+}
+
+function formatRelativeDate(dateString?: string): string | null {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = startOfToday.getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 'Today';
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return 'This week';
+    if (diffDays < 30) return 'This month';
+    if (diffDays < 60) return 'Last month';
+    return '+1 month';
 }
 
 interface GridProps {
@@ -157,7 +177,7 @@ export default function FolderGrid({ folder, folderId, parentFolderId, initialIt
 
     return (
         <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-4">
-            {sortedData.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder }) => {
+            {sortedData.map(({ id, name, thumbnailLink, webViewLink, new: isNew, mimeType, isFolder, createdTime }) => {
                 const itemIsFolder = isFolder || mimeType === 'application/vnd.google-apps.folder';
 
                 return (
@@ -249,9 +269,16 @@ export default function FolderGrid({ folder, folderId, parentFolderId, initialIt
                 </div>
                 {/* file/folder title --------------------------------------------------- */}
                 {!itemIsFolder && (
+                    <>
                     <p className="mt-1 w-full truncate text-center text-xs font-medium text-slate-700">
                         {name}
                     </p>
+                    {formatRelativeDate(createdTime) && (
+                        <p className="w-full text-center text-[10px] text-slate-400">
+                            {formatRelativeDate(createdTime)}
+                        </p>
+                    )}
+                    </>
                 )}
                 </div>
                 );

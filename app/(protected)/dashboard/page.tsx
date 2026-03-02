@@ -6,6 +6,7 @@ import { useBranding } from '@/components/BrandingProvider';
 import ContentWriterGrid from "@/components/Agents/ContentwriterGrid";
 import ContentFormGrid from "@/components/Agents/ContentformGrid";
 import ContentautomationGrid from "@/components/Agents/ContentautomationGrid";
+import ContentSessionBanner from "@/components/ContentSessionBanner";
 
 /* --------------------------------------------------------------------
    Helper types
@@ -99,6 +100,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        {/* Pending content sessions */}
+        <ContentSessionBanner />
+
         {/* Content types */}
         <div>
           <h2 className="mb-4 text-xl font-semibold text-gray-900">
