@@ -115,9 +115,48 @@ WHERE "projectId" = '5wB8K4Dwm33EnlQ1'
 ON CONFLICT ("credentialsId", "projectId") DO NOTHING
 ```
 
-## Chat Hub Tables
+## Live Conversation Tables
 
-Tables for the AI chat functionality in the console.
+Tables for the LiveChat feature in the console. These are the primary chat tables used by the application.
+
+### live_conversations
+
+LiveChat conversation sessions. Used by the console's LiveChat feature and the content scheduling system.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | **Primary key** |
+| `client_id` | varchar | NOT NULL | - | Client key (references `portal_client.key`) |
+| `user_id` | uuid | NOT NULL | - | References `user.id` |
+| `created_at` | timestamp | NOT NULL | `now()` | |
+| `last_message_at` | timestamp | NULL | - | Timestamp of most recent message |
+| `summary` | text | NULL | - | Conversation preview/summary |
+| `status` | varchar | NULL | `'active'` | `pending` (scheduler-created), `active` (in progress), `archived` |
+| `mode` | varchar | NULL | `'sandbox'` | `sandbox` (free chat) or `planning` (structured content creation) |
+| `brief` | jsonb | NULL | `{}` | Content planning brief (deliverable, audience, voice, message, outcome, sources, assumptions) |
+
+**Status values:**
+- `pending` — Created by the scheduler agent, waiting for the user to start
+- `active` — User is actively engaged in the conversation
+- `archived` — Conversation has been archived by the user
+
+### live_messages
+
+Individual messages in LiveChat conversations.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | **Primary key** |
+| `conversation_id` | uuid | NOT NULL | - | References `live_conversations.id` |
+| `role` | varchar | NOT NULL | - | `user` or `assistant` |
+| `content` | text | NOT NULL | - | Message content (markdown) |
+| `created_at` | timestamp | NOT NULL | `now()` | |
+| `read` | boolean | NULL | `false` | Whether the user has read this message |
+| `metadata` | jsonb | NULL | - | Extra data (e.g., `{ sources: [...] }` for KB citations) |
+
+## Chat Hub Tables (n8n built-in)
+
+n8n's built-in chat tables. The console primarily uses the `live_conversations`/`live_messages` tables above instead.
 
 ### chat_hub_sessions
 
@@ -209,6 +248,8 @@ portal_client (key) ─────┐
                          │
                          ├──< portal_user (client_key)
                          │
+                         ├──< live_conversations (client_id)
+                         │
 user (id) ───────────────┼──< portal_user (n8n_user_id)
     │                    │
     ├──< project_relation (userId)
@@ -216,6 +257,10 @@ user (id) ───────────────┼──< portal_user (n
     │         └──> project (id)
     │                  │
     │                  └──< shared_credentials (projectId)
+    │
+    ├──< live_conversations (user_id)
+    │         │
+    │         └──< live_messages (conversation_id)
     │
     ├──< chat_hub_sessions (ownerId)
     │         │

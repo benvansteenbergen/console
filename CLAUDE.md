@@ -77,7 +77,8 @@ console/
 │       ├── README.md          # Integration overview
 │       ├── database-schema.md # PostgreSQL table definitions
 │       ├── workflow-mapping.md# Workflow mapping
-│       └── workflows.md       # Key n8n workflow documentation
+│       ├── workflows.md       # Key n8n workflow documentation
+│       └── scheduler-agent-prompt.md # Scheduler agent system prompt & tool def
 ├── app/                       # Next.js 15 App Router
 │   ├── (public)/              # Unauthenticated routes
 │   │   └── login/             # Login page with branding
@@ -96,6 +97,7 @@ console/
 │   │   ├── auth/              # login, logout, me
 │   │   ├── chat/              # POST: AI chat streaming
 │   │   ├── credits/           # GET: usage stats
+│   │   ├── content-sessions/  # GET: pending content sessions from scheduler
 │   │   ├── content-storage/   # GET: Google Drive files by folder
 │   │   ├── content-forms/     # GET: available form types
 │   │   ├── content-formats/   # GET: available content formats
@@ -134,8 +136,9 @@ console/
 │   ├── AuthGate.tsx           # Protected route wrapper
 │   ├── Sidebar.tsx            # Main navigation sidebar with collapsible sections
 │   ├── JourneyCard.tsx        # Animated workflow trace timeline
-│   ├── FolderGrid.tsx         # Google Drive thumbnail grid with delete/move
-│   ├── LiveChat.tsx           # Full-featured AI chat interface
+│   ├── ContentSessionBanner.tsx # Dashboard banner for pending content sessions
+│   ├── FolderGrid.tsx         # Google Drive thumbnail grid with delete/move/dates
+│   ├── LiveChat.tsx           # Full-featured AI chat interface (supports deep-linking)
 │   ├── DocumentLibrary.tsx    # Knowledge base document list with cluster organization
 │   ├── KnowledgeBaseOverview.tsx # KB quality overview by cluster
 │   ├── CreateFolderButton.tsx # Folder creation modal
@@ -187,8 +190,14 @@ console/
 #### Edge Middleware
 - **File:** `middleware.ts`
 - Checks for `session` cookie on protected routes
-- Redirects to `/login` if missing
+- Redirects to `/login?returnTo={originalPath}` if missing (preserves deep-links)
 - **Protected routes:** `/dashboard/*`, `/editor/*`, `/content/*`, `/live/*`, `/settings/*`, `/create/*`, `/company-private-storage/*`
+
+#### Deep-Link Support
+- Middleware passes `returnTo` query param to login page when redirecting unauthenticated users
+- Login page forwards `returnTo` as hidden form field
+- Login API redirects to `returnTo` (validated to start with `/`) instead of hardcoded `/dashboard`
+- Enables external links (e.g. WhatsApp notifications) to deep-link into specific pages like `/live?conversation={id}`
 
 #### SessionProvider (Client-Side)
 - **File:** `components/SessionProvider.tsx`
@@ -217,13 +226,25 @@ The primary AI interaction surface. Users have conversations with an AI assistan
 - **Planning modes:** `simple` and `advanced` — build a brief before content generation
 - **Personality:** Switchable between `general` and `me` (personalized)
 - **Persistence:** Conversation ID stored in localStorage
+- **Deep-linking:** Supports `?conversation={id}` URL param to open a specific conversation (used by content session banner)
 - **Backend:** All messages proxied through n8n via `/api/live/*` routes
+- **Conversation statuses:** `pending` (created by scheduler, not yet started), `active` (in progress), `archived`
 - **Features:**
   - Streaming responses
   - Knowledge base context sources cited in metadata
   - Assistant profiles with avatar, goals, instructions, language, audience
   - Conversation archive and unread counts
   - Production workflow for generating final content
+
+### Content Scheduling
+
+Automated content scheduling cycle powered by an n8n planner agent.
+
+- **Flow:** Schedule triggers → n8n creates conversation (status=`pending`, mode=`planning`, pre-filled brief + first message) → console shows banner → user clicks → gathering agent takes over
+- **Dashboard banner:** `components/ContentSessionBanner.tsx` — polls `/api/content-sessions` every 60s, shows cards for pending sessions
+- **API:** `GET /api/content-sessions` → proxies to n8n `/webhook/content-sessions` (queries `live_conversations WHERE status = 'pending'`)
+- **Scheduler agent:** See `docs/n8n/scheduler-agent-prompt.md` for system prompt and `create_session` tool definition
+- **Database:** Uses `live_conversations` table (status column) and `live_messages` table
 
 ### Knowledge Base (Weaviate)
 
@@ -287,6 +308,11 @@ LinkedIn and website data extraction for AI personalization.
 | `/api/auth/login` | POST | Authenticate user, set session cookie |
 | `/api/auth/logout` | POST | Clear session cookie |
 | `/api/auth/me` | GET | Validate session, return user info |
+
+### Content Sessions & Scheduling
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/content-sessions` | GET | List pending content sessions (from scheduler) |
 
 ### Content & Storage
 | Endpoint | Method | Purpose |
@@ -356,6 +382,15 @@ LinkedIn and website data extraction for AI personalization.
 
 ## Key Components
 
+### ContentSessionBanner
+- **File:** `components/ContentSessionBanner.tsx`
+- **Purpose:** Dashboard banner for pending content gathering sessions
+- **Features:**
+  - SWR polling every 60s from `/api/content-sessions`
+  - Renders card per pending session with content type, message preview
+  - Links to `/live?conversation={id}` for deep-linking
+  - Returns `null` when no sessions (graceful degradation)
+
 ### LiveChat
 - **File:** `components/LiveChat.tsx`
 - **Purpose:** Full-featured AI conversation interface
@@ -366,6 +401,7 @@ LinkedIn and website data extraction for AI personalization.
   - Knowledge base context with source citations
   - Assistant profile management (avatar, goals, language, audience)
   - Conversation history, archive, unread counts
+  - Deep-linking via `?conversation={id}` URL parameter
   - Streaming responses with ReactMarkdown rendering
 
 ### DocCanvas
@@ -393,6 +429,7 @@ LinkedIn and website data extraction for AI personalization.
   - Auto-refresh every 5 seconds via SWR
   - Hover overlay with actions: Review, Open, Download (PDF/DOCX/TXT)
   - "NEW" badge for unseen files
+  - Relative date labels (Today, Yesterday, This week, This month, Last month, +1 month) via `createdTime`
   - Subfolder navigation support (folderId + parentFolderId)
   - Delete and move file operations
 
@@ -495,6 +532,7 @@ LinkedIn and website data extraction for AI personalization.
 > - `docs/n8n/database-schema.md` - Complete PostgreSQL table definitions
 > - `docs/n8n/workflow-mapping.md` - Workflow mapping
 > - `docs/n8n/workflows.md` - Key workflow documentation
+> - `docs/n8n/scheduler-agent-prompt.md` - Scheduler agent system prompt & tool definition
 > - `docs/N8N_LIVE_CHAT_INTEGRATION.md` - LiveChat integration guide
 
 ### Authentication Header Pattern
@@ -518,6 +556,7 @@ headers: { cookie: `auth=${jwt};` }
 | `/webhook/portal-userinfo` | Get user session data |
 | `/webhook/portal-usage` | Get credit usage |
 | `/webhook/content-storage` | List Drive files |
+| `/webhook/content-sessions` | List pending content sessions (scheduler) |
 | `/webhook/[workflow-name]` | Trigger specific workflow |
 
 ### Execution API (REST)
@@ -683,4 +722,4 @@ pnpm test:coverage     # Generate coverage report
 ---
 
 **This file is for machine agents to understand the project architecture and contribute safely.**
-*Last updated: 2026-02-15*
+*Last updated: 2026-02-16*

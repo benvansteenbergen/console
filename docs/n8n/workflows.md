@@ -34,6 +34,12 @@ All webhooks called from the Next.js console, organized by category.
 | `/webhook/create-folder` | POST | `/api/create-folder` | Create new folder |
 | `/webhook/delete-document` | POST | `/api/delete-document` | Delete document |
 
+### Content Scheduling
+
+| Webhook | Method | Console Route | Purpose |
+|---------|--------|---------------|---------|
+| `/webhook/content-sessions` | GET | `/api/content-sessions` | List pending content sessions (queries `live_conversations WHERE status = 'pending'`) |
+
 ### Live Chat / Conversations
 
 | Webhook | Method | Console Route | Purpose |

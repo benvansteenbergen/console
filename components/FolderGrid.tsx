@@ -259,7 +259,7 @@ export default function FolderGrid({ folder, folderId, parentFolderId, initialIt
                         </button>
                     </div>
 
-                    {isNew && !itemIsFolder ? (
+                    {isNew && !itemIsFolder && (!createdTime || (Date.now() - new Date(createdTime).getTime()) < 86_400_000) ? (
                         <span className="absolute top-1 right-1 rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-semibold text-white">
               NEW
             </span>
