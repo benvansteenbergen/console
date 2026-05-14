@@ -1,5 +1,6 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useBranding } from '@/components/BrandingProvider';
@@ -7,6 +8,7 @@ import ContentWriterGrid from "@/components/Agents/ContentwriterGrid";
 import ContentFormGrid from "@/components/Agents/ContentformGrid";
 import ContentautomationGrid from "@/components/Agents/ContentautomationGrid";
 import ContentSessionBanner from "@/components/ContentSessionBanner";
+import RadarBanner from "@/components/RadarBanner";
 
 /* --------------------------------------------------------------------
    Helper types
@@ -15,6 +17,10 @@ interface FolderStat {
   folder: string;
   unseen: number;
   items: unknown[];
+}
+
+interface ProfileStatus {
+  status: 'empty' | 'interviewing' | 'scanning' | 'complete';
 }
 
 const fetcher = (url: string) =>
@@ -34,6 +40,28 @@ interface Credits {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+  const [isV2, setIsV2] = useState(false);
+
+  useEffect(() => {
+    setIsV2(localStorage.getItem('wingsuite_version') === 'v2');
+  }, []);
+
+  /* profile status check — redirect to interview if empty (v2 only) */
+  const { data: profileData, isLoading: profileLoading } = useSWR<ProfileStatus>(
+    isV2 ? '/api/company-profile' : null,
+    fetcher,
+  );
+
+  useEffect(() => {
+    if (isV2 && !profileLoading && profileData) {
+      const status = profileData.status;
+      if (status === 'empty' || status === 'interviewing' || status === 'scanning') {
+        router.replace('/profile');
+      }
+    }
+  }, [isV2, profileData, profileLoading, router]);
+
   /* live content-storage stats */
   const {
     data: stats = [],
@@ -102,6 +130,7 @@ export default function Dashboard() {
         </div>
         {/* Pending content sessions */}
         <ContentSessionBanner />
+        {isV2 && <RadarBanner />}
 
         {/* Content types */}
         <div>

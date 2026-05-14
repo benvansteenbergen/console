@@ -1,20 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from '@/components/SessionProvider';
 import { useBranding } from '@/components/BrandingProvider';
 import LiveChat from '@/components/LiveChat';
 import PageLoader from '@/components/ui/PageLoader';
 
 export default function LivePage() {
+  const router = useRouter();
   const { loading } = useSession();
   const branding = useBranding();
+  const [isV2, setIsV2] = useState<boolean | null>(null);
 
   useEffect(() => {
-    document.title = `${branding.name} - Live Content`;
-  }, [branding.name]);
+    const v = localStorage.getItem('wingsuite_version');
+    if (v === 'v2') {
+      router.replace('/studio');
+    } else {
+      setIsV2(false);
+    }
+  }, [router]);
 
-  if (loading) {
+  useEffect(() => {
+    if (isV2 === false) {
+      document.title = `${branding.name} - Live Content`;
+    }
+  }, [isV2, branding.name]);
+
+  if (isV2 === null || loading) {
     return <PageLoader />;
   }
 

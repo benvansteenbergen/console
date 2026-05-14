@@ -23,11 +23,15 @@ export const config = {
   // All routes under (protected) group
   matcher: [
     '/dashboard/:path*',
+    '/profile/:path*',
+    '/studio/:path*',
+    '/library/:path*',
     '/editor/:path*',
     '/content/:path*',
     '/live/:path*',
     '/settings/:path*',
     '/create/:path*',
     '/company-private-storage/:path*',
+    '/radar/:path*',
   ],
 };
