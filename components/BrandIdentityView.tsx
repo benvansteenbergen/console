@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import useSWR from 'swr';
 import { useBranding } from '@/components/BrandingProvider';
 import {
   ArrowTopRightOnSquareIcon,
   ArrowPathIcon,
+  DocumentTextIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 
 interface ProfileSummary {
@@ -29,6 +32,18 @@ interface BrandIdentityViewProps {
   onUpdate: () => void;
 }
 
+interface ToneOption {
+  value: string;
+  label: string;
+}
+
+interface ToneResponse {
+  success: boolean;
+  tones: ToneOption[];
+}
+
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((r) => r.json());
+
 const SECTIONS = [
   { key: 'name', label: 'Company Name' },
   { key: 'industry', label: 'Industry' },
@@ -42,6 +57,13 @@ export default function BrandIdentityView({ profile, onUpdate }: BrandIdentityVi
   const branding = useBranding();
   const summary = profile.profile_summary;
   const [resetting, setResetting] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const { data: toneData } = useSWR<ToneResponse>('/api/tone-of-voice', fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  const tones = toneData?.tones || [];
 
   const handleRerun = async () => {
     if (!window.confirm('Are you sure you want to reset your profile?')) return;
@@ -66,6 +88,28 @@ export default function BrandIdentityView({ profile, onUpdate }: BrandIdentityVi
     }
   };
 
+  const handleSelectTone = async (docId: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/company-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ persona_doc_id: docId, status: profile.status }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        console.error('Failed to save persona doc:', res.status);
+      } else {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Failed to save persona doc:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const personaDocUrl = profile.persona_doc_id
     ? `https://docs.google.com/document/d/${profile.persona_doc_id}/edit`
     : null;
@@ -80,30 +124,61 @@ export default function BrandIdentityView({ profile, onUpdate }: BrandIdentityVi
         </p>
       </div>
 
-      {/* Brand Guide Card */}
-      {personaDocUrl && (
-        <div
-          className="flex items-center justify-between rounded-xl border p-6"
-          style={{ borderColor: branding.primaryColor + '30', backgroundColor: branding.primaryColor + '05' }}
-        >
+      {/* Brand Voice Document */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-medium text-gray-900">Brand Voice Guide</h3>
+            <h3 className="font-medium text-gray-900">Brand Voice Document</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Your complete tone of voice document, generated from the brand interview
+              {profile.persona_doc_id
+                ? 'This document defines your writing style for all content'
+                : 'Select a tone-of-voice document to personalize your content'}
             </p>
           </div>
-          <a
-            href={personaDocUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-            style={{ backgroundColor: branding.primaryColor }}
-          >
-            Open guide
-            <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-          </a>
+          {personaDocUrl && (
+            <a
+              href={personaDocUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              Open
+              <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+            </a>
+          )}
         </div>
-      )}
+
+        {tones.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {tones.map((tone) => {
+              const isActive = tone.value === profile.persona_doc_id;
+              return (
+                <button
+                  key={tone.value}
+                  onClick={() => handleSelectTone(tone.value)}
+                  disabled={saving || isActive}
+                  className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                    isActive
+                      ? 'border-blue-200 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  } disabled:opacity-60`}
+                >
+                  <DocumentTextIcon className="h-5 w-5 shrink-0 text-gray-400" />
+                  <span className="flex-1">{tone.label}</span>
+                  {isActive && <CheckIcon className="h-4 w-4 text-blue-600" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {tones.length === 0 && !profile.persona_doc_id && toneData && (
+          <p className="mt-4 text-sm text-gray-400">
+            No tone-of-voice documents found in your Drive folder.
+          </p>
+        )}
+      </div>
 
       {/* Profile Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
