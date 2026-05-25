@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { mode, message, session_id, history } = body;
+  const { mode, message, session_id, history, profile_context } = body;
 
   if (!mode) {
     return NextResponse.json({ error: 'mode required' }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   const res = await fetchFromN8n('/webhook/radar-scout', jwt, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, message, session_id, history }),
+    body: JSON.stringify({ mode, message, session_id, history, profile_context }),
   });
 
   let data = await safeJsonParse(res, 'radar-scout');

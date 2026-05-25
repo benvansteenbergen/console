@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { useBranding } from '@/components/BrandingProvider';
 import { dispatchScoutEvents, ScoutResponse } from './ScoutResponseDispatcher';
 
 interface Message {
@@ -15,6 +17,15 @@ interface ScoutChatPaneProps {
   sessionId: string | null;
   onSessionId: (id: string) => void;
   onConversationActive: (active: boolean) => void;
+  onBack: () => void;
+  profileContext?: {
+    name?: string;
+    industry?: string;
+    tagline?: string;
+    audience?: string;
+    tone_keywords?: string[];
+    content_types?: string[];
+  };
 }
 
 export default function ScoutChatPane({
@@ -22,7 +33,10 @@ export default function ScoutChatPane({
   sessionId,
   onSessionId,
   onConversationActive,
+  onBack,
+  profileContext,
 }: ScoutChatPaneProps) {
+  const branding = useBranding();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -34,7 +48,6 @@ export default function ScoutChatPane({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -56,7 +69,6 @@ export default function ScoutChatPane({
     onConversationActive(true);
 
     try {
-      // Build conversation history for the agent (matching live-message pattern)
       const history = messages
         .map((m) => `[${m.role}] ${m.content}`)
         .join('\n\n');
@@ -70,6 +82,7 @@ export default function ScoutChatPane({
           message: userMessage,
           session_id: sessionId,
           history,
+          profile_context: profileContext,
         }),
       });
 
@@ -79,7 +92,6 @@ export default function ScoutChatPane({
         onSessionId(result.session_id);
       }
 
-      // Dispatch tool-call events to trigger SWR revalidations
       dispatchScoutEvents(result.events);
 
       const assistantMsg: Message = {
@@ -107,75 +119,93 @@ export default function ScoutChatPane({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && !isGenerating && (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold mb-4 shadow-lg">
-              S
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {mode === 'A' ? 'Let\'s set up your Radar' : 'Welcome back to Scout'}
-            </h3>
-            <p className="text-sm text-gray-500 max-w-md">
-              {mode === 'A'
-                ? 'Tell me about your content interests and strategic priorities. I\'ll find sources worth following.'
-                : 'I can refine your priorities or find new sources based on what\'s changed.'}
-            </p>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <div key={message.id}>
-            {message.role === 'user' ? (
-              <div className="flex justify-end">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl px-4 py-2.5 max-w-2xl shadow-sm">
-                  {message.content}
-                </div>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto max-w-2xl space-y-6">
+          {/* Welcome message */}
+          {messages.length === 0 && !isGenerating && (
+            <div className="flex gap-3">
+              <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <p>
+                  {mode === 'A'
+                    ? 'Vertel me over je content-interesses en strategische prioriteiten. Ik vind bronnen die het volgen waard zijn.'
+                    : 'Ik kan je prioriteiten verfijnen of nieuwe bronnen vinden op basis van wat er veranderd is.'}
+                </p>
               </div>
-            ) : (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm">
-                  S
-                </div>
-                <div className="flex-1">
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 max-w-3xl">
-                    <div className="prose prose-sm max-w-none text-gray-800">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    </div>
+            </div>
+          )}
+
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                  message.role === 'user'
+                    ? 'rounded-tr-sm text-white'
+                    : 'rounded-tl-sm bg-gray-50 text-gray-700'
+                }`}
+                style={
+                  message.role === 'user'
+                    ? { backgroundColor: branding.primaryColor }
+                    : undefined
+                }
+              >
+                {message.role === 'user' ? (
+                  <p>{message.content}</p>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Thinking indicator — 3 animated dots */}
+          {isGenerating && (
+            <div className="flex gap-3">
+              <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3">
+                <div className="flex gap-1">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '150ms' }} />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-
-        {isGenerating && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm">
-              S
             </div>
-            <div className="flex items-center gap-2 text-gray-500 bg-gray-50 px-4 py-2.5 rounded-2xl">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-              <span className="text-sm">Thinking...</span>
-            </div>
-          </div>
-        )}
+          )}
 
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input area */}
-      <div className="border-t p-4 bg-gray-50">
-        {isDone ? (
-          <div className="text-center py-2">
-            <p className="text-sm text-gray-500">
-              Scout session complete. Check your sources on the right.
-            </p>
+      {/* Input area / Completion CTAs */}
+      {isDone ? (
+        <div className="border-t border-gray-100 px-6 py-6">
+          <div className="mx-auto flex max-w-2xl items-center justify-center gap-3">
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              Bekijk je bronnen
+            </button>
+            <Link
+              href="/studio"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              Ga naar Content Studio
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="flex gap-3">
+        </div>
+      ) : (
+        <div className="border-t border-gray-100 px-6 py-4">
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-end gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:border-gray-300 focus-within:ring-1 focus-within:ring-gray-300">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -188,26 +218,33 @@ export default function ScoutChatPane({
                 }}
                 placeholder={
                   mode === 'A'
-                    ? 'What topics matter to your business?'
-                    : 'What\'s changed since last time?'
+                    ? 'Welke onderwerpen zijn belangrijk voor je bedrijf?'
+                    : 'Wat is er veranderd sinds de vorige keer?'
                 }
                 disabled={isGenerating}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
                 rows={1}
+                className="flex-1 resize-none bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+                style={{ maxHeight: '120px' }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = target.scrollHeight + 'px';
+                }}
               />
               <button
-                type="submit"
+                onClick={() => handleSubmit()}
                 disabled={!input.trim() || isGenerating}
-                className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+                className="shrink-0 rounded-lg p-2 text-white transition-colors disabled:opacity-30"
+                style={{ backgroundColor: branding.primaryColor }}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
               </button>
             </div>
-          </form>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

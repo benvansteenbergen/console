@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useBranding } from '@/components/BrandingProvider';
 
 interface RadarSource {
   id: string;
@@ -25,8 +28,9 @@ const fetcher = (url: string) =>
   });
 
 export default function ScoutHabitatPane({ isConversationActive }: ScoutHabitatPaneProps) {
-  // Poll faster during active conversation
+  const branding = useBranding();
   const pollInterval = isConversationActive ? 2_000 : 30_000;
+  const [lastUpdatedSection, setLastUpdatedSection] = useState<string | null>(null);
 
   const { data: prioritiesData } = useSWR<{ success: boolean; markdown: string }>(
     '/api/radar/priorities',
@@ -50,108 +54,169 @@ export default function ScoutHabitatPane({ isConversationActive }: ScoutHabitatP
   const followed = followedData?.sources || [];
   const proposed = proposedData?.sources || [];
 
+  // Track which sections update during active conversation
+  const prevPriorities = useState(priorities)[0];
+  const prevFollowedLen = useState(followed.length)[0];
+  const prevProposedLen = useState(proposed.length)[0];
+
+  useEffect(() => {
+    if (!isConversationActive) return;
+    if (priorities !== prevPriorities) setLastUpdatedSection('priorities');
+    else if (followed.length !== prevFollowedLen) setLastUpdatedSection('followed');
+    else if (proposed.length !== prevProposedLen) setLastUpdatedSection('proposed');
+  }, [priorities, followed.length, proposed.length, isConversationActive, prevPriorities, prevFollowedLen, prevProposedLen]);
+
+  // Clear highlight after 3 seconds
+  useEffect(() => {
+    if (lastUpdatedSection) {
+      const timer = setTimeout(() => setLastUpdatedSection(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastUpdatedSection]);
+
+  const sectionClass = (key: string, isFilled: boolean) => {
+    const isHighlighted = lastUpdatedSection === key;
+    if (isHighlighted) return 'border-amber-200 bg-amber-50/50 shadow-sm';
+    if (isFilled) return 'border-gray-200 bg-white';
+    return 'border-dashed border-gray-200 bg-transparent';
+  };
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-y-auto p-6">
       {/* Header */}
-      <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
-        <h2 className="font-semibold text-gray-900">Your Radar</h2>
-        <p className="text-xs text-gray-500">
-          {isConversationActive ? 'Updating live...' : 'Priorities and sources'}
-        </p>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900">Your Radar</h2>
+        {isConversationActive && (
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className="h-2 w-2 animate-pulse rounded-full"
+              style={{ backgroundColor: branding.primaryColor }}
+            />
+            <span className="text-xs text-gray-500">Updating live...</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Priorities section */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Priorities</h3>
-          {priorities ? (
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-              <div className="prose prose-sm max-w-none text-gray-700">
-                <ReactMarkdown>{priorities}</ReactMarkdown>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">
-              No priorities set yet. Chat with Scout to define them.
-            </p>
-          )}
-        </div>
-
-        {/* Proposed sources — yellow pulse during conversation */}
-        {proposed.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Proposed
-              <span className="ml-2 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">
-                {proposed.length}
-              </span>
-            </h3>
-            <div className="space-y-1.5">
-              {proposed.map((source) => (
-                <div
-                  key={source.id}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
-                    isConversationActive
-                      ? 'border-amber-300 bg-amber-50 animate-pulse'
-                      : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                  <span className="text-gray-900 truncate flex-1">
-                    {source.name || source.url}
-                  </span>
-                  {source.category && (
-                    <span className="text-xs text-gray-500 flex-shrink-0">{source.category}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Followed sources — green dots */}
-        {followed.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Following
-              <span className="ml-2 text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">
-                {followed.length}
-              </span>
-            </h3>
-            <div className="space-y-1.5">
-              {followed.map((source) => (
-                <div
-                  key={source.id}
-                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                >
-                  <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                  <span className="text-gray-900 truncate flex-1">
-                    {source.name || source.url}
-                  </span>
-                  {source.tone_tag && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 flex-shrink-0">
-                      {source.tone_tag}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!priorities && followed.length === 0 && proposed.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-48 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      {/* Sections */}
+      <div className="space-y-4">
+        <AnimatePresence mode="popLayout">
+          {/* Priorities */}
+          <motion.div
+            key="priorities"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('priorities', !!priorities)}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
               </svg>
+              Priorities
             </div>
-            <p className="text-sm text-gray-500">
-              Start chatting with Scout to build your radar.
-            </p>
-          </div>
-        )}
+            {priorities ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="mt-2"
+              >
+                <div className="prose prose-sm max-w-none text-gray-700">
+                  <ReactMarkdown>{priorities}</ReactMarkdown>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
+            )}
+          </motion.div>
+
+          {/* Proposed sources */}
+          <motion.div
+            key="proposed"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('proposed', proposed.length > 0)}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Proposed
+              {proposed.length > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                  {proposed.length}
+                </span>
+              )}
+            </div>
+            {proposed.length > 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="mt-2 space-y-1.5"
+              >
+                {proposed.map((source) => (
+                  <div
+                    key={source.id}
+                    className="flex items-center gap-2 text-sm text-gray-700"
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                    <span className="truncate">{source.name || source.url}</span>
+                  </div>
+                ))}
+              </motion.div>
+            ) : (
+              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
+            )}
+          </motion.div>
+
+          {/* Followed sources */}
+          <motion.div
+            key="followed"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('followed', followed.length > 0)}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Following
+              {followed.length > 0 && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                  {followed.length}
+                </span>
+              )}
+            </div>
+            {followed.length > 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="mt-2 space-y-1.5"
+              >
+                {followed.map((source) => (
+                  <div
+                    key={source.id}
+                    className="flex items-center gap-2 text-sm text-gray-700"
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                    <span className="truncate">{source.name || source.url}</span>
+                    {source.tone_tag && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 flex-shrink-0">
+                        {source.tone_tag}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            ) : (
+              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
