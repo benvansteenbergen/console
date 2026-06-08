@@ -41,6 +41,8 @@ interface StudioResponse {
   sources?: ContextSource[];
 }
 
+type SaveResult = { ok: true; link?: string } | { ok: false; message: string };
+
 const DRAFT_REGEX = /===DRAFT===\n?([\s\S]*?)\n?===DRAFT===/;
 const CHOICES_REGEX = /===CHOICES===\n?([\s\S]*?)\n?===CHOICES===/;
 
@@ -55,6 +57,7 @@ export default function ContentStudio() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<FormatTemplate | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState<SaveResult | null>(null);
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
   const [usePersonalVoice, setUsePersonalVoice] = useState(true);
 
@@ -189,6 +192,7 @@ export default function ContentStudio() {
 
   const handleSave = async (content: string) => {
     setSaving(true);
+    setSaveResult(null);
     try {
       const res = await fetch('/api/studio/save', {
         method: 'POST',
@@ -204,11 +208,15 @@ export default function ContentStudio() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      if (data.webViewLink) {
-        window.open(data.webViewLink, '_blank');
-      }
+      // Don't rely on window.open here, it runs after `await`, so it's no longer
+      // tied to the click gesture and gets popup-blocked. Surface a clickable link instead.
+      setSaveResult({ ok: true, link: data.webViewLink });
     } catch (err) {
       console.error('Save error:', err);
+      setSaveResult({
+        ok: false,
+        message: "Couldn't save to Google Drive. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -260,6 +268,7 @@ export default function ContentStudio() {
             setMessages([]);
             setConversationId(null);
             setSelectedFormat(null);
+            setSaveResult(null);
           }}
           className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
         >
@@ -386,6 +395,28 @@ export default function ContentStudio() {
 
           {saving && (
             <div className="text-center text-xs text-gray-400">Saving to Google Drive...</div>
+          )}
+
+          {!saving && saveResult && (
+            saveResult.ok ? (
+              <div className="mx-auto flex max-w-md items-center justify-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                <span>Saved to Google Drive</span>
+                {saveResult.link && (
+                  <a
+                    href={saveResult.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline hover:no-underline"
+                  >
+                    Open in Drive
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="mx-auto max-w-md rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-700">
+                {saveResult.message}
+              </div>
+            )
           )}
 
           <div ref={messagesEndRef} />

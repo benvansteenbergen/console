@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { useBranding } from '@/components/BrandingProvider';
 import { dispatchScoutEvents, ScoutResponse } from './ScoutResponseDispatcher';
 
 interface Message {
@@ -15,6 +17,17 @@ interface ScoutChatPaneProps {
   sessionId: string | null;
   onSessionId: (id: string) => void;
   onConversationActive: (active: boolean) => void;
+  onComplete?: () => void;
+  onBack: () => void;
+  profileContext?: {
+    name?: string;
+    industry?: string;
+    tagline?: string;
+    audience?: string;
+    tone_keywords?: string[];
+    content_types?: string[];
+    recommendations?: Array<{ format?: string; topic?: string; reason?: string }>;
+  };
 }
 
 export default function ScoutChatPane({
@@ -22,11 +35,16 @@ export default function ScoutChatPane({
   sessionId,
   onSessionId,
   onConversationActive,
+  onComplete,
+  onBack,
+  profileContext,
 }: ScoutChatPaneProps) {
+  const branding = useBranding();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [thinkingNote, setThinkingNote] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -34,16 +52,19 @@ export default function ScoutChatPane({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isGenerating || isDone) return;
+  const sendMessage = async (text?: string) => {
+    const userMessage = (text ?? input).trim();
+    if (!userMessage || isGenerating || isDone) return;
 
-    const userMessage = input.trim();
+    // Only narrate what Scout is doing when it's actually about to curate sources
+    // (the user said "just go", or this is the closing turn). Otherwise: plain thinking dots.
+    const justGo = /(\bjust go\b|\bgo ahead\b|\bfind them\b|ga maar|ga door|zoek maar|vind bronnen|doe maar|begin maar|sla over)/i.test(userMessage);
+    const curating = justGo || messages.filter((mm) => mm.role === 'user').length >= 1;
+    setThinkingNote(curating ? 'Scout zoekt bronnen die bij je passen…' : null);
 
     const tempMsg: Message = {
       id: `user-${Date.now()}`,
@@ -56,7 +77,6 @@ export default function ScoutChatPane({
     onConversationActive(true);
 
     try {
-      // Build conversation history for the agent (matching live-message pattern)
       const history = messages
         .map((m) => `[${m.role}] ${m.content}`)
         .join('\n\n');
@@ -70,34 +90,39 @@ export default function ScoutChatPane({
           message: userMessage,
           session_id: sessionId,
           history,
+          profile_context: profileContext,
         }),
+        signal: AbortSignal.timeout(60_000), // don't let a slow/hung curation freeze the chat
       });
 
-      const result: ScoutResponse = await response.json();
+      const result: ScoutResponse = await response.json().catch(() => ({}) as ScoutResponse);
+      if (response.ok === false) throw new Error(`HTTP ${response.status}`);
 
       if (result.session_id && !sessionId) {
         onSessionId(result.session_id);
       }
 
-      // Dispatch tool-call events to trigger SWR revalidations
       dispatchScoutEvents(result.events);
 
+      const hasText = typeof result.message === 'string' && result.message.trim().length > 0;
       const assistantMsg: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: result.message,
+        content: hasText ? result.message : 'Sorry, daar ging iets mis bij het samenstellen. Probeer het nog eens.',
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
-      if (result.done) {
+      // Only close the conversation on a real, non-empty response.
+      if (result.done && hasText) {
         setIsDone(true);
         onConversationActive(false);
+        onComplete?.();
       }
     } catch {
       const errorMsg: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Something went wrong. Please try again.',
+        content: 'Er ging iets mis. Probeer het opnieuw.',
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -105,77 +130,132 @@ export default function ScoutChatPane({
     }
   };
 
+  // Scout already knows the company from the brand interview, so reflect it, don't re-ask.
+  const p = profileContext || {};
+  const knownName = p.name?.trim();
+  const knownAudience = p.audience?.trim();
+  const knownTone = (p.tone_keywords || []).filter(Boolean).slice(0, 2).join(', ');
+  const welcome =
+    mode === 'B'
+      ? 'Welkom terug. Wil je dat ik nieuwe bronnen zoek, een gat afdek, of je prioriteiten bijschaaf?'
+      : (() => {
+          const bits: string[] = [];
+          if (knownName) bits.push(`Je bent ${knownName}`);
+          if (knownAudience) bits.push(`je maakt content voor ${knownAudience}`);
+          if (knownTone) bits.push(`je toon is ${knownTone}`);
+          const intro = bits.length ? `${bits.join(', ')}. ` : '';
+          return `${intro}Ik zoek bronnen die je inspireren voor nieuwe content. Denk aan nieuws om op te reageren, of visies om in je eigen woorden te delen. Aan welke onderwerpen of mensen moet ik denken?`;
+        })();
+
   return (
     <div className="flex h-full flex-col">
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && !isGenerating && (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold mb-4 shadow-lg">
-              S
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {mode === 'A' ? 'Let\'s set up your Radar' : 'Welcome back to Scout'}
-            </h3>
-            <p className="text-sm text-gray-500 max-w-md">
-              {mode === 'A'
-                ? 'Tell me about your content interests and strategic priorities. I\'ll find sources worth following.'
-                : 'I can refine your priorities or find new sources based on what\'s changed.'}
-            </p>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <div key={message.id}>
-            {message.role === 'user' ? (
-              <div className="flex justify-end">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl px-4 py-2.5 max-w-2xl shadow-sm">
-                  {message.content}
-                </div>
-              </div>
-            ) : (
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto max-w-2xl space-y-6">
+          {/* Welcome message, reflects what Scout already knows, with a one-click "just go" */}
+          {messages.length === 0 && !isGenerating && (
+            <div className="space-y-3">
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm">
-                  S
-                </div>
-                <div className="flex-1">
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 max-w-3xl">
-                    <div className="prose prose-sm max-w-none text-gray-800">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    </div>
-                  </div>
+                <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  <p>{welcome}</p>
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-
-        {isGenerating && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm">
-              S
+              <div className="flex flex-wrap gap-2 pl-1">
+                <button
+                  onClick={() => sendMessage('Ga maar')}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: branding.primaryColor }}
+                >
+                  Ga maar, vind bronnen
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-500 bg-gray-50 px-4 py-2.5 rounded-2xl">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-              <span className="text-sm">Thinking...</span>
-            </div>
-          </div>
-        )}
+          )}
 
-        <div ref={messagesEndRef} />
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                  message.role === 'user'
+                    ? 'rounded-tr-sm text-white'
+                    : 'rounded-tl-sm bg-gray-50 text-gray-700'
+                }`}
+                style={
+                  message.role === 'user'
+                    ? { backgroundColor: branding.primaryColor }
+                    : undefined
+                }
+              >
+                {message.role === 'user' ? (
+                  <p>{message.content}</p>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* While generating: a status line only when relevant, otherwise the plain thinking dots */}
+          {isGenerating && (
+            <div className="flex gap-3">
+              <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3">
+                {thinkingNote ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span
+                      className="h-2 w-2 animate-pulse rounded-full"
+                      style={{ backgroundColor: branding.primaryColor }}
+                    />
+                    {thinkingNote}
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '150ms' }} />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input area */}
-      <div className="border-t p-4 bg-gray-50">
-        {isDone ? (
-          <div className="text-center py-2">
-            <p className="text-sm text-gray-500">
-              Scout session complete. Check your sources on the right.
-            </p>
+      {/* Input area / Completion CTAs */}
+      {isDone ? (
+        <div className="border-t border-gray-100 px-6 py-6">
+          <div className="mx-auto flex max-w-2xl items-center justify-center gap-3">
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              Bekijk je bronnen
+            </button>
+            <Link
+              href="/studio"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              Ga naar Content Studio
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="flex gap-3">
+        </div>
+      ) : (
+        <div className="border-t border-gray-100 px-6 py-4">
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-end gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm focus-within:border-gray-300 focus-within:ring-1 focus-within:ring-gray-300">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -183,31 +263,38 @@ export default function ScoutChatPane({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSubmit();
+                    sendMessage();
                   }
                 }}
                 placeholder={
                   mode === 'A'
-                    ? 'What topics matter to your business?'
-                    : 'What\'s changed since last time?'
+                    ? 'Welke onderwerpen zijn belangrijk voor je bedrijf?'
+                    : 'Wat is er veranderd sinds de vorige keer?'
                 }
                 disabled={isGenerating}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed bg-white shadow-sm"
                 rows={1}
+                className="flex-1 resize-none bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
+                style={{ maxHeight: '120px' }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = target.scrollHeight + 'px';
+                }}
               />
               <button
-                type="submit"
+                onClick={() => sendMessage()}
                 disabled={!input.trim() || isGenerating}
-                className="px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-md"
+                className="shrink-0 rounded-lg p-2 text-white transition-colors disabled:opacity-30"
+                style={{ backgroundColor: branding.primaryColor }}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
               </button>
             </div>
-          </form>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
