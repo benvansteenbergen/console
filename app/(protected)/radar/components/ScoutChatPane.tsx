@@ -17,6 +17,7 @@ interface ScoutChatPaneProps {
   sessionId: string | null;
   onSessionId: (id: string) => void;
   onConversationActive: (active: boolean) => void;
+  onComplete?: () => void;
   onBack: () => void;
   profileContext?: {
     name?: string;
@@ -25,6 +26,7 @@ interface ScoutChatPaneProps {
     audience?: string;
     tone_keywords?: string[];
     content_types?: string[];
+    recommendations?: Array<{ format?: string; topic?: string; reason?: string }>;
   };
 }
 
@@ -33,6 +35,7 @@ export default function ScoutChatPane({
   sessionId,
   onSessionId,
   onConversationActive,
+  onComplete,
   onBack,
   profileContext,
 }: ScoutChatPaneProps) {
@@ -41,6 +44,7 @@ export default function ScoutChatPane({
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [thinkingNote, setThinkingNote] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,11 +56,15 @@ export default function ScoutChatPane({
     inputRef.current?.focus();
   }, []);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isGenerating || isDone) return;
+  const sendMessage = async (text?: string) => {
+    const userMessage = (text ?? input).trim();
+    if (!userMessage || isGenerating || isDone) return;
 
-    const userMessage = input.trim();
+    // Only narrate what Scout is doing when it's actually about to curate sources
+    // (the user said "just go", or this is the closing turn). Otherwise: plain thinking dots.
+    const justGo = /(\bjust go\b|\bgo ahead\b|\bfind them\b|ga maar|ga door|zoek maar|vind bronnen|doe maar|begin maar|sla over)/i.test(userMessage);
+    const curating = justGo || messages.filter((mm) => mm.role === 'user').length >= 1;
+    setThinkingNote(curating ? 'Scout zoekt bronnen die bij je passen…' : null);
 
     const tempMsg: Message = {
       id: `user-${Date.now()}`,
@@ -84,9 +92,11 @@ export default function ScoutChatPane({
           history,
           profile_context: profileContext,
         }),
+        signal: AbortSignal.timeout(60_000), // don't let a slow/hung curation freeze the chat
       });
 
-      const result: ScoutResponse = await response.json();
+      const result: ScoutResponse = await response.json().catch(() => ({}) as ScoutResponse);
+      if (response.ok === false) throw new Error(`HTTP ${response.status}`);
 
       if (result.session_id && !sessionId) {
         onSessionId(result.session_id);
@@ -94,22 +104,25 @@ export default function ScoutChatPane({
 
       dispatchScoutEvents(result.events);
 
+      const hasText = typeof result.message === 'string' && result.message.trim().length > 0;
       const assistantMsg: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: result.message,
+        content: hasText ? result.message : 'Sorry, daar ging iets mis bij het samenstellen. Probeer het nog eens.',
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
-      if (result.done) {
+      // Only close the conversation on a real, non-empty response.
+      if (result.done && hasText) {
         setIsDone(true);
         onConversationActive(false);
+        onComplete?.();
       }
     } catch {
       const errorMsg: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Something went wrong. Please try again.',
+        content: 'Er ging iets mis. Probeer het opnieuw.',
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -117,20 +130,47 @@ export default function ScoutChatPane({
     }
   };
 
+  // Scout already knows the company from the brand interview, so reflect it, don't re-ask.
+  const p = profileContext || {};
+  const knownName = p.name?.trim();
+  const knownAudience = p.audience?.trim();
+  const knownTone = (p.tone_keywords || []).filter(Boolean).slice(0, 2).join(', ');
+  const welcome =
+    mode === 'B'
+      ? 'Welkom terug. Wil je dat ik nieuwe bronnen zoek, een gat afdek, of je prioriteiten bijschaaf?'
+      : (() => {
+          const bits: string[] = [];
+          if (knownName) bits.push(`Je bent ${knownName}`);
+          if (knownAudience) bits.push(`je maakt content voor ${knownAudience}`);
+          if (knownTone) bits.push(`je toon is ${knownTone}`);
+          const intro = bits.length ? `${bits.join(', ')}. ` : '';
+          return `${intro}Ik zoek bronnen die je inspireren voor nieuwe content. Denk aan nieuws om op te reageren, of visies om in je eigen woorden te delen. Aan welke onderwerpen of mensen moet ik denken?`;
+        })();
+
   return (
     <div className="flex h-full flex-col">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-2xl space-y-6">
-          {/* Welcome message */}
+          {/* Welcome message, reflects what Scout already knows, with a one-click "just go" */}
           {messages.length === 0 && !isGenerating && (
-            <div className="flex gap-3">
-              <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                <p>
-                  {mode === 'A'
-                    ? 'Vertel me over je content-interesses en strategische prioriteiten. Ik vind bronnen die het volgen waard zijn.'
-                    : 'Ik kan je prioriteiten verfijnen of nieuwe bronnen vinden op basis van wat er veranderd is.'}
-                </p>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  <p>{welcome}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pl-1">
+                <button
+                  onClick={() => sendMessage('Ga maar')}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: branding.primaryColor }}
+                >
+                  Ga maar, vind bronnen
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
               </div>
             </div>
           )}
@@ -163,15 +203,25 @@ export default function ScoutChatPane({
             </div>
           ))}
 
-          {/* Thinking indicator — 3 animated dots */}
+          {/* While generating: a status line only when relevant, otherwise the plain thinking dots */}
           {isGenerating && (
             <div className="flex gap-3">
               <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '150ms' }} />
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '300ms' }} />
-                </div>
+                {thinkingNote ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span
+                      className="h-2 w-2 animate-pulse rounded-full"
+                      style={{ backgroundColor: branding.primaryColor }}
+                    />
+                    {thinkingNote}
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '150ms' }} />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -213,7 +263,7 @@ export default function ScoutChatPane({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSubmit();
+                    sendMessage();
                   }
                 }}
                 placeholder={
@@ -232,7 +282,7 @@ export default function ScoutChatPane({
                 }}
               />
               <button
-                onClick={() => handleSubmit()}
+                onClick={() => sendMessage()}
                 disabled={!input.trim() || isGenerating}
                 className="shrink-0 rounded-lg p-2 text-white transition-colors disabled:opacity-30"
                 style={{ backgroundColor: branding.primaryColor }}

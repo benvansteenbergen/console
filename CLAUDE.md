@@ -298,6 +298,16 @@ LinkedIn and website data extraction for AI personalization.
 - **Website:** Content extraction via `@mozilla/readability` and `cheerio`
 - **Routes:** 8 endpoints under `/api/datasources/`
 
+### Radar (Content Discovery)
+
+A twice-daily scanning system: it watches user-curated sources, filters new articles against the user's priorities, and surfaces editorial concepts with fact-checks. *(Added after this file's original draft — full detail in `docs/n8n/radar.md`.)*
+
+- **Surface:** `app/(protected)/radar/` (single page, feed/scout toggle). API routes under `app/api/radar/*`.
+- **Scout** (`radar-scout`): an AI discovery chat that **stands on the company profile** (it consumes `profile_context`, no re-interview), runs 1–2 short refine turns (or "just go"), then curates a generous, independent-voice-biased source list with literal "Because you mentioned…" quotes. Sources land in `radar_sources` (status `proposed`); the user follows them. Vendor penalty hits resellers/agencies, **not** the primary maker/lab (OpenAI, Anthropic).
+- **Sweep → Concepter → Researcher:** `radar-sweep` (cron) fetches followed sources (RSS/Atom + **Jina Reader** for JS / no-RSS / blocked pages), relevance-filters, and hands passing articles to `radar-concepter` → `radar-researcher`, which write `radar_concepts` (status `active`) shown in the Feed + dashboard banner (`components/RadarBanner.tsx`).
+- **Priorities doc:** `portal_user.settings.radar.priorities_markdown`. Everything is user-scoped.
+- **Principle:** silence is a feature — empty output is valid; no "we checked for you" noise.
+
 ---
 
 ## API Endpoints Reference
@@ -724,6 +734,14 @@ The studio AI uses text markers in its output that the frontend parses and rende
 
 **Important:** Choices use `|` (pipe) as delimiter, NOT newlines. Newlines get stripped during n8n JSON serialization round-trips. The frontend parses `|` first, falls back to `\n`.
 
+#### Radar agent gotchas (Scout / sweep)
+
+- **Set `maxTokensToSample` on Anthropic agent nodes that emit large structured output.** Scout's closing turn returns a big JSON (priorities doc + many sources). With no token budget the node default truncates it → invalid JSON → dead chat. `radar-scout` uses `8192`. This was the cause of "Scout stops on the closing turn".
+- **Make a conversational agent's "done" deterministic.** Don't rely only on the model emitting `done:true` — compute a turn cap + intent ("just go") in a Build Prompt code node (`forceClose`), and recover `done` + the `message` from truncated/broken JSON in Parse Output. Otherwise the chat loops forever or stops silently.
+- **Non-fatal DB writes.** Put `onError: continueRegularOutput` on Postgres nodes in the response path so a failed insert still returns a reply.
+- **Dedupe sources by URL, not name.** A site can legitimately appear several times with different URLs (business vs consumer, two products each with a blog). Only identical normalised URLs are true duplicates.
+- **Ingestion (`radar-sweep`):** RSS/Atom autodiscovery first; fall back to **Jina Reader** (`https://r.jina.ai/<url>`) for JS-rendered / no-RSS / blocked pages. Parse RSS 2.0 + Atom + RDF + sitemap; from Jina markdown extract same-site, article-shaped links. Reuse one HTTP node as the generic fetcher (timeout ≥30 s for Jina). Avoid em/en-dashes in agent prompts — they are an AI tell.
+
 #### Credentials
 
 | Credential | ID | Name |
@@ -747,6 +765,13 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `studio-message` | `axdg9OFz7eAMM5dU` | `POST /webhook/studio-message` | AI content creation chat |
 | `studio-save` | `qhWScWiAyoKpgZKX` | `POST /webhook/studio-save` | Save content to Google Drive |
 | `jwt-validation` | `dbf8RGXgL1Up2KzF` | (sub-workflow) | Validate JWT, return user info |
+| `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
+| `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron (per-user TZ) | Fetch + relevance filter per article |
+| `radar-concepter` | `xXNTbqWtzRTWSRs9` | (sub-workflow) | Editorial concept generation |
+| `radar-researcher` | `ZfpkY2M0dMdhA5Le` | (sub-workflow) | Web-search fact-check + verdict |
+| `radar-*` (lists / actions / priorities / cleanup) | — | `/webhook/radar-*` | See `docs/n8n/radar.md` |
+
+> **Radar pipeline:** see `docs/n8n/radar.md` for the full Scout → sweep → concepter → researcher loop and the deployed node logic. Editable Code-node sources + deploy scripts live in `docs/n8n/backups/{scout,sweep}/` (see `docs/n8n/backups/README.md`).
 
 ---
 
@@ -918,4 +943,4 @@ pnpm test:coverage     # Generate coverage report
 ---
 
 **This file is for machine agents to understand the project architecture and contribute safely.**
-*Last updated: 2026-02-16*
+*Last updated: 2026-06-08*

@@ -47,6 +47,16 @@ interface ProfileSummary {
   content_types?: string[];
 }
 
+interface ScoutRecommendation {
+  format?: string;
+  topic?: string;
+  reason?: string;
+}
+
+type ScoutProfile = ProfileSummary & {
+  recommendations?: ScoutRecommendation[];
+};
+
 const fetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((r) => {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -62,9 +72,10 @@ export default function RadarPage() {
 
   // Scout state
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isConversationActive, setIsConversationActive] = useState(false);
+  const [, setIsConversationActive] = useState(false);
+  const [scoutComplete, setScoutComplete] = useState(false);
 
-  // SWR data fetches — shared across views
+  // SWR data fetches, shared across views
   const { data: suggestionsData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     '/api/radar/sources?status=proposed',
     fetcher,
@@ -94,10 +105,16 @@ export default function RadarPage() {
     fetcher
   );
 
-  const { data: profileData } = useSWR<ProfileSummary>(
-    '/api/company-profile',
-    fetcher
-  );
+  const { data: profileResp } = useSWR<{
+    profile_summary?: ProfileSummary;
+    website_scan?: { recommendations?: ScoutRecommendation[] };
+  }>('/api/company-profile', fetcher);
+
+  // The profile the user already gave during the brand interview. Scout stands on this.
+  const scoutProfile: ScoutProfile = {
+    ...(profileResp?.profile_summary || {}),
+    recommendations: profileResp?.website_scan?.recommendations || [],
+  };
 
   const suggestions = suggestionsData?.sources || [];
   const concepts = conceptsData?.concepts || [];
@@ -167,12 +184,13 @@ export default function RadarPage() {
               sessionId={sessionId}
               onSessionId={setSessionId}
               onConversationActive={setIsConversationActive}
+              onComplete={() => setScoutComplete(true)}
               onBack={() => setView('feed')}
-              profileContext={profileData}
+              profileContext={scoutProfile}
             />
           </div>
           <div className="hidden w-[35%] border-l border-gray-100 bg-gray-50/50 lg:block">
-            <ScoutHabitatPane isConversationActive={isConversationActive} />
+            <ScoutHabitatPane profile={scoutProfile} isComplete={scoutComplete} />
           </div>
         </div>
       </div>
@@ -204,7 +222,7 @@ export default function RadarPage() {
           />
         )}
 
-        {/* Naylisted — collapsible */}
+        {/* Naylisted, collapsible */}
         {naylisted.length > 0 && (
           <div>
             <button
@@ -239,7 +257,7 @@ export default function RadarPage() {
         {hasPriorities ? (
           <div className="flex justify-center pt-2">
             <button
-              onClick={() => setView('scout')}
+              onClick={() => { setScoutComplete(false); setView('scout'); }}
               className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
             >
               Verfijn je Radar
@@ -255,7 +273,7 @@ export default function RadarPage() {
               Vertel Scout over je content-interesses en strategische prioriteiten. We vinden bronnen die het volgen waard zijn.
             </p>
             <button
-              onClick={() => setView('scout')}
+              onClick={() => { setScoutComplete(false); setView('scout'); }}
               className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
               style={{ backgroundColor: branding.primaryColor }}
             >

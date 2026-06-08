@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBranding } from '@/components/BrandingProvider';
 
@@ -18,7 +16,17 @@ interface RadarSource {
 }
 
 interface ScoutHabitatPaneProps {
-  isConversationActive: boolean;
+  profile?: {
+    name?: string;
+    industry?: string;
+    tagline?: string;
+    audience?: string;
+    tone_keywords?: string[];
+    content_types?: string[];
+    recommendations?: Array<{ format?: string; topic?: string; reason?: string }>;
+  };
+  /** True once Scout has closed the conversation and curation is running. */
+  isComplete: boolean;
 }
 
 const fetcher = (url: string) =>
@@ -27,195 +35,175 @@ const fetcher = (url: string) =>
     return r.json();
   });
 
-export default function ScoutHabitatPane({ isConversationActive }: ScoutHabitatPaneProps) {
+export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPaneProps) {
   const branding = useBranding();
-  const pollInterval = isConversationActive ? 2_000 : 30_000;
-  const [lastUpdatedSection, setLastUpdatedSection] = useState<string | null>(null);
 
-  const { data: prioritiesData } = useSWR<{ success: boolean; markdown: string }>(
-    '/api/radar/priorities',
-    fetcher,
-    { refreshInterval: pollInterval }
-  );
-
-  const { data: followedData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    '/api/radar/sources?status=followed',
-    fetcher,
-    { refreshInterval: pollInterval }
-  );
-
+  // Only look for proposed sources once Scout has closed, polling until the first batch lands, then stop.
   const { data: proposedData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    '/api/radar/sources?status=proposed',
+    isComplete ? '/api/radar/sources?status=proposed' : null,
     fetcher,
-    { refreshInterval: pollInterval }
+    { refreshInterval: (latest) => (latest?.sources?.length ? 0 : 4_000) },
   );
 
-  const priorities = prioritiesData?.markdown || '';
-  const followed = followedData?.sources || [];
   const proposed = proposedData?.sources || [];
 
-  // Track which sections update during active conversation
-  const prevPriorities = useState(priorities)[0];
-  const prevFollowedLen = useState(followed.length)[0];
-  const prevProposedLen = useState(proposed.length)[0];
+  const name = profile?.name?.trim();
+  const audience = profile?.audience?.trim();
+  const industry = profile?.industry?.trim();
+  const tagline = profile?.tagline?.trim();
+  const tone = (profile?.tone_keywords || []).filter(Boolean);
+  const types = (profile?.content_types || []).filter(Boolean);
+  const ideas = (profile?.recommendations || [])
+    .map((r) => r.topic || r.format)
+    .filter(Boolean)
+    .slice(0, 4) as string[];
 
-  useEffect(() => {
-    if (!isConversationActive) return;
-    if (priorities !== prevPriorities) setLastUpdatedSection('priorities');
-    else if (followed.length !== prevFollowedLen) setLastUpdatedSection('followed');
-    else if (proposed.length !== prevProposedLen) setLastUpdatedSection('proposed');
-  }, [priorities, followed.length, proposed.length, isConversationActive, prevPriorities, prevFollowedLen, prevProposedLen]);
-
-  // Clear highlight after 3 seconds
-  useEffect(() => {
-    if (lastUpdatedSection) {
-      const timer = setTimeout(() => setLastUpdatedSection(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastUpdatedSection]);
-
-  const sectionClass = (key: string, isFilled: boolean) => {
-    const isHighlighted = lastUpdatedSection === key;
-    if (isHighlighted) return 'border-amber-200 bg-amber-50/50 shadow-sm';
-    if (isFilled) return 'border-gray-200 bg-white';
-    return 'border-dashed border-gray-200 bg-transparent';
-  };
+  const hasProfile = !!(name || industry || audience || tone.length || types.length);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Your Radar</h2>
-        {isConversationActive && (
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className="h-2 w-2 animate-pulse rounded-full"
-              style={{ backgroundColor: branding.primaryColor }}
-            />
-            <span className="text-xs text-gray-500">Updating live...</span>
+      <h2 className="text-lg font-semibold text-gray-900">Wat Scout van je weet</h2>
+      <p className="mt-1 text-xs text-gray-500">
+        Uit je merkprofiel. Hierop bouwt Scout verder.
+      </p>
+
+      {/* What Scout already knows, static and honest, no fake "live" */}
+      <div className="mt-5 space-y-4">
+        {hasProfile ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            {(name || tagline) && (
+              <div className="mb-3">
+                {name && <p className="text-sm font-semibold text-gray-900">{name}</p>}
+                {tagline && <p className="text-xs text-gray-500">{tagline}</p>}
+              </div>
+            )}
+            <dl className="space-y-2.5 text-sm">
+              {industry && (
+                <div>
+                  <dt className="text-xs font-medium text-gray-400">Branche</dt>
+                  <dd className="text-gray-700">{industry}</dd>
+                </div>
+              )}
+              {audience && (
+                <div>
+                  <dt className="text-xs font-medium text-gray-400">Doelgroep</dt>
+                  <dd className="text-gray-700">{audience}</dd>
+                </div>
+              )}
+              {tone.length > 0 && (
+                <div>
+                  <dt className="mb-1 text-xs font-medium text-gray-400">Toon</dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {tone.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-full px-2 py-0.5 text-xs"
+                        style={{
+                          backgroundColor: branding.primaryColor + '14',
+                          color: branding.primaryColor,
+                        }}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
+              {types.length > 0 && (
+                <div>
+                  <dt className="mb-1 text-xs font-medium text-gray-400">Content die je maakt</dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {types.map((t) => (
+                      <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                        {t}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            {ideas.length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <p className="mb-1.5 text-xs font-medium text-gray-400">Ideeën uit je website-scan</p>
+                <ul className="space-y-1">
+                  {ideas.map((idea) => (
+                    <li key={idea} className="flex items-start gap-2 text-xs text-gray-600">
+                      <span
+                        className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: branding.primaryColor }}
+                      />
+                      <span>{idea}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-400">
+            Nog geen merkprofiel gevonden. Scout vraagt zo een paar dingen na.
           </div>
         )}
-      </div>
 
-      {/* Sections */}
-      <div className="space-y-4">
-        <AnimatePresence mode="popLayout">
-          {/* Priorities */}
-          <motion.div
-            key="priorities"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('priorities', !!priorities)}`}
-          >
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-              </svg>
-              Priorities
-            </div>
-            {priorities ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="mt-2"
-              >
-                <div className="prose prose-sm max-w-none text-gray-700">
-                  <ReactMarkdown>{priorities}</ReactMarkdown>
+        {/* Proposed sources reveal, only after Scout closes */}
+        <AnimatePresence>
+          {isComplete && (
+            <motion.div
+              key="proposed"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="rounded-xl border border-gray-200 bg-white p-4"
+            >
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Voorgestelde bronnen
+                {proposed.length > 0 && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">{proposed.length}</span>
+                )}
+              </div>
+
+              {proposed.length > 0 ? (
+                <motion.ul layout className="mt-3 space-y-2">
+                  {proposed.map((s, i) => (
+                    <motion.li
+                      key={s.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: Math.min(i * 0.05, 0.4) }}
+                      className="text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-400" />
+                        <span className="truncate font-medium text-gray-800">{s.name || s.url}</span>
+                        {s.tone_tag && (
+                          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                            {s.tone_tag}
+                          </span>
+                        )}
+                      </div>
+                      {s.because_quote && (
+                        <p className="mt-0.5 pl-3.5 text-xs italic text-gray-400">
+                          “{s.because_quote}”
+                        </p>
+                      )}
+                    </motion.li>
+                  ))}
+                </motion.ul>
+              ) : (
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                  <span
+                    className="h-2 w-2 animate-pulse rounded-full"
+                    style={{ backgroundColor: branding.primaryColor }}
+                  />
+                  Scout zoekt nu bronnen voor je…
                 </div>
-              </motion.div>
-            ) : (
-              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
-            )}
-          </motion.div>
-
-          {/* Proposed sources */}
-          <motion.div
-            key="proposed"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('proposed', proposed.length > 0)}`}
-          >
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Proposed
-              {proposed.length > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                  {proposed.length}
-                </span>
               )}
-            </div>
-            {proposed.length > 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="mt-2 space-y-1.5"
-              >
-                {proposed.map((source) => (
-                  <div
-                    key={source.id}
-                    className="flex items-center gap-2 text-sm text-gray-700"
-                  >
-                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                    <span className="truncate">{source.name || source.url}</span>
-                  </div>
-                ))}
-              </motion.div>
-            ) : (
-              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
-            )}
-          </motion.div>
-
-          {/* Followed sources */}
-          <motion.div
-            key="followed"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className={`rounded-xl border p-4 transition-all duration-500 ${sectionClass('followed', followed.length > 0)}`}
-          >
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Following
-              {followed.length > 0 && (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-                  {followed.length}
-                </span>
-              )}
-            </div>
-            {followed.length > 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="mt-2 space-y-1.5"
-              >
-                {followed.map((source) => (
-                  <div
-                    key={source.id}
-                    className="flex items-center gap-2 text-sm text-gray-700"
-                  >
-                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                    <span className="truncate">{source.name || source.url}</span>
-                    {source.tone_tag && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 flex-shrink-0">
-                        {source.tone_tag}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </motion.div>
-            ) : (
-              <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
-            )}
-          </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
