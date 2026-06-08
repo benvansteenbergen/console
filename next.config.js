@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
+    experimental: {
+        // Lower peak memory during the production webpack build.
+        // The Railway builder hit SIGBUS (out-of-memory) on `next build`.
+        webpackMemoryOptimizations: true,
+    },
     images: {
         remotePatterns: [
             {
