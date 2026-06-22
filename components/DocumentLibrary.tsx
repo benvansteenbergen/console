@@ -182,7 +182,7 @@ export default function DocumentLibrary({ onDataLoaded }: DocumentLibraryProps) 
                   <DocumentTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-300 group-hover:text-gray-400" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-2 text-sm font-medium text-gray-900" title={doc.title}>
+                      <p className="break-words text-sm font-medium text-gray-900" title={doc.title}>
                         {doc.title}
                       </p>
                       <span className="ml-1 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">
