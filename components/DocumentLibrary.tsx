@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
 
 interface Document {
   document_id: string;
@@ -35,6 +36,19 @@ const CLUSTER_LABELS: { [key: string]: string } = {
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+// Mirror the Content Library's relative-date style.
+function relativeDate(unix: number): string {
+  if (!unix) return '';
+  const ms = unix < 1e12 ? unix * 1000 : unix;
+  const diffDays = Math.floor((Date.now() - ms) / 86400000);
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This week';
+  if (diffDays < 30) return 'This month';
+  if (diffDays < 60) return 'Last month';
+  return new Date(ms).toLocaleDateString();
+}
 
 export default function DocumentLibrary({ onDataLoaded }: DocumentLibraryProps) {
   const { data, error, isLoading, mutate } = useSWR<{
@@ -156,55 +170,53 @@ export default function DocumentLibrary({ onDataLoaded }: DocumentLibraryProps) 
           No documents found in this cluster.
         </div>
       ) : (
-        <div className="space-y-3">
-          {documents.map((doc) => (
-            <div
-              key={doc.document_id}
-              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <svg
-                    className="h-5 w-5 text-red-600 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
-                  <span className="text-lg" title={doc.visibility === 'private' ? 'Private document' : 'Shared with organization'}>
-                    {doc.visibility === 'private' ? '🔒' : '👥'}
-                  </span>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {documents.map((doc) => {
+            const clusterLabel = CLUSTER_LABELS[doc.cluster as string] || 'Uncategorized';
+            return (
+              <div
+                key={doc.document_id}
+                className="group relative rounded-xl border border-gray-200 bg-white p-5 transition-all hover:border-gray-300 hover:shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <DocumentTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-300 group-hover:text-gray-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-2 text-sm font-medium text-gray-900" title={doc.title}>
+                        {doc.title}
+                      </p>
+                      <span className="ml-1 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">
+                        {clusterLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+                      <span title={doc.visibility === 'private' ? 'Private' : 'Shared with organization'}>
+                        {doc.visibility === 'private' ? '🔒' : '👥'}
+                      </span>
+                      <span>{relativeDate(doc.creationTimeUnix)}</span>
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                  <span>{doc.chunks} chunks</span>
-                  <span>•</span>
-                  <span>{new Date(doc.creationTimeUnix).toLocaleDateString()}</span>
-                </div>
-              </div>
 
-              {doc.canDelete && (
-                <button
-                  onClick={() => handleDelete(doc.document_id, doc.title)}
-                  disabled={deleting === doc.document_id}
-                  className="ml-4 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  {deleting === doc.document_id ? (
-                    <span className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></div>
-                      Deleting...
-                    </span>
-                  ) : (
-                    'Delete'
-                  )}
-                </button>
-              )}
-            </div>
-          ))}
+                {doc.canDelete && (
+                  <button
+                    onClick={() => handleDelete(doc.document_id, doc.title)}
+                    disabled={deleting === doc.document_id}
+                    title="Delete document"
+                    className="absolute bottom-2 right-2 rounded-md p-1.5 text-gray-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
+                  >
+                    {deleting === doc.document_id ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a1 1 0 001 1h4a1 1 0 001-1V7" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
