@@ -14,6 +14,46 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
     }
 
+    const safeName =
+        name
+            .replace(/\.(md|txt|pdf|docx?)$/i, "")
+            .replace(/[^a-zA-Z0-9 ._-]/g, "_")
+            .trim()
+            .slice(0, 100) || "document";
+
+    // Download path: export the Google Doc as a real PDF through n8n (which holds the
+    // Drive credential), so it works for every signed-in user regardless of their Google
+    // session. The export-document webhook returns the raw PDF binary.
+    if (download) {
+        try {
+            const res = await fetch(
+                `${process.env.N8N_BASE_URL}/webhook/export-document?fileId=${fileId}`, {
+                    method: "GET",
+                    headers: { cookie: `auth=${jwt};` },
+                    cache: "no-store",
+                }
+            );
+            if (!res.ok) {
+                return NextResponse.json({ error: "Upstream error" }, { status: 502 });
+            }
+            const buf = Buffer.from(await res.arrayBuffer());
+            // Guard against the auth-error JSON ({"valid":"false"}) being streamed as a PDF.
+            if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") {
+                return NextResponse.json({ error: "Export failed" }, { status: 502 });
+            }
+            return new NextResponse(buf, {
+                headers: {
+                    "Content-Type": "application/pdf",
+                    "Content-Disposition": `attachment; filename="${safeName}.pdf"`,
+                    "Cache-Control": "no-store",
+                },
+            });
+        } catch (err: unknown) {
+            console.error("Error exporting PDF via n8n:", err);
+            return NextResponse.json({ error: "Failed to export document" }, { status: 500 });
+        }
+    }
+
     try {
         const res = await fetch(
             `${process.env.N8N_BASE_URL}/webhook/load-document?fileId=${fileId}`, {
@@ -30,23 +70,6 @@ export async function GET(req: NextRequest) {
         const data = await res.json();
         const doc = Array.isArray(data) ? data[0] : data;
         const content: string = doc.content ?? "";
-
-        // Stream the document content as a downloadable Markdown file instead of JSON.
-        if (download) {
-            const safeName =
-                name
-                    .replace(/\.(md|txt|pdf|docx?)$/i, "")
-                    .replace(/[^a-zA-Z0-9 ._-]/g, "_")
-                    .trim()
-                    .slice(0, 100) || "document";
-            return new NextResponse(content, {
-                headers: {
-                    "Content-Type": "text/markdown; charset=utf-8",
-                    "Content-Disposition": `attachment; filename="${safeName}.md"`,
-                    "Cache-Control": "no-store",
-                },
-            });
-        }
 
         return NextResponse.json({
             fileId: doc.documentId ?? doc.fileId ?? "",
