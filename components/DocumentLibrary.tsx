@@ -181,20 +181,19 @@ export default function DocumentLibrary({ onDataLoaded }: DocumentLibraryProps) 
                 <div className="flex items-start gap-3">
                   <DocumentTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-300 group-hover:text-gray-400" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="break-words text-sm font-medium text-gray-900" title={doc.title}>
-                        {doc.title}
-                      </p>
-                      <span className="ml-1 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">
+                    {/* Title gets the full width so long filenames stay readable */}
+                    <p className="break-words pr-6 text-sm font-medium leading-snug text-gray-900" title={doc.title}>
+                      {doc.title}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
                         {clusterLabel}
                       </span>
-                    </div>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
                       <span title={doc.visibility === 'private' ? 'Private' : 'Shared with organization'}>
                         {doc.visibility === 'private' ? '🔒' : '👥'}
                       </span>
                       <span>{relativeDate(doc.creationTimeUnix)}</span>
-                    </p>
+                    </div>
                   </div>
                 </div>
 
