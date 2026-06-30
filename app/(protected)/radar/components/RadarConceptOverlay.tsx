@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface RadarConcept {
   id: string;
@@ -32,6 +33,21 @@ export default function RadarConceptOverlay({
   onAction,
   acting = false,
 }: RadarConceptOverlayProps) {
+  const router = useRouter();
+
+  // Hand this article over to Content Studio as the source for a new piece.
+  const writeInStudio = () => {
+    try {
+      sessionStorage.setItem(
+        'studio_source',
+        JSON.stringify({ url: concept.article_url, headline: concept.headline }),
+      );
+    } catch {
+      /* sessionStorage unavailable; fall through to navigation anyway */
+    }
+    router.push('/studio');
+  };
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -109,17 +125,26 @@ export default function RadarConceptOverlay({
           )}
 
           <div className="flex gap-3 pt-2 border-t border-gray-100">
+            {concept.article_url && (
+              <button
+                onClick={writeInStudio}
+                disabled={acting}
+                className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 transition-all"
+              >
+                Write in Studio
+              </button>
+            )}
             <button
               onClick={() => onAction(concept.id, 'saved')}
               disabled={acting}
-              className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 transition-all"
+              className="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 transition-colors"
             >
               Save
             </button>
             <button
               onClick={() => onAction(concept.id, 'dropped')}
               disabled={acting}
-              className="flex-1 px-4 py-2 text-sm font-medium rounded-lg text-red-600 border border-red-200 hover:bg-red-50 disabled:text-gray-400 disabled:border-gray-200 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg text-red-600 border border-red-200 hover:bg-red-50 disabled:text-gray-400 disabled:border-gray-200 transition-colors"
             >
               Drop
             </button>
