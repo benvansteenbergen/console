@@ -40,11 +40,16 @@ if (fetchMode === 'jina' || looksXml === false) {
     const segs = path.split('/').filter(function (x) { return x !== ''; });
     const lastSeg = segs.length ? segs[segs.length - 1] : '';
     if (navWords.test(lastSeg)) continue;                             // drop obvious nav/utility pages
-    // Accept only article-shaped links: under the source's own path, a known content section, or a real slug.
-    const underSource = srcPath !== '' && path.indexOf(srcPath + '/') === 0;
-    const sectionLike = /\/(blog|news|article|articles|post|posts|story|stories|insight|insights|research|p)\//i.test(path) || /\/20\d\d\//.test(path);
-    const slugLike = (lastSeg.split('-').length - 1) >= 2 && lastSeg.length >= 14;
-    if (underSource === false && sectionLike === false && slugLike === false) continue;
+    // Drop utility / section-index pages (a section dir, or utility words in the slug).
+    if (/\/(privacy|policy|policies|cookies?|terms|legal|disclaimer|about|contact|sitemap|subscribe|newsletter|register|sign-?in|log-?in|advertis\w*|members?|membership|services?|resources?|topics?|categor\w+|tags?|authors?|jobs|careers?)\//i.test(path + '/')) continue;
+    if (/(privacy|policy|cookie|terms|sitemap|subscribe|newsletter|\bmember|benefits|peer-review|withdrawal|advertis|disclaimer)/i.test(lastSeg)) continue;
+    // Middle ground (not RSS-only): accept article-shaped links, reject section/category indexes.
+    // Real articles carry a date, a numeric story id, or an all-lowercase multi-word slug;
+    // section indexes like /News/Business/ or /Resources/Cultures-enzymes-yeast/ are Title-cased -> rejected.
+    const hasDate = /\/20\d\d(\/|-|$)/.test(path) || /(^|[^0-9])20\d\d([^0-9]|$)/.test(lastSeg);
+    const hasId = /\/\d{5,}(\/|$|\.)/.test(path) || /\d{6,}/.test(lastSeg);
+    const lowerSlug = lastSeg === lastSeg.toLowerCase() && lastSeg.indexOf('-') >= 0 && lastSeg.length >= 10;
+    if (hasDate === false && hasId === false && lowerSlug === false) continue;
     if (seen[url] === true) continue;
     seen[url] = true;
     articles.push({ article_title: title, article_url: url, article_text: title, article_hash: url });
