@@ -38,6 +38,11 @@ them. Heavy Radar work can no longer freeze the user-facing layer — the two ar
 
 ## Railway steps
 
+> Paste-ready variable blocks and a step-by-step runbook live in
+> [`railway/`](./railway/) (`railway/README.md`, `railway/main-additions.env`,
+> `railway/worker.env`). The summary below is the same flow in prose.
+
+
 ### 1. Add Redis
 Railway dashboard → project → **New → Database → Redis**. Note its private connection vars
 (`RAILWAY_PRIVATE_DOMAIN`, `REDISPORT`, `REDISPASSWORD`).
