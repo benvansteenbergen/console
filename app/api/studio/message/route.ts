@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { conversationId, message, contentFormat, useKnowledgeBase, usePersonalVoice } = body;
+    const { conversationId, message, contentFormat, useKnowledgeBase, usePersonalVoice, sourceUrl } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
         contentFormat: contentFormat || null,
         useKnowledgeBase: useKnowledgeBase !== false,
         usePersonalVoice: usePersonalVoice !== false,
+        // Article URL handed over from Radar ("write about this"). The agent is told
+        // it must use it as the source for the piece.
+        sourceUrl: sourceUrl || null,
       }),
     });
 

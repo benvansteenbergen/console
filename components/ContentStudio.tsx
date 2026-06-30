@@ -60,6 +60,10 @@ export default function ContentStudio() {
   const [saveResult, setSaveResult] = useState<SaveResult | null>(null);
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
   const [usePersonalVoice, setUsePersonalVoice] = useState(true);
+  // Article handed over from Radar ("write about this"): we carry the URL so the
+  // agent can work from it, and show it as a removable source chip under the chat.
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [sourceLabel, setSourceLabel] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +82,31 @@ export default function ContentStudio() {
       }
     }
   }, [searchParams]);
+
+  // Pick up an article handed over from Radar (stored in sessionStorage to keep the
+  // URL out of the address bar). Opens straight into the conversation with the source
+  // chip and an opening line, ready for the user to say what to do with it.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('studio_source');
+      if (!raw) return;
+      sessionStorage.removeItem('studio_source');
+      const src = JSON.parse(raw);
+      if (!src?.url) return;
+      setSourceUrl(src.url);
+      setSourceLabel(src.headline || src.url);
+      setSelectedFormat(null);
+      setView('conversation');
+      setMessages([
+        {
+          role: 'assistant',
+          content: `I read the article${src.headline ? ` "${src.headline}"` : ''}. What do you want to do — react to it, summarise the news, or write something inspired by it?`,
+        },
+      ]);
+    } catch {
+      /* ignore malformed handoff */
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -108,6 +137,7 @@ export default function ContentStudio() {
           contentFormat: selectedFormat?.id || null,
           useKnowledgeBase,
           usePersonalVoice,
+          sourceUrl,
         }),
       });
 
@@ -300,6 +330,8 @@ export default function ContentStudio() {
             setConversationId(null);
             setSelectedFormat(null);
             setSaveResult(null);
+            setSourceUrl(null);
+            setSourceLabel('');
           }}
           className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
         >
@@ -458,7 +490,30 @@ export default function ContentStudio() {
       <div className="border-t border-gray-100 px-6 py-4">
         <div className="mx-auto max-w-2xl">
           {/* Chip toggles */}
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {sourceUrl && (
+              <span className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 hover:underline"
+                  title={sourceUrl}
+                >
+                  <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="max-w-[180px] truncate">{sourceLabel}</span>
+                </a>
+                <button
+                  onClick={() => { setSourceUrl(null); setSourceLabel(''); }}
+                  className="text-blue-400 transition-colors hover:text-blue-700"
+                  aria-label="Remove source"
+                >
+                  <XMarkIcon className="h-3 w-3" />
+                </button>
+              </span>
+            )}
             {useKnowledgeBase ? (
               <button
                 onClick={() => setUseKnowledgeBase(false)}
