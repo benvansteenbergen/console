@@ -239,10 +239,41 @@ export default function ContentStudio() {
     setView('conversation');
   };
 
-  const handleHistorySelect = (id: string) => {
+  const handleHistorySelect = async (id: string) => {
     setConversationId(id);
+    setSelectedFormat(null);
+    setSaveResult(null);
+    setMessages([]);
     setView('conversation');
-    // Messages will be loaded by the conversation
+
+    // Studio conversations are stored in live_messages (same table as Live),
+    // so reuse the live-messages endpoint to reopen them.
+    try {
+      const res = await fetch(`/api/live/messages?conversationId=${id}`, {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.messages)) {
+        setMessages(
+          data.messages.map((m: { role: 'user' | 'assistant'; content: string }) => {
+            // Reconstruct a draft card from stored markers; drop stale choice buttons.
+            let content = m.content || '';
+            let hasDraft = false;
+            let draftContent: string | undefined;
+            const draftMatch = content.match(DRAFT_REGEX);
+            if (draftMatch) {
+              draftContent = draftMatch[1].trim();
+              content = content.replace(DRAFT_REGEX, '').trim();
+              hasDraft = true;
+            }
+            content = content.replace(CHOICES_REGEX, '').trim();
+            return { role: m.role, content, hasDraft, draftContent } as Message;
+          }),
+        );
+      }
+    } catch (err) {
+      console.error('Failed to load studio conversation:', err);
+    }
   };
 
   // Template picker view

@@ -41,7 +41,8 @@ interface Credits {
 
 export default function Dashboard() {
   const router = useRouter();
-  const [isV2, setIsV2] = useState(false);
+  // null = version not resolved yet (avoid flashing the v1 dashboard to v2 users)
+  const [isV2, setIsV2] = useState<boolean | null>(null);
 
   useEffect(() => {
     setIsV2(localStorage.getItem('wingsuite_version') === 'v2');
@@ -53,12 +54,17 @@ export default function Dashboard() {
     fetcher,
   );
 
+  /* The dashboard is a v1-only surface. In v2 it does not exist, so route v2
+     users away: to /profile if the brand profile is not finished yet,
+     otherwise to the v2 home (Content Studio). */
   useEffect(() => {
-    if (isV2 && !profileLoading && profileData) {
-      const status = profileData.status;
-      if (status === 'empty' || status === 'interviewing' || status === 'scanning') {
-        router.replace('/profile');
-      }
+    if (isV2 !== true) return;
+    if (profileLoading) return;
+    const status = profileData?.status;
+    if (status === 'empty' || status === 'interviewing' || status === 'scanning') {
+      router.replace('/profile');
+    } else {
+      router.replace('/studio');
     }
   }, [isV2, profileData, profileLoading, router]);
 
@@ -86,6 +92,16 @@ export default function Dashboard() {
   /* ------------------------------------------------------------------ */
   /*  JSX                                                               */
   /* ------------------------------------------------------------------ */
+  // Only v1 renders the dashboard. While the version is unknown (null) or v2
+  // (redirecting away), show a neutral loader so the v1 dashboard never flashes.
+  if (isV2 !== false) {
+    return (
+        <div className="flex h-full items-center justify-center py-24 text-sm text-gray-400">
+          Loading…
+        </div>
+    );
+  }
+
   return (
       <section className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10">
         {/* Welcome header with credits */}
