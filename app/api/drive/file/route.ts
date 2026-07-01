@@ -14,10 +14,16 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Missing fileId" }, { status: 400 });
     }
 
+    // Normalise fancy Unicode in titles: LLM-generated headlines often use Mathematical
+    // Bold letters ("𝐌𝐚𝐥𝐭𝐚") and accents. NFKD folds those back to plain ASCII ("Malta")
+    // so the download filename is readable instead of a row of underscores.
     const safeName =
         name
+            .normalize("NFKD")
+            .replace(/[̀-ͯ]/g, "")
             .replace(/\.(md|txt|pdf|docx?)$/i, "")
-            .replace(/[^a-zA-Z0-9 ._-]/g, "_")
+            .replace(/[^\w .-]+/g, " ")
+            .replace(/\s+/g, " ")
             .trim()
             .slice(0, 100) || "document";
 
