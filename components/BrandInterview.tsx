@@ -160,7 +160,7 @@ export default function BrandInterview({
       console.error('Interview send error:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Even opnieuw proberen... Er ging iets mis.' },
+        { role: 'assistant', content: 'Let me try again... Something went wrong.' },
       ]);
     } finally {
       setSending(false);
@@ -196,7 +196,7 @@ export default function BrandInterview({
             {messages.length === 0 && !sending && (
               <div className="flex gap-3">
                 <div className="rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                  <p>Vertel me over je bedrijf. Wat doen jullie?</p>
+                  <p>Tell me about your company. What do you do?</p>
                 </div>
               </div>
             )}
@@ -256,7 +256,7 @@ export default function BrandInterview({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={messages.length === 0 ? 'Vertel over je bedrijf...' : ''}
+                  placeholder={messages.length === 0 ? 'Tell me about your company...' : ''}
                   rows={1}
                   disabled={sending}
                   className="flex-1 resize-none bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
