@@ -260,7 +260,7 @@ export default function RadarPage() {
               onClick={() => { setScoutComplete(false); setView('scout'); }}
               className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
             >
-              Verfijn je Radar
+              Refine your Radar
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
@@ -268,9 +268,9 @@ export default function RadarPage() {
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Stel je Radar in</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Set up your Radar</h3>
             <p className="text-sm text-gray-500 mb-4 max-w-md mx-auto">
-              Vertel Scout over je content-interesses en strategische prioriteiten. We vinden bronnen die het volgen waard zijn.
+              Tell Scout about your content interests and strategic priorities. We&apos;ll find sources worth following.
             </p>
             <button
               onClick={() => { setScoutComplete(false); setView('scout'); }}

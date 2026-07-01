@@ -71,9 +71,9 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
-      <h2 className="text-lg font-semibold text-gray-900">Wat Scout van je weet</h2>
+      <h2 className="text-lg font-semibold text-gray-900">What Scout knows about you</h2>
       <p className="mt-1 text-xs text-gray-500">
-        Uit je merkprofiel. Hierop bouwt Scout verder.
+        From your brand profile. Scout builds on this.
       </p>
 
       {/* What Scout already knows, static and honest, no fake "live" */}
@@ -89,19 +89,19 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
             <dl className="space-y-2.5 text-sm">
               {industry && (
                 <div>
-                  <dt className="text-xs font-medium text-gray-400">Branche</dt>
+                  <dt className="text-xs font-medium text-gray-400">Industry</dt>
                   <dd className="text-gray-700">{industry}</dd>
                 </div>
               )}
               {audience && (
                 <div>
-                  <dt className="text-xs font-medium text-gray-400">Doelgroep</dt>
+                  <dt className="text-xs font-medium text-gray-400">Audience</dt>
                   <dd className="text-gray-700">{audience}</dd>
                 </div>
               )}
               {tone.length > 0 && (
                 <div>
-                  <dt className="mb-1 text-xs font-medium text-gray-400">Toon</dt>
+                  <dt className="mb-1 text-xs font-medium text-gray-400">Tone</dt>
                   <dd className="flex flex-wrap gap-1.5">
                     {tone.map((t) => (
                       <span
@@ -120,7 +120,7 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
               )}
               {types.length > 0 && (
                 <div>
-                  <dt className="mb-1 text-xs font-medium text-gray-400">Content die je maakt</dt>
+                  <dt className="mb-1 text-xs font-medium text-gray-400">Content you create</dt>
                   <dd className="flex flex-wrap gap-1.5">
                     {types.map((t) => (
                       <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
@@ -134,7 +134,7 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
 
             {ideas.length > 0 && (
               <div className="mt-4 border-t border-gray-100 pt-3">
-                <p className="mb-1.5 text-xs font-medium text-gray-400">Ideeën uit je website-scan</p>
+                <p className="mb-1.5 text-xs font-medium text-gray-400">Ideas from your website scan</p>
                 <ul className="space-y-1">
                   {ideas.map((idea) => (
                     <li key={idea} className="flex items-start gap-2 text-xs text-gray-600">
@@ -151,7 +151,7 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-400">
-            Nog geen merkprofiel gevonden. Scout vraagt zo een paar dingen na.
+            No brand profile yet. Scout will ask you a few things shortly.
           </div>
         )}
 
@@ -169,7 +169,7 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Voorgestelde bronnen
+                Proposed sources
                 {proposed.length > 0 && (
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">{proposed.length}</span>
                 )}
@@ -208,7 +208,7 @@ export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPa
                     className="h-2 w-2 animate-pulse rounded-full"
                     style={{ backgroundColor: branding.primaryColor }}
                   />
-                  Scout zoekt nu bronnen voor je…
+                  Scout is finding sources for you…
                 </div>
               )}
             </motion.div>

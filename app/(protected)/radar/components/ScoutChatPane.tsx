@@ -64,7 +64,7 @@ export default function ScoutChatPane({
     // (the user said "just go", or this is the closing turn). Otherwise: plain thinking dots.
     const justGo = /(\bjust go\b|\bgo ahead\b|\bfind them\b|ga maar|ga door|zoek maar|vind bronnen|doe maar|begin maar|sla over)/i.test(userMessage);
     const curating = justGo || messages.filter((mm) => mm.role === 'user').length >= 1;
-    setThinkingNote(curating ? 'Scout zoekt bronnen die bij je passen…' : null);
+    setThinkingNote(curating ? 'Scout is finding sources that fit you…' : null);
 
     const tempMsg: Message = {
       id: `user-${Date.now()}`,
@@ -108,7 +108,7 @@ export default function ScoutChatPane({
       const assistantMsg: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: hasText ? result.message : 'Sorry, daar ging iets mis bij het samenstellen. Probeer het nog eens.',
+        content: hasText ? result.message : 'Sorry, something went wrong while putting that together. Please try again.',
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
@@ -122,7 +122,7 @@ export default function ScoutChatPane({
       const errorMsg: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Er ging iets mis. Probeer het opnieuw.',
+        content: 'Something went wrong. Please try again.',
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -137,14 +137,14 @@ export default function ScoutChatPane({
   const knownTone = (p.tone_keywords || []).filter(Boolean).slice(0, 2).join(', ');
   const welcome =
     mode === 'B'
-      ? 'Welkom terug. Wil je dat ik nieuwe bronnen zoek, een gat afdek, of je prioriteiten bijschaaf?'
+      ? 'Welcome back. Want me to find new sources, fill a gap, or refine your priorities?'
       : (() => {
           const bits: string[] = [];
-          if (knownName) bits.push(`Je bent ${knownName}`);
-          if (knownAudience) bits.push(`je maakt content voor ${knownAudience}`);
-          if (knownTone) bits.push(`je toon is ${knownTone}`);
+          if (knownName) bits.push(`You are ${knownName}`);
+          if (knownAudience) bits.push(`you create content for ${knownAudience}`);
+          if (knownTone) bits.push(`your tone is ${knownTone}`);
           const intro = bits.length ? `${bits.join(', ')}. ` : '';
-          return `${intro}Ik zoek bronnen die je inspireren voor nieuwe content. Denk aan nieuws om op te reageren, of visies om in je eigen woorden te delen. Aan welke onderwerpen of mensen moet ik denken?`;
+          return `${intro}I look for sources that inspire new content. Think of news to react to, or visions to share in your own words. Which topics or people should I keep an eye on?`;
         })();
 
   return (
@@ -162,11 +162,11 @@ export default function ScoutChatPane({
               </div>
               <div className="flex flex-wrap gap-2 pl-1">
                 <button
-                  onClick={() => sendMessage('Ga maar')}
+                  onClick={() => sendMessage('Just go')}
                   className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
                   style={{ backgroundColor: branding.primaryColor }}
                 >
-                  Ga maar, vind bronnen
+                  Just go, find sources
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
@@ -238,14 +238,14 @@ export default function ScoutChatPane({
               onClick={onBack}
               className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              Bekijk je bronnen
+              View your sources
             </button>
             <Link
               href="/studio"
               className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
               style={{ backgroundColor: branding.primaryColor }}
             >
-              Ga naar Content Studio
+              Go to Content Studio
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
@@ -268,8 +268,8 @@ export default function ScoutChatPane({
                 }}
                 placeholder={
                   mode === 'A'
-                    ? 'Welke onderwerpen zijn belangrijk voor je bedrijf?'
-                    : 'Wat is er veranderd sinds de vorige keer?'
+                    ? 'Which topics matter for your company?'
+                    : 'What has changed since last time?'
                 }
                 disabled={isGenerating}
                 rows={1}
