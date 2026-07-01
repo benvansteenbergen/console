@@ -79,25 +79,25 @@ export default function RadarPage() {
   const { data: suggestionsData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     '/api/radar/sources?status=proposed',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 300_000 }
   );
 
   const { data: conceptsData, mutate: mutateConcepts } = useSWR<{ success: boolean; concepts: RadarConcept[] }>(
     '/api/radar/concepts?status=active',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 300_000 }
   );
 
   const { data: followedData, mutate: mutateFollowed } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     '/api/radar/sources?status=followed',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 300_000 }
   );
 
   const { data: naylistedData, mutate: mutateNaylisted } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     '/api/radar/sources?status=naylisted',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 300_000 }
   );
 
   const { data: prioritiesData } = useSWR<{ success: boolean; markdown: string }>(

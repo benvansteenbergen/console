@@ -18,7 +18,7 @@ export default function RadarBanner() {
   const { data } = useSWR<ConceptsResponse>(
     '/api/radar/concepts?status=active&unseen=true',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 300_000 }
   );
 
   const count = data?.concepts?.length ?? 0;
