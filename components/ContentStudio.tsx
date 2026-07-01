@@ -519,7 +519,7 @@ export default function ContentStudio() {
                 onClick={() => setUseKnowledgeBase(false)}
                 className="flex items-center gap-1.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-700"
               >
-                Kennisbank
+                Knowledge base
                 <XMarkIcon className="h-3 w-3" />
               </button>
             ) : (
@@ -527,7 +527,7 @@ export default function ContentStudio() {
                 onClick={() => setUseKnowledgeBase(true)}
                 className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-500"
               >
-                Kennisbank
+                Knowledge base
               </button>
             )}
             {usePersonalVoice ? (
@@ -535,7 +535,7 @@ export default function ContentStudio() {
                 onClick={() => setUsePersonalVoice(false)}
                 className="flex items-center gap-1.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-700"
               >
-                Eigen schrijfstijl
+                Personal voice
                 <XMarkIcon className="h-3 w-3" />
               </button>
             ) : (
@@ -543,7 +543,7 @@ export default function ContentStudio() {
                 onClick={() => setUsePersonalVoice(true)}
                 className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-500"
               >
-                Eigen schrijfstijl
+                Personal voice
               </button>
             )}
           </div>
