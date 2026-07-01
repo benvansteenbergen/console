@@ -64,9 +64,13 @@ export default function ContentStudio() {
   // agent can work from it, and show it as a removable source chip under the chat.
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [sourceLabel, setSourceLabel] = useState('');
+  const [loadingConversation, setLoadingConversation] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Monotonic token so a slow response for a previously-clicked conversation cannot
+  // overwrite the messages of the one the user selected most recently.
+  const loadReqRef = useRef(0);
 
   // Check URL params for pre-filled format/topic
   useEffect(() => {
@@ -270,10 +274,12 @@ export default function ContentStudio() {
   };
 
   const handleHistorySelect = async (id: string) => {
+    const reqId = ++loadReqRef.current;
     setConversationId(id);
     setSelectedFormat(null);
     setSaveResult(null);
     setMessages([]);
+    setLoadingConversation(true);
     setView('conversation');
 
     // Studio conversations are stored in live_messages (same table as Live),
@@ -283,6 +289,8 @@ export default function ContentStudio() {
         credentials: 'include',
       });
       const data = await res.json();
+      // Drop this response if the user has since picked another conversation.
+      if (loadReqRef.current !== reqId) return;
       if (data?.success && Array.isArray(data.messages)) {
         setMessages(
           data.messages.map((m: { role: 'user' | 'assistant'; content: string }) => {
@@ -302,7 +310,9 @@ export default function ContentStudio() {
         );
       }
     } catch (err) {
-      console.error('Failed to load studio conversation:', err);
+      if (loadReqRef.current === reqId) console.error('Failed to load studio conversation:', err);
+    } finally {
+      if (loadReqRef.current === reqId) setLoadingConversation(false);
     }
   };
 
@@ -325,6 +335,8 @@ export default function ContentStudio() {
       <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-3">
         <button
           onClick={() => {
+            loadReqRef.current++;
+            setLoadingConversation(false);
             setView('picker');
             setMessages([]);
             setConversationId(null);
@@ -350,7 +362,15 @@ export default function ContentStudio() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-2xl space-y-6">
-          {messages.length === 0 && !sending && (
+          {loadingConversation && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '150ms' }} />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" style={{ animationDelay: '300ms' }} />
+              <span className="ml-1">Loading conversation…</span>
+            </div>
+          )}
+          {!loadingConversation && messages.length === 0 && !sending && (
             <div className="flex gap-3">
               <div
                 className="h-8 w-8 shrink-0 rounded-full"
