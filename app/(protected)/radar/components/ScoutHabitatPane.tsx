@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBranding } from '@/components/BrandingProvider';
@@ -38,11 +39,19 @@ const fetcher = (url: string) =>
 export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPaneProps) {
   const branding = useBranding();
 
-  // Only look for proposed sources once Scout has closed, polling until the first batch lands, then stop.
+  // Only look for proposed sources once Scout has closed, polling until the first batch lands,
+  // then stop. Also cap the polling so an abandoned/failed curation cannot poll forever.
+  const pollsRef = useRef(0);
   const { data: proposedData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     isComplete ? '/api/radar/sources?status=proposed' : null,
     fetcher,
-    { refreshInterval: (latest) => (latest?.sources?.length ? 0 : 4_000) },
+    {
+      refreshInterval: (latest) => {
+        if (latest?.sources?.length) return 0;
+        pollsRef.current += 1;
+        return pollsRef.current > 30 ? 0 : 5_000; // ~2.5 min, then give up
+      },
+    },
   );
 
   const proposed = proposedData?.sources || [];
