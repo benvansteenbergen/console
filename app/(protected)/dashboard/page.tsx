@@ -45,7 +45,8 @@ export default function Dashboard() {
   const [isV2, setIsV2] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsV2(localStorage.getItem('wingsuite_version') === 'v2');
+    // v2 is the default; only an explicit 'v1' choice keeps the classic dashboard.
+    setIsV2(localStorage.getItem('wingsuite_version') !== 'v1');
   }, []);
 
   /* profile status check — redirect to interview if empty (v2 only) */

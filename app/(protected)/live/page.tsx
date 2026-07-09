@@ -15,10 +15,11 @@ export default function LivePage() {
 
   useEffect(() => {
     const v = localStorage.getItem('wingsuite_version');
-    if (v === 'v2') {
-      router.replace('/studio');
-    } else {
+    // v2 is the default; the classic Live page only stays for an explicit 'v1' choice.
+    if (v === 'v1') {
       setIsV2(false);
+    } else {
+      router.replace('/studio');
     }
   }, [router]);
 
