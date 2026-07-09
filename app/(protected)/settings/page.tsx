@@ -41,11 +41,12 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export default function SettingsPage() {
   const { loading: sessionLoading } = useSession();
   const branding = useBranding();
-  const [version, setVersion] = useState<'v1' | 'v2'>('v1');
+  // v2 is the default; users only get v1 if they explicitly switched to it here.
+  const [version, setVersion] = useState<'v1' | 'v2'>('v2');
 
   useEffect(() => {
     const stored = localStorage.getItem('wingsuite_version');
-    if (stored === 'v2') setVersion('v2');
+    if (stored === 'v1') setVersion('v1');
   }, []);
 
   const { data: settings, error: settingsError } = useSWR<SettingsData>(
@@ -88,10 +89,10 @@ export default function SettingsPage() {
       {version === 'v1' ? (
         <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50 p-6 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold text-gray-900">
-            Wingsuite 2.0 beschikbaar
+            Wingsuite 2.0 available
           </h2>
           <p className="mb-4 text-sm text-gray-600">
-            Probeer de nieuwe versie met Brand Identity, Content Studio en meer.
+            Try the new version with Brand Identity, Content Studio and more.
           </p>
           <button
             onClick={() => {
@@ -100,13 +101,13 @@ export default function SettingsPage() {
             }}
             className="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-700 hover:to-purple-700"
           >
-            Activeer Wingsuite 2.0
+            Activate Wingsuite 2.0
           </button>
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">
-            Je gebruikt Wingsuite 2.0
+            You&apos;re on Wingsuite 2.0
           </h2>
           <button
             onClick={() => {
@@ -115,7 +116,7 @@ export default function SettingsPage() {
             }}
             className="text-sm text-gray-500 underline hover:text-gray-700"
           >
-            Terug naar klassieke versie
+            Back to the classic version
           </button>
         </div>
       )}

@@ -52,7 +52,8 @@ const toSlug = (name: string) =>
 
 export default function Sidebar() {
     const [open, setOpen] = useState(false);
-    const [version, setVersion] = useState<'v1' | 'v2'>('v1');
+    // v2 is the default; users only get v1 if they explicitly switched to it in settings.
+    const [version, setVersion] = useState<'v1' | 'v2'>('v2');
     const [formsExpanded, setFormsExpanded] = useState(false);
     const [foldersExpanded, setFoldersExpanded] = useState(false);
     const pathname = usePathname();
@@ -63,7 +64,7 @@ export default function Sidebar() {
 
     useEffect(() => {
         const stored = localStorage.getItem('wingsuite_version');
-        if (stored === 'v2') setVersion('v2');
+        if (stored === 'v1') setVersion('v1');
     }, []);
 
     const isV2 = version === 'v2';
