@@ -23,10 +23,11 @@ radar_concepts (status='active') ──► Feed + dashboard banner
 | Workflow | ID | Trigger | Role |
 |----------|----|---------|------|
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
-| `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron (per-user TZ, 08:00 + 13:00) | Fetch + relevance filter per article |
+| `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron `0 0 9,12,17 * * *` (daily 09:00/12:00/17:00, workflow TZ Europe/Amsterdam) | Fetch + relevance filter per article |
 | `radar-concepter` | `xXNTbqWtzRTWSRs9` | sub-workflow | Editorial concept (one committed angle) |
 | `radar-researcher` | `ZfpkY2M0dMdhA5Le` | sub-workflow | Web-search fact-check + verdict |
 | `radar-nightly-cleanup` | `ynuHcxIFiHzLExqB` | Cron nightly | Drop concepts older than 14 days |
+| `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron `0 0 10 * * 1` (Monday 10:00, Europe/Amsterdam) | Weekly "What's on your Radar" email digest |
 | `radar-sources-list` | `0LLMN61MBi2aToI1` | `GET /webhook/radar-sources-list` | List sources by status |
 | `radar-source-action` | `f1sm4nyTxMkiT85E` | `POST /webhook/radar-source-action` | follow / drop / naylist a source |
 | `radar-concepts-list` | `yenAuwcHBBIuxbBg` | `GET /webhook/radar-concepts-list` | List concepts |
@@ -69,7 +70,22 @@ Ingestion strategy (current):
 - **`Fetch RSS`** is reused as a generic fetcher for either a real feed or the Jina URL (timeout 30 s for Jina's render time).
 - **`Parse Articles`** parses **RSS 2.0 + Atom + RSS 1.0/RDF + Google-news sitemap**, and for `fetchMode='jina'` extracts article-shaped links from the markdown (same-site, nav denylist, section/slug heuristic, ≥2-hyphen slugs), capped at 20.
 
-Not yet done (Phase 1 follow-ups): per-source health / auto-pause of dead sources (needs `last_fetched_at` + `consecutive_failures` columns — the n8n Postgres user has **no DDL**, so a DB owner must add them, or stash in the existing `notes` JSON), full-article enrichment via Jina, and reliable social ingestion (LinkedIn/X/IG — best-effort only; the honest frontier).
+**Per-source health (deployed 2026-07-23):** every sweep writes a health object into `radar_sources.notes` (text column, JSON content): `{"health": {"status": "ok"|"failed", "last_sweep": ISO, "consecutive_failures": N, "reason": "..."}}`. Failure paths (`Should Fetch` skip, `Parse Articles` empty/error) route through a `Mark Source Failed` Postgres node; success routes through `Mark Source OK` (resets the counter). Both are `onError: continueRegularOutput` + `alwaysOutputData` so a health write can never break the loop. Crucially, `Parse Articles` now emits a `__fetch_failed` item instead of returning `[]` — a zero-item return **stalled the whole splitInBatches loop**, silently skipping every remaining source (this was why only 1 of 29 AB Enzymes sources produced rows). `radar-sources-list` returns `notes`; the console (`RadarSourcesList.tsx`) shows an amber "Fetch failing (N sweeps)" badge. No auto-pause yet — failing sources keep being retried.
+
+**Cron gotcha (fixed 2026-07-23):** the schedule expression `0 0 9,12,17 * *` (5 fields) means *midnight on the 9th, 12th and 17th of the month*, not 09/12/17 hours — that stalled Radar for all clients between monthly run-days. Correct 6-field form: `0 0 9,12,17 * * *`, with `settings.timezone` set explicitly (instance default is America/New_York).
+
+Still not done (Phase 1 follow-ups): auto-pause of dead sources, full-article enrichment via Jina, and reliable social ingestion (LinkedIn/X/IG — best-effort only; the honest frontier).
+
+---
+
+## `radar-weekly-digest` — Monday email
+
+Node chain: `Every Monday 10:00 → Get Digest Data → Build Email → Send Digest (Gmail)`.
+
+- **One aggregated SQL query** joins `portal_user` + n8n `"user"` + `radar_concepts` (+ `radar_sources` for the source name) and `json_agg`s the last 7 days of `active`/`saved` concepts per recipient. Zero concepts → zero rows → no email (silence is a feature). **Phase 1:** `WHERE u.email = 'bensteenbergen@gmail.com'`; phase 2 drops that filter to reach all users (add an opt-out flag in `portal_user.settings` first).
+- **Slack-digest style HTML** built in a Code node (no `!` anywhere except the `<!DOCTYPE` string literal, which is safe): grey background, centered wordmark, white rounded card, week date range, per-find linked headline + `alignment_why` + source name, "Open Radar" footer. Subject: `[Radar] Your finds for the week of <date>`.
+- **Gmail credential:** `Gmail account` (`krcZdwTx8MGIxuEr`, gmailOAuth2, team project), sender name "Wingsuite Radar", sends from ben@wingsuite.io.
+- Payload sources + backups: `docs/n8n/backups/radar-weekly-digest/`.
 
 ---
 

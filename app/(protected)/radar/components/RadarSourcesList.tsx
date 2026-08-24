@@ -8,7 +8,24 @@ interface RadarSource {
   tone_tag: string;
   because_quote: string;
   status: string;
+  notes?: string | null;
   created_at: string;
+}
+
+interface SourceHealth {
+  status: string;
+  last_sweep?: string;
+  consecutive_failures?: number;
+  reason?: string;
+}
+
+function parseHealth(notes?: string | null): SourceHealth | null {
+  if (!notes) return null;
+  try {
+    return JSON.parse(notes).health ?? null;
+  } catch {
+    return null;
+  }
 }
 
 interface ActionDef {
@@ -43,7 +60,9 @@ export default function RadarSourcesList({
     <div>
       <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
       <div className="space-y-2">
-        {sources.map((source) => (
+        {sources.map((source) => {
+          const health = parseHealth(source.notes);
+          return (
           <div
             key={source.id}
             className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50 transition-colors"
@@ -61,6 +80,17 @@ export default function RadarSourcesList({
                 {source.tone_tag && (
                   <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 flex-shrink-0">
                     {source.tone_tag}
+                  </span>
+                )}
+                {health?.status === 'failed' && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 flex-shrink-0"
+                    title={health.reason}
+                  >
+                    Fetch failing
+                    {health.consecutive_failures && health.consecutive_failures > 1
+                      ? ` (${health.consecutive_failures} sweeps)`
+                      : ''}
                   </span>
                 )}
               </div>
@@ -87,7 +117,8 @@ export default function RadarSourcesList({
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

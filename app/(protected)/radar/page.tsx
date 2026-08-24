@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useBranding } from '@/components/BrandingProvider';
 import RadarSuggestionStrip from './components/RadarSuggestionStrip';
@@ -123,14 +123,33 @@ export default function RadarPage() {
   const hasPriorities = !!prioritiesData?.markdown;
   const scoutMode = hasPriorities ? 'B' : 'A';
 
-  // Handle deep-link to a specific concept via hash
+  // Handle deep-link to a specific concept via ?concept= (or legacy #concept=)
+  const deepLinkHandled = useRef(false);
   useEffect(() => {
+    if (deepLinkHandled.current || !conceptsData?.concepts) return;
+    const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash;
-    if (hash.startsWith('#concept=')) {
-      const conceptId = hash.replace('#concept=', '');
-      console.log('Deep-link to concept:', conceptId);
+    const conceptId =
+      params.get('concept') || (hash.startsWith('#concept=') ? hash.replace('#concept=', '') : null);
+    if (!conceptId) {
+      deepLinkHandled.current = true;
+      return;
     }
-  }, []);
+    deepLinkHandled.current = true;
+    const match = conceptsData.concepts.find((c) => c.id === conceptId);
+    if (match) {
+      setSelectedConcept(match);
+      return;
+    }
+    // Not in the active feed; it may have been saved already (digest links both)
+    fetch(`/api/radar/concepts?status=saved`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { concepts?: RadarConcept[] } | null) => {
+        const saved = data?.concepts?.find((c) => c.id === conceptId);
+        if (saved) setSelectedConcept(saved);
+      })
+      .catch(() => {});
+  }, [conceptsData]);
 
   const handleConceptAction = async (conceptId: string, action: string) => {
     setActing(true);
