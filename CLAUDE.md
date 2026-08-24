@@ -769,6 +769,7 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
 | `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron (per-user TZ) | Fetch + relevance filter per article |
 | `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron Monday 10:00 (Europe/Amsterdam) | Weekly "What's on your Radar" email (Gmail) |
+| `radar-digest-pref` | `J6l3k9c7jriY5cco` | `GET`/`POST /webhook/radar-digest-pref` | Weekly digest opt-out flag |
 | `radar-concepter` | `xXNTbqWtzRTWSRs9` | (sub-workflow) | Editorial concept generation |
 | `radar-researcher` | `ZfpkY2M0dMdhA5Le` | (sub-workflow) | Web-search fact-check + verdict |
 | `radar-*` (lists / actions / priorities / cleanup) | — | `/webhook/radar-*` | See `docs/n8n/radar.md` |

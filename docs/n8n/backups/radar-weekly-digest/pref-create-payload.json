@@ -1,0 +1,165 @@
+{
+  "name": "radar-digest-pref",
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "webhook-get",
+      "name": "Webhook GET",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": { "httpMethod": "GET", "path": "radar-digest-pref", "responseMode": "responseNode", "options": {} }
+    },
+    {
+      "id": "fetch-user-get",
+      "name": "Fetch User GET",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [220, 0],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "dbf8RGXgL1Up2KzF", "cachedResultName": "jwt-validation" },
+        "workflowInputs": {
+          "value": { "cookie": "={{ $json.headers.cookie }}" },
+          "schema": [
+            { "id": "cookie", "type": "string", "display": true, "removed": false, "required": false, "displayName": "cookie", "defaultMatch": false, "canBeUsedToMatch": true }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["cookie"],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": { "waitForSubWorkflow": true }
+      }
+    },
+    {
+      "id": "read-pref",
+      "name": "Read Pref",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [440, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(settings->'radar'->>'weekly_digest', 'true') AS enabled FROM portal_user WHERE n8n_user_id = '{{ $json.user_id }}'::uuid",
+        "options": {}
+      },
+      "credentials": { "postgres": { "id": "HY5nJozYRhfP29Se", "name": "Postgres account" } }
+    },
+    {
+      "id": "format-read",
+      "name": "Format Read",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nreturn [{ json: { success: true, enabled: row.enabled === 'false' ? false : true } }];"
+      }
+    },
+    {
+      "id": "respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [880, 0],
+      "parameters": { "respondWith": "allIncomingItems", "options": {} }
+    },
+    {
+      "id": "respond-get-error",
+      "name": "Respond GET Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [440, 160],
+      "parameters": { "respondWith": "json", "responseBody": "{\n  \"valid\": \"false\"\n}", "options": {} }
+    },
+    {
+      "id": "webhook-post",
+      "name": "Webhook POST",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 340],
+      "parameters": { "httpMethod": "POST", "path": "radar-digest-pref", "responseMode": "responseNode", "options": {} }
+    },
+    {
+      "id": "fetch-user-post",
+      "name": "Fetch User POST",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [220, 340],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "list", "value": "dbf8RGXgL1Up2KzF", "cachedResultName": "jwt-validation" },
+        "workflowInputs": {
+          "value": { "cookie": "={{ $json.headers.cookie }}" },
+          "schema": [
+            { "id": "cookie", "type": "string", "display": true, "removed": false, "required": false, "displayName": "cookie", "defaultMatch": false, "canBeUsedToMatch": true }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["cookie"],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": { "waitForSubWorkflow": true }
+      }
+    },
+    {
+      "id": "build-update",
+      "name": "Build Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 340],
+      "parameters": {
+        "jsCode": "const user = $input.first().json;\nconst body = $('Webhook POST').first().json.body || {};\nconst enabled = body.enabled === false || body.enabled === 'false' ? 'false' : 'true';\nreturn [{ json: { user_id: user.user_id, enabled: enabled } }];"
+      }
+    },
+    {
+      "id": "update-pref",
+      "name": "Update Pref",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [660, 340],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE portal_user SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('radar', COALESCE(settings->'radar', '{}'::jsonb) || jsonb_build_object('weekly_digest', {{ $json.enabled }}::boolean)) WHERE n8n_user_id = '{{ $json.user_id }}'::uuid RETURNING COALESCE(settings->'radar'->>'weekly_digest', 'true') AS enabled",
+        "options": {}
+      },
+      "credentials": { "postgres": { "id": "HY5nJozYRhfP29Se", "name": "Postgres account" } }
+    },
+    {
+      "id": "format-saved",
+      "name": "Format Saved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 340],
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nreturn [{ json: { success: true, enabled: row.enabled === 'false' ? false : true } }];"
+      }
+    },
+    {
+      "id": "respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1100, 340],
+      "parameters": { "respondWith": "allIncomingItems", "options": {} }
+    },
+    {
+      "id": "respond-post-error",
+      "name": "Respond POST Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [440, 500],
+      "parameters": { "respondWith": "json", "responseBody": "{\n  \"valid\": \"false\"\n}", "options": {} }
+    }
+  ],
+  "connections": {
+    "Webhook GET": { "main": [[{ "node": "Fetch User GET", "type": "main", "index": 0 }]] },
+    "Fetch User GET": { "main": [[{ "node": "Read Pref", "type": "main", "index": 0 }], [{ "node": "Respond GET Error", "type": "main", "index": 0 }]] },
+    "Read Pref": { "main": [[{ "node": "Format Read", "type": "main", "index": 0 }]] },
+    "Format Read": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
+    "Webhook POST": { "main": [[{ "node": "Fetch User POST", "type": "main", "index": 0 }]] },
+    "Fetch User POST": { "main": [[{ "node": "Build Update", "type": "main", "index": 0 }], [{ "node": "Respond POST Error", "type": "main", "index": 0 }]] },
+    "Build Update": { "main": [[{ "node": "Update Pref", "type": "main", "index": 0 }]] },
+    "Update Pref": { "main": [[{ "node": "Format Saved", "type": "main", "index": 0 }]] },
+    "Format Saved": { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] }
+  }
+}

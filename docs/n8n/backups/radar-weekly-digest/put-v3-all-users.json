@@ -1,0 +1,126 @@
+{
+ "name": "radar-weekly-digest",
+ "description": "",
+ "nodes": [
+  {
+   "id": "schedule-trigger",
+   "name": "Every Monday 10:00",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "0 0 10 * * 1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "get-digest-data",
+   "name": "Get Digest Data",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.5,
+   "position": [
+    220,
+    0
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT u.email, COALESCE(u.\"firstName\", '') AS first_name, pu.n8n_user_id::text AS user_id, COALESCE(pc.domain, 'console.wingsuite.io') AS domain, COALESCE(pc.name, 'Wingsuite') AS brand_name, json_agg(json_build_object('id', rc.id, 'headline', rc.headline, 'url', rc.article_url, 'why', rc.alignment_why, 'verdict', rc.verdict, 'source', COALESCE(rs.name, ''), 'created_at', rc.created_at) ORDER BY rc.created_at DESC) AS concepts FROM portal_user pu JOIN \"user\" u ON u.id = pu.n8n_user_id LEFT JOIN portal_client pc ON pc.key = pu.client_key JOIN radar_concepts rc ON rc.user_id = pu.n8n_user_id LEFT JOIN radar_sources rs ON rs.id = rc.source_id WHERE u.email IS NOT NULL AND COALESCE(pu.settings->'radar'->>'weekly_digest', 'true') <> 'false' AND rc.status IN ('active', 'saved') AND rc.created_at > now() - interval '7 days' GROUP BY u.email, u.\"firstName\", pu.n8n_user_id, pc.domain, pc.name",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  },
+  {
+   "id": "build-email",
+   "name": "Build Email",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    0
+   ],
+   "parameters": {
+    "jsCode": "function esc(s) {\n  if (s === null || s === undefined) return '';\n  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\n\nconst now = new Date();\nconst end = new Date(now.getTime() - 24 * 3600 * 1000);\nconst start = new Date(now.getTime() - 7 * 24 * 3600 * 1000);\nfunction fmt(d) {\n  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Europe/Amsterdam' });\n}\nfunction fmtShort(d) {\n  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'Europe/Amsterdam' });\n}\nconst rangeLine = fmt(start) + ' to ' + fmt(end);\n\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const concepts = Array.isArray(j.concepts) ? j.concepts : [];\n  if (concepts.length === 0) continue;\n  const domain = j.domain && j.domain.length > 0 ? j.domain : 'console.wingsuite.io';\n  const brandName = j.brand_name && j.brand_name.length > 0 ? j.brand_name : 'Wingsuite';\n\n  const rows = concepts.map(function (c) {\n    const consoleUrl = 'https://' + domain + '/radar?concept=' + encodeURIComponent(c.id);\n    let sourceName = c.source && c.source.length > 0 ? c.source : '';\n    if (sourceName === '') {\n      try { sourceName = new URL(c.url).hostname.replace('www.', ''); } catch (e) { sourceName = 'source'; }\n    }\n    const whyLine = c.why && c.why.length > 0 ? '<div style=\"font-size:14px;color:#555555;margin-top:6px;line-height:1.55;\">' + esc(c.why) + '</div>' : '';\n    const sourceLink = '<div style=\"font-size:12px;color:#9ca3af;margin-top:8px;\">Source: <a href=\"' + esc(c.url) + '\" style=\"color:#9ca3af;text-decoration:underline;\">' + esc(sourceName) + '</a></div>';\n    return '<tr><td style=\"padding:18px 0;border-bottom:1px solid #eeeeee;\">' +\n      '<a href=\"' + consoleUrl + '\" style=\"font-size:16px;font-weight:700;color:#1264a3;text-decoration:none;line-height:1.4;\">' + esc(c.headline) + '</a>' +\n      whyLine + sourceLink + '</td></tr>';\n  }).join('');\n\n  const count = concepts.length;\n  const findWord = count === 1 ? 'find' : 'finds';\n  const greeting = j.first_name && j.first_name.length > 0 ? 'Hope you had a good weekend, ' + esc(j.first_name) + '.' : 'Hope you had a good weekend.';\n\n  const html = '<!DOCTYPE html><html><body style=\"margin:0;padding:0;background:#f4f4f4;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f4f4;\"><tr><td align=\"center\" style=\"padding:32px 16px;\">' +\n    '<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;\">' +\n    '<tr><td align=\"center\" style=\"padding-bottom:24px;\">' +\n    '<div style=\"font-size:20px;font-weight:800;color:#111111;letter-spacing:-0.02em;\">' + esc(brandName.toLowerCase()) + ' <span style=\"font-weight:400;\">radar</span></div>' +\n    '</td></tr>' +\n    '<tr><td style=\"background:#ffffff;border-radius:12px;border:1px solid #e8e8e8;padding:40px;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">' +\n    '<tr><td align=\"center\" style=\"padding-bottom:24px;\"><div style=\"font-size:14px;font-weight:700;color:#111111;\">' + rangeLine + '</div></td></tr>' +\n    '<tr><td style=\"padding-bottom:8px;\"><div style=\"font-size:15px;color:#333333;line-height:1.6;\">' + greeting + ' Here is what Radar picked up from your sources last week: ' + count + ' ' + findWord + ', each checked against your priorities.</div></td></tr>' +\n    '<tr><td><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">' + rows + '</table></td></tr>' +\n    '<tr><td style=\"padding-top:24px;\"><a href=\"https://' + domain + '/radar\" style=\"font-size:14px;font-weight:600;color:#1264a3;text-decoration:none;\">Open Radar to draft from a find</a></td></tr>' +\n    '</table>' +\n    '</td></tr>' +\n    '<tr><td align=\"center\" style=\"padding:24px 16px 0;\"><div style=\"font-size:12px;color:#9ca3af;line-height:1.6;\">You get this once a week, on Monday morning, and only when Radar found something. <a href=\"https://' + domain + '/settings\" style=\"color:#9ca3af;text-decoration:underline;\">Turn it off in Settings</a>.</div></td></tr>' +\n    '</table></td></tr></table></body></html>';\n\n  out.push({ json: {\n    email: j.email,\n    subject: '[Radar] Your finds for the week of ' + fmtShort(start),\n    html: html\n  } });\n}\n\nreturn out;"
+   }
+  },
+  {
+   "id": "send-digest",
+   "name": "Send Digest",
+   "type": "n8n-nodes-base.gmail",
+   "typeVersion": 2.1,
+   "position": [
+    660,
+    0
+   ],
+   "parameters": {
+    "sendTo": "={{ $json.email }}",
+    "subject": "={{ $json.subject }}",
+    "emailType": "html",
+    "message": "={{ $json.html }}",
+    "options": {
+     "senderName": "Wingsuite Radar",
+     "appendAttribution": false
+    }
+   },
+   "webhookId": "75f9e5db-290e-4ef6-bd97-4ebefef13185",
+   "credentials": {
+    "gmailOAuth2": {
+     "id": "krcZdwTx8MGIxuEr",
+     "name": "Gmail account"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Every Monday 10:00": {
+   "main": [
+    [
+     {
+      "node": "Get Digest Data",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Get Digest Data": {
+   "main": [
+    [
+     {
+      "node": "Build Email",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Email": {
+   "main": [
+    [
+     {
+      "node": "Send Digest",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Europe/Amsterdam"
+ }
+}
