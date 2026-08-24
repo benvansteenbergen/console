@@ -7,7 +7,9 @@ if (typeof response === 'string') body = response;
 else if (response.data) body = String(response.data);
 else if (response.body) body = String(response.body);
 
-if (body === '' || body.length < 30) return [];
+if (body === '' || body.length < 30) {
+  return [{ json: { __fetch_failed: 'yes', source_id: context.source_id, user_id: context.user_id, source_name: context.source_name, fail_reason: 'empty or error response (' + fetchMode + ')' } }];
+}
 
 function clean(s) {
   return (s || '')
@@ -105,7 +107,9 @@ function rootDomainHost(u) {
   return mm ? mm[1] : '';
 }
 
-if (articles.length === 0) return [];
+if (articles.length === 0) {
+  return [{ json: { __fetch_failed: 'yes', source_id: context.source_id, user_id: context.user_id, source_name: context.source_name, fail_reason: 'no articles parsed (' + fetchMode + ')' } }];
+}
 const recent = articles.slice(0, MAX);
 
 return recent.map(function (a) {

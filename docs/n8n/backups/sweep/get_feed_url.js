@@ -5,7 +5,7 @@ const rootDomain = (sourceUrl.match(/^https?:\/\/[^\/]+/) || [])[0] || sourceUrl
 const basePath = sourceUrl.replace(/\/+$/, '');
 
 if (sourceUrl === '') {
-  return [{ json: { ...context, feedUrl: '__skip__', fetchMode: 'none' } }];
+  return [{ json: { ...context, feedUrl: '__skip__', fetchMode: 'none', fail_reason: 'empty source url' } }];
 }
 
 let body = '';

@@ -750,6 +750,7 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | Anthropic | `zvfIJSmp6pElXMtZ` | Anthropic account |
 | Google Docs | `DBvurnNrV4xJDryL` | Google Docs account |
 | Google Drive | `rH9X3hwyo6ibVgIA` | Google Drive account |
+| Gmail | `krcZdwTx8MGIxuEr` | Gmail account |
 
 **Note:** The Postgres user does NOT have DDL permissions (CREATE TABLE, ALTER TABLE). Tables must be created manually by the database owner.
 
@@ -767,6 +768,7 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `jwt-validation` | `dbf8RGXgL1Up2KzF` | (sub-workflow) | Validate JWT, return user info |
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
 | `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron (per-user TZ) | Fetch + relevance filter per article |
+| `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron Monday 10:00 (Europe/Amsterdam) | Weekly "What's on your Radar" email (Gmail) |
 | `radar-concepter` | `xXNTbqWtzRTWSRs9` | (sub-workflow) | Editorial concept generation |
 | `radar-researcher` | `ZfpkY2M0dMdhA5Le` | (sub-workflow) | Web-search fact-check + verdict |
 | `radar-*` (lists / actions / priorities / cleanup) | — | `/webhook/radar-*` | See `docs/n8n/radar.md` |
