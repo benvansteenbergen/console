@@ -306,6 +306,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 - **Scout** (`radar-scout`): an AI discovery chat that **stands on the company profile** (it consumes `profile_context`, no re-interview), runs 1–2 short refine turns (or "just go"), then curates a generous, independent-voice-biased source list with literal "Because you mentioned…" quotes. Sources land in `radar_sources` (status `proposed`); the user follows them. Vendor penalty hits resellers/agencies, **not** the primary maker/lab (OpenAI, Anthropic).
 - **Sweep → Concepter → Researcher:** `radar-sweep` (cron) fetches followed sources (RSS/Atom + **Jina Reader** for JS / no-RSS / blocked pages), relevance-filters, and hands passing articles to `radar-concepter` → `radar-researcher`, which write `radar_concepts` (status `active`) shown in the Feed + dashboard banner (`components/RadarBanner.tsx`).
 - **Priorities doc:** `portal_user.settings.radar.priorities_markdown`. Everything is user-scoped.
+- **Weekly digest:** `radar-weekly-digest` emails all users their last-7-days finds every Monday 10:00 (Gmail, Slack-digest style, headline → `/radar?concept=<id>` deep-link). Opt-out flag `portal_user.settings.radar.weekly_digest` via `radar-digest-pref` + Settings toggle. Empty week = no email. Full detail in `docs/n8n/radar.md`.
 - **Principle:** silence is a feature — empty output is valid; no "we checked for you" noise.
 
 ---

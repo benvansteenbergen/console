@@ -81,13 +81,26 @@ Still not done (Phase 1 follow-ups): auto-pause of dead sources, full-article en
 
 ## `radar-weekly-digest` — Monday email
 
-Node chain: `Every Monday 10:00 → Get Digest Data → Build Email → Send Digest (Gmail)`.
+Node chain: `Every Monday 10:00 → Get Digest Data → Build Email → Send Digest (Gmail)`. Cron `0 0 10 * * 1`, workflow timezone `Europe/Amsterdam`. Deployed 2026-08-24, live for all users.
 
-- **One aggregated SQL query** joins `portal_user` + n8n `"user"` + `radar_concepts` (+ `radar_sources` for the source name, `portal_client` for brand domain/name) and `json_agg`s the last 7 days of `active`/`saved` concepts per recipient. Zero concepts → zero rows → no email (silence is a feature). Goes to **all users**; skips anyone with `portal_user.settings.radar.weekly_digest = false` (default on). Links are brand-aware via `COALESCE(portal_client.domain, 'console.wingsuite.io')`.
-- **Opt-out:** `radar-digest-pref` (`GET`/`POST /webhook/radar-digest-pref`, jwt-validated) reads/writes the flag; console proxy `app/api/radar/digest/route.ts` (GET/PUT), toggle in Settings ("Email updates" card). The email footer links to `/settings`.
-- **Slack-digest style HTML** built in a Code node (no `!` anywhere except the `<!DOCTYPE` string literal, which is safe): grey background, centered wordmark, white rounded card, week date range, per-find linked headline + `alignment_why` + source name, "Open Radar" footer. Subject: `[Radar] Your finds for the week of <date>`.
-- **Gmail credential:** `Gmail account` (`krcZdwTx8MGIxuEr`, gmailOAuth2, team project), sender name "Wingsuite Radar", sends from ben@wingsuite.io.
-- Payload sources + backups: `docs/n8n/backups/radar-weekly-digest/`.
+**Who gets it (all enforced in one SQL query, `Get Digest Data`):**
+
+- All portal users, via `portal_user` INNER JOIN `radar_concepts` on the last 7 days (`created_at > now() - interval '7 days'`, status `active` or `saved`). The INNER JOIN is the "silence is a feature" mechanism: zero finds that week → zero rows → the workflow ends, no email node ever runs. Users who never set up Radar never match either.
+- Opt-out: `AND COALESCE(pu.settings->'radar'->>'weekly_digest', 'true') <> 'false'` — default is on, no migration needed.
+- The weekly windows tile exactly (same run moment each week), so every concept appears in exactly one digest, no gaps, no repeats. Only an off-schedule manual fire can duplicate; the cron cannot.
+- Brand-aware: LEFT JOIN `portal_client` supplies `domain` + `name`; links use `https://<domain>/...` and the wordmark shows `<brand> radar`. Fallback: `console.wingsuite.io` / Wingsuite.
+
+**Email anatomy (`Build Email` Code node):** Slack-digest style — grey background, centered brand wordmark, white rounded card, week date range ("Monday, August 17 to Sunday, August 23"). Per find: **headline links to `https://<domain>/radar?concept=<id>`** (Radar's take in the console, NOT the raw article), then the `alignment_why` line, then a small grey `Source: <name>` link to the original `article_url` (hostname fallback when the source has no name). Footer: "Open Radar to draft from a find" + "Turn it off in Settings" (`/settings`). Subject: `[Radar] Your finds for the week of <date>`. The JS contains no `!` operators (API corruption rule); the only `!` is inside the `<!DOCTYPE` string literal, which is safe even if escaped.
+
+**Console deep-link:** `app/(protected)/radar/page.tsx` handles `?concept=<id>` (and legacy `#concept=`): once concepts load it opens `RadarConceptOverlay`; if the id is not in the active feed it falls back to fetching `status=saved` (the digest links both). Handled once per page load (ref guard) so closing the overlay does not reopen it. Works through the login redirect because middleware preserves `returnTo` with query.
+
+**Opt-out plumbing:** `radar-digest-pref` (`J6l3k9c7jriY5cco`, team project) — `GET`/`POST /webhook/radar-digest-pref`, both chains jwt-validated with an error branch returning `{"valid":"false"}`. POST writes `portal_user.settings.radar.weekly_digest` with the nested-safe merge `settings || jsonb_build_object('radar', COALESCE(settings->'radar','{}'::jsonb) || jsonb_build_object('weekly_digest', <bool>))` (plain `jsonb_set` silently no-ops when the `radar` key is missing). Console: `app/api/radar/digest/route.ts` (GET/PUT proxy) + "Email updates" toggle card in `app/(protected)/settings/page.tsx` (SWR, optimistic flip).
+
+**Sending:** Gmail node, credential `Gmail account` (`krcZdwTx8MGIxuEr`, gmailOAuth2, team project — credentials must live in the team project like the workflows), sender name "Wingsuite Radar", sends from ben@wingsuite.io. Known limitation: the *sender* is not brand-aware; when white-label volume grows, move to a transactional provider with per-brand sender domains.
+
+**Test-fire procedure (no manual-run API exists):** deploy `put-v3-test-fire.json` — it adds a temporary `GET /webhook/radar-digest-test-fire` trigger AND restricts the query to one recipient (**never test-fire the all-users query; it emails every user off-schedule and duplicates their Monday digest**). Deactivate+reactivate to register the webhook, `curl` it, inspect the execution via `GET /api/v1/executions/<id>?includeData=true`, then restore `put-v3-all-users.json` and deactivate+reactivate again. Verify the test webhook 404s afterwards.
+
+Payload history + rollback baselines: `docs/n8n/backups/radar-weekly-digest/` (see `../backups/README.md`).
 
 ---
 
