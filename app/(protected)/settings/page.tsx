@@ -36,6 +36,11 @@ interface CreditsData {
   over_limit: boolean;
 }
 
+interface DigestPref {
+  success: boolean;
+  enabled: boolean;
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function SettingsPage() {
@@ -60,6 +65,29 @@ export default function SettingsPage() {
     fetcher,
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
+
+  const { data: digestPref, mutate: mutateDigestPref } = useSWR<DigestPref>(
+    '/api/radar/digest',
+    fetcher,
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+
+  const digestEnabled = digestPref?.enabled !== false;
+
+  const toggleDigest = async () => {
+    const next = !digestEnabled;
+    // Optimistic flip; revert on failure via revalidation
+    mutateDigestPref({ success: true, enabled: next }, { revalidate: false });
+    try {
+      await fetch('/api/radar/digest', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+    } finally {
+      mutateDigestPref();
+    }
+  };
 
   useEffect(() => {
     document.title = `${branding.name} - Settings`;
@@ -193,6 +221,33 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Email updates */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Email updates</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-gray-900">What&apos;s on your Radar</p>
+            <p className="mt-1 text-sm text-gray-500">
+              A weekly email with last week&apos;s Radar finds, Monday mornings. Only sent when Radar found something.
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={digestEnabled}
+            onClick={toggleDigest}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+              digestEnabled ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                digestEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
 
       {/* Language */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

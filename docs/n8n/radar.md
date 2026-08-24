@@ -28,6 +28,7 @@ radar_concepts (status='active') ──► Feed + dashboard banner
 | `radar-researcher` | `ZfpkY2M0dMdhA5Le` | sub-workflow | Web-search fact-check + verdict |
 | `radar-nightly-cleanup` | `ynuHcxIFiHzLExqB` | Cron nightly | Drop concepts older than 14 days |
 | `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron `0 0 10 * * 1` (Monday 10:00, Europe/Amsterdam) | Weekly "What's on your Radar" email digest |
+| `radar-digest-pref` | `J6l3k9c7jriY5cco` | `GET`/`POST /webhook/radar-digest-pref` | Read/write the weekly digest opt-out flag |
 | `radar-sources-list` | `0LLMN61MBi2aToI1` | `GET /webhook/radar-sources-list` | List sources by status |
 | `radar-source-action` | `f1sm4nyTxMkiT85E` | `POST /webhook/radar-source-action` | follow / drop / naylist a source |
 | `radar-concepts-list` | `yenAuwcHBBIuxbBg` | `GET /webhook/radar-concepts-list` | List concepts |
@@ -82,7 +83,8 @@ Still not done (Phase 1 follow-ups): auto-pause of dead sources, full-article en
 
 Node chain: `Every Monday 10:00 → Get Digest Data → Build Email → Send Digest (Gmail)`.
 
-- **One aggregated SQL query** joins `portal_user` + n8n `"user"` + `radar_concepts` (+ `radar_sources` for the source name) and `json_agg`s the last 7 days of `active`/`saved` concepts per recipient. Zero concepts → zero rows → no email (silence is a feature). **Phase 1:** `WHERE u.email = 'bensteenbergen@gmail.com'`; phase 2 drops that filter to reach all users (add an opt-out flag in `portal_user.settings` first).
+- **One aggregated SQL query** joins `portal_user` + n8n `"user"` + `radar_concepts` (+ `radar_sources` for the source name, `portal_client` for brand domain/name) and `json_agg`s the last 7 days of `active`/`saved` concepts per recipient. Zero concepts → zero rows → no email (silence is a feature). Goes to **all users**; skips anyone with `portal_user.settings.radar.weekly_digest = false` (default on). Links are brand-aware via `COALESCE(portal_client.domain, 'console.wingsuite.io')`.
+- **Opt-out:** `radar-digest-pref` (`GET`/`POST /webhook/radar-digest-pref`, jwt-validated) reads/writes the flag; console proxy `app/api/radar/digest/route.ts` (GET/PUT), toggle in Settings ("Email updates" card). The email footer links to `/settings`.
 - **Slack-digest style HTML** built in a Code node (no `!` anywhere except the `<!DOCTYPE` string literal, which is safe): grey background, centered wordmark, white rounded card, week date range, per-find linked headline + `alignment_why` + source name, "Open Radar" footer. Subject: `[Radar] Your finds for the week of <date>`.
 - **Gmail credential:** `Gmail account` (`krcZdwTx8MGIxuEr`, gmailOAuth2, team project), sender name "Wingsuite Radar", sends from ben@wingsuite.io.
 - Payload sources + backups: `docs/n8n/backups/radar-weekly-digest/`.
