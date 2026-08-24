@@ -9,6 +9,16 @@ This folder holds two things for the n8n workflows we edit from the console repo
 
 2. **Editable node sources** — `scout/` and `sweep/`: the Code-node JS and the agent system prompt as plain files, plus an `assemble.py`. These are the **source of truth** for what those Code nodes currently run.
 
+3. **`radar-weekly-digest/`** — full PUT payloads (not extracted sources) for the weekly digest + opt-out endpoint, in deployment order:
+   - `create-payload.json` — initial POST body (single recipient, article links)
+   - `put-attach-gmail.json` — + Gmail credential attached
+   - `put-v2-console-links.json` — headline → console deep-link, source link per item
+   - `put-v3-all-users.json` — **current production state**: all users, opt-out, brand-aware
+   - `put-test-webhook.json` / `put-v3-test-fire.json` — test-fire variants (temporary webhook trigger; v3 variant also restricts the query to one recipient — see radar.md)
+   - `pref-create-payload.json` — `radar-digest-pref` opt-out endpoint (POST body)
+   - `radar-weekly-digest-2026*.json` — GET snapshots after create/activate
+   To change the digest: edit a copy of `put-v3-all-users.json`, PUT it (file-based, see below), deactivate+reactivate to re-register the cron, verify. There is no assemble.py here; the payloads are small enough to edit directly.
+
 ## Deploy workflow (how to edit a Code node safely)
 
 ```bash
