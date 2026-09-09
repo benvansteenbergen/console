@@ -112,6 +112,27 @@ export default function ContentStudio() {
     }
   }, []);
 
+  // The conversation's format only lives in client state (live_conversations has no
+  // format column), so remember it per conversation. Without this, reopening a chat
+  // from history dropped the format and the agent could drift to another channel.
+  useEffect(() => {
+    if (!conversationId || !selectedFormat) return;
+    try {
+      localStorage.setItem(`studio_format_${conversationId}`, JSON.stringify(selectedFormat));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [conversationId, selectedFormat]);
+
+  const restoreFormat = (id: string): FormatTemplate | null => {
+    try {
+      const raw = localStorage.getItem(`studio_format_${id}`);
+      return raw ? (JSON.parse(raw) as FormatTemplate) : null;
+    } catch {
+      return null;
+    }
+  };
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -200,7 +221,11 @@ export default function ContentStudio() {
       console.error('Studio send error:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Something went wrong. Please try again.' },
+        {
+          role: 'assistant',
+          content:
+            'Something went wrong on my end. I may still be finishing your last message in the background - wait a moment and reopen this conversation before sending it again.',
+        },
       ]);
     } finally {
       setSending(false);
@@ -276,7 +301,7 @@ export default function ContentStudio() {
   const handleHistorySelect = async (id: string) => {
     const reqId = ++loadReqRef.current;
     setConversationId(id);
-    setSelectedFormat(null);
+    setSelectedFormat(restoreFormat(id));
     setSaveResult(null);
     setMessages([]);
     setLoadingConversation(true);

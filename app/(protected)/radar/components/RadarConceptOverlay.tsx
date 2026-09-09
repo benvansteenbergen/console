@@ -134,13 +134,15 @@ export default function RadarConceptOverlay({
                 Write in Studio
               </button>
             )}
-            <button
-              onClick={() => onAction(concept.id, 'saved')}
-              disabled={acting}
-              className="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 transition-colors"
-            >
-              Save
-            </button>
+            {concept.status !== 'saved' && (
+              <button
+                onClick={() => onAction(concept.id, 'saved')}
+                disabled={acting}
+                className="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 transition-colors"
+              >
+                Save
+              </button>
+            )}
             <button
               onClick={() => onAction(concept.id, 'dropped')}
               disabled={acting}
