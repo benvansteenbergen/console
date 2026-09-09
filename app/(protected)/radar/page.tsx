@@ -88,6 +88,13 @@ export default function RadarPage() {
     { refreshInterval: 300_000 }
   );
 
+  // Saved concepts keep living here after the user saves them from the feed.
+  const { data: savedData, mutate: mutateSaved } = useSWR<{ success: boolean; concepts: RadarConcept[] }>(
+    '/api/radar/concepts?status=saved',
+    fetcher,
+    { refreshInterval: 300_000 }
+  );
+
   const { data: followedData, mutate: mutateFollowed } = useSWR<{ success: boolean; sources: RadarSource[] }>(
     '/api/radar/sources?status=followed',
     fetcher,
@@ -118,6 +125,7 @@ export default function RadarPage() {
 
   const suggestions = suggestionsData?.sources || [];
   const concepts = conceptsData?.concepts || [];
+  const savedConcepts = savedData?.concepts || [];
   const followed = followedData?.sources || [];
   const naylisted = naylistedData?.sources || [];
   const hasPriorities = !!prioritiesData?.markdown;
@@ -162,6 +170,7 @@ export default function RadarPage() {
       });
       setSelectedConcept(null);
       mutateConcepts();
+      mutateSaved();
     } finally {
       setActing(false);
     }
@@ -230,6 +239,11 @@ export default function RadarPage() {
 
         {/* Feed */}
         <RadarFeed concepts={concepts} onSelect={setSelectedConcept} />
+
+        {/* Saved concepts stay accessible after leaving the feed */}
+        {savedConcepts.length > 0 && (
+          <RadarFeed title="Saved" concepts={savedConcepts} onSelect={setSelectedConcept} />
+        )}
 
         {/* Sources section */}
         {followed.length > 0 && (

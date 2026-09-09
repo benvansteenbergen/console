@@ -20,13 +20,14 @@ interface RadarConcept {
 interface RadarFeedProps {
   concepts: RadarConcept[];
   onSelect?: (concept: RadarConcept) => void;
+  title?: string;
 }
 
-export default function RadarFeed({ concepts, onSelect }: RadarFeedProps) {
+export default function RadarFeed({ concepts, onSelect, title = 'Feed' }: RadarFeedProps) {
   if (concepts.length === 0) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Feed</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
         <p className="text-sm text-gray-500">
           No concepts yet. Once your sources are set up and the sweep runs, concepts will appear here.
         </p>
@@ -36,7 +37,7 @@ export default function RadarFeed({ concepts, onSelect }: RadarFeedProps) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Feed</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
       <div className="space-y-3">
         {concepts.map((concept) => (
           <div
