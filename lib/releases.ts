@@ -32,6 +32,24 @@ export const UNRELEASED: ReleaseChange[] = [];
 
 export const RELEASES: Release[] = [
   {
+    version: '1.1.0',
+    date: '2026-09-27',
+    type: 'minor',
+    title: 'A knowledge base you can organise',
+    summary:
+      'Put your documents in folders and tell Content Studio exactly which ones to use. Word files are welcome too.',
+    changes: [
+      { kind: 'new', text: 'Folders in your knowledge base. Create, rename and delete them, and move documents between them.' },
+      { kind: 'new', text: 'In Content Studio, choose which knowledge to use: everything, specific folders, or none at all.' },
+      { kind: 'new', text: 'Upload Word documents (.docx and .doc) next to PDF.' },
+      { kind: 'new', text: 'Add several documents at once, each with its own title, folder and a suggested description.' },
+      { kind: 'improved', text: 'The knowledge base page stays clear with many documents: search, sorting and compact rows.' },
+      { kind: 'improved', text: 'Select several documents to move or delete them in one go.' },
+      { kind: 'fixed', text: 'New documents appear in the list right after uploading.' },
+      { kind: 'fixed', text: 'Deleting a document now removes all of it, and only its owner can delete it.' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-09-27',
     type: 'major',

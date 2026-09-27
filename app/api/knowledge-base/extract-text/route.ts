@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { kbFileType, wordToText } from '@/lib/kbFiles';
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -15,6 +16,17 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
+    }
+
+    const type = kbFileType(file.name);
+    if (!type) {
+      return NextResponse.json({ success: false, error: 'Only PDF and Word files are supported' }, { status: 400 });
+    }
+
+    // Word files are read here; n8n only understands PDF.
+    if (type !== 'pdf') {
+      const text = await wordToText(Buffer.from(await file.arrayBuffer()), type);
+      return NextResponse.json({ success: true, text });
     }
 
     // Forward to n8n webhook
@@ -45,7 +57,7 @@ export async function POST(request: NextRequest) {
     console.error('Extract text error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to extract text from PDF'
+      error: 'Failed to read the file'
     }, { status: 500 });
   }
 }

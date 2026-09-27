@@ -8,6 +8,8 @@ import { useBranding } from '@/components/BrandingProvider';
 import TemplatePicker from '@/components/studio/TemplatePicker';
 import DraftCard from '@/components/studio/DraftCard';
 import StudioHistory from '@/components/studio/StudioHistory';
+import KnowledgePicker from '@/components/studio/KnowledgePicker';
+import type { KbScope } from '@/components/knowledge-base/types';
 
 interface FormatTemplate {
   id: string;
@@ -58,7 +60,7 @@ export default function ContentStudio() {
   const [selectedFormat, setSelectedFormat] = useState<FormatTemplate | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<SaveResult | null>(null);
-  const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
+  const [kbScope, setKbScope] = useState<KbScope>({ mode: 'all' });
   const [usePersonalVoice, setUsePersonalVoice] = useState(true);
   // Article handed over from Radar ("write about this"): we carry the URL so the
   // agent can work from it, and show it as a removable source chip under the chat.
@@ -160,7 +162,8 @@ export default function ContentStudio() {
           conversationId,
           message: msg,
           contentFormat: selectedFormat?.id || null,
-          useKnowledgeBase,
+          useKnowledgeBase: kbScope.mode !== 'off',
+          knowledgeBase: kbScope,
           usePersonalVoice,
           sourceUrl,
         }),
@@ -559,22 +562,7 @@ export default function ContentStudio() {
                 </button>
               </span>
             )}
-            {useKnowledgeBase ? (
-              <button
-                onClick={() => setUseKnowledgeBase(false)}
-                className="flex items-center gap-1.5 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-700"
-              >
-                Knowledge base
-                <XMarkIcon className="h-3 w-3" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setUseKnowledgeBase(true)}
-                className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-500"
-              >
-                Knowledge base
-              </button>
-            )}
+            <KnowledgePicker scope={kbScope} onChange={setKbScope} />
             {usePersonalVoice ? (
               <button
                 onClick={() => setUsePersonalVoice(false)}

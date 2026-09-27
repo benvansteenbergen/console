@@ -1,0 +1,470 @@
+{
+ "id": "hogzRDcvgDYhf6C5",
+ "name": "knowledge-base-analyze",
+ "description": null,
+ "active": true,
+ "activeVersionId": "19497e48-6ff6-4477-9210-d75eab65403b",
+ "createdAt": "2026-01-04T21:14:52.134Z",
+ "updatedAt": "2026-01-04T21:39:33.565Z",
+ "isArchived": false,
+ "versionId": "19497e48-6ff6-4477-9210-d75eab65403b",
+ "versionCounter": 36,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={\n\"success\": true,\n\"description\": \"{{ $json.description }}\",\n\"suggested_cluster\": \"{{ $json.suggested_cluster }}\"\n}",
+    "options": {
+     "responseCode": 200
+    }
+   },
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.4,
+   "position": [
+    832,
+    -64
+   ],
+   "id": "fdd04ef6-4c62-448e-8678-3a2791024944",
+   "name": "Respond to Webhook"
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "=Analyze this document excerpt and suggest categorization.\n\n  Document excerpt:\n  ---\n  {{ $('Webhook').item.json.body.excerpt }}\n  ---\n\n  Available clusters:\n  - general_company_info: General information about the company\n  - product_sheets: Product specifications and features\n  - pricing_sales: Pricing information and sales materials\n  - documentation: User guides and technical documentation\n  - marketing_materials: Marketing content and promotional materials\n  - case_studies: Customer case studies and success stories\n  - technical_specs: Detailed technical specifications\n  - training_materials: Training guides and educational content\n  - no_cluster: Uncategorized or miscellaneous documents\n\nReturn ONLY valid JSON with this structure (no markdown, no code blocks):\n  {\n    \"description\": \"One sentence description of what this document is about\",\n    \"suggested_cluster\": \"one of the cluster values from the list above\"\n  }",
+    "options": {
+     "systemMessage": "You are a document categorization assistant. You analyze document excerpts and suggest the most appropriate cluster/category."
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 3,
+   "position": [
+    176,
+    -64
+   ],
+   "id": "395253eb-7650-4103-bf32-c273cb130a5a",
+   "name": "AI Agent"
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "knowledge-base-analyze",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2.1,
+   "position": [
+    -496,
+    0
+   ],
+   "id": "c8d22ade-2ee8-4adf-889a-2e7a21752cb0",
+   "name": "Webhook",
+   "webhookId": "47c0695c-49d7-4f63-a157-5e65c08aead0"
+  },
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "dbf8RGXgL1Up2KzF",
+     "cachedResultName": "jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "d04ac40d-9c85-46ff-8a2b-188363273990",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -256,
+    0
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "model": {
+     "__rl": true,
+     "value": "gpt-5-mini",
+     "mode": "list",
+     "cachedResultName": "gpt-5-mini"
+    },
+    "builtInTools": {},
+    "options": {
+     "textFormat": {
+      "textOptions": {
+       "type": "json_object",
+       "verbosity": "high"
+      }
+     }
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+   "typeVersion": 1.3,
+   "position": [
+    48,
+    144
+   ],
+   "id": "d43844b1-176d-4762-9321-b80fe3935c71",
+   "name": "OpenAI Chat Model",
+   "credentials": {
+    "openAiApi": {
+     "id": "ze2RYgwfmFThLBgJ",
+     "name": "OpenAi account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "let out = JSON.parse($input.first().json.output);\n\nreturn out;"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    528,
+    -64
+   ],
+   "id": "12ee78b3-dcf9-4af6-85ed-32f835d08b30",
+   "name": "Code in JavaScript"
+  }
+ ],
+ "connections": {
+  "AI Agent": {
+   "main": [
+    [
+     {
+      "node": "Code in JavaScript",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "OpenAI Chat Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Code in JavaScript": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": {
+  "templateCredsSetupCompleted": true
+ },
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "hogzRDcvgDYhf6C5",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-01-04T21:14:52.134Z",
+   "updatedAt": "2026-01-04T21:14:52.134Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "19497e48-6ff6-4477-9210-d75eab65403b",
+  "workflowId": "hogzRDcvgDYhf6C5",
+  "nodes": [
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "={\n\"success\": true,\n\"description\": \"{{ $json.description }}\",\n\"suggested_cluster\": \"{{ $json.suggested_cluster }}\"\n}",
+     "options": {
+      "responseCode": 200
+     }
+    },
+    "type": "n8n-nodes-base.respondToWebhook",
+    "typeVersion": 1.4,
+    "position": [
+     832,
+     -64
+    ],
+    "id": "fdd04ef6-4c62-448e-8678-3a2791024944",
+    "name": "Respond to Webhook"
+   },
+   {
+    "parameters": {
+     "promptType": "define",
+     "text": "=Analyze this document excerpt and suggest categorization.\n\n  Document excerpt:\n  ---\n  {{ $('Webhook').item.json.body.excerpt }}\n  ---\n\n  Available clusters:\n  - general_company_info: General information about the company\n  - product_sheets: Product specifications and features\n  - pricing_sales: Pricing information and sales materials\n  - documentation: User guides and technical documentation\n  - marketing_materials: Marketing content and promotional materials\n  - case_studies: Customer case studies and success stories\n  - technical_specs: Detailed technical specifications\n  - training_materials: Training guides and educational content\n  - no_cluster: Uncategorized or miscellaneous documents\n\nReturn ONLY valid JSON with this structure (no markdown, no code blocks):\n  {\n    \"description\": \"One sentence description of what this document is about\",\n    \"suggested_cluster\": \"one of the cluster values from the list above\"\n  }",
+     "options": {
+      "systemMessage": "You are a document categorization assistant. You analyze document excerpts and suggest the most appropriate cluster/category."
+     }
+    },
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 3,
+    "position": [
+     176,
+     -64
+    ],
+    "id": "395253eb-7650-4103-bf32-c273cb130a5a",
+    "name": "AI Agent"
+   },
+   {
+    "parameters": {
+     "httpMethod": "POST",
+     "path": "knowledge-base-analyze",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 2.1,
+    "position": [
+     -496,
+     0
+    ],
+    "id": "c8d22ade-2ee8-4adf-889a-2e7a21752cb0",
+    "name": "Webhook",
+    "webhookId": "47c0695c-49d7-4f63-a157-5e65c08aead0"
+   },
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "dbf8RGXgL1Up2KzF",
+      "cachedResultName": "jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "d04ac40d-9c85-46ff-8a2b-188363273990",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -256,
+     0
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "model": {
+      "__rl": true,
+      "value": "gpt-5-mini",
+      "mode": "list",
+      "cachedResultName": "gpt-5-mini"
+     },
+     "builtInTools": {},
+     "options": {
+      "textFormat": {
+       "textOptions": {
+        "type": "json_object",
+        "verbosity": "high"
+       }
+      }
+     }
+    },
+    "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+    "typeVersion": 1.3,
+    "position": [
+     48,
+     144
+    ],
+    "id": "d43844b1-176d-4762-9321-b80fe3935c71",
+    "name": "OpenAI Chat Model",
+    "credentials": {
+     "openAiApi": {
+      "id": "ze2RYgwfmFThLBgJ",
+      "name": "OpenAi account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "jsCode": "let out = JSON.parse($input.first().json.output);\n\nreturn out;"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     528,
+     -64
+    ],
+    "id": "12ee78b3-dcf9-4af6-85ed-32f835d08b30",
+    "name": "Code in JavaScript"
+   }
+  ],
+  "connections": {
+   "AI Agent": {
+    "main": [
+     [
+      {
+       "node": "Code in JavaScript",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "OpenAI Chat Model": {
+    "ai_languageModel": [
+     [
+      {
+       "node": "AI Agent",
+       "type": "ai_languageModel",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Code in JavaScript": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-01-04T21:39:33.569Z",
+  "updatedAt": "2026-01-04T21:39:33.569Z",
+  "workflowPublishHistory": [
+   {
+    "id": 378,
+    "workflowId": "hogzRDcvgDYhf6C5",
+    "versionId": "19497e48-6ff6-4477-9210-d75eab65403b",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-01-04T21:39:33.627Z"
+   }
+  ]
+ }
+}

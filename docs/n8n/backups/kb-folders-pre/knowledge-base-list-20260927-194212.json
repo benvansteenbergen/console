@@ -1,0 +1,690 @@
+{
+ "id": "WcVFtGTpHFPiIWWZ",
+ "name": "knowledge-base-list",
+ "description": null,
+ "active": true,
+ "activeVersionId": "8c3c4ce6-1b66-4e8f-9062-c263ebdded41",
+ "createdAt": "2025-12-08T21:17:47.669Z",
+ "updatedAt": "2026-01-26T10:40:08.617Z",
+ "isArchived": false,
+ "versionId": "8c3c4ce6-1b66-4e8f-9062-c263ebdded41",
+ "versionCounter": 125,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "value": "dbf8RGXgL1Up2KzF",
+     "mode": "list",
+     "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+     "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "fbe08606-9832-4b05-b787-88d0b04bc6ac",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -560,
+    -144
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "path": "knowledge-base-list",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2.1,
+   "position": [
+    -848,
+    -64
+   ],
+   "id": "04cf0086-6e3c-4fa0-bb24-79cdedc3fdad",
+   "name": "Webhook",
+   "webhookId": "0b88d4bc-4399-4228-b4be-9edf5ec4e09c"
+  },
+  {
+   "parameters": {
+    "respondWith": "allIncomingItems",
+    "options": {
+     "responseCode": 200
+    }
+   },
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.4,
+   "position": [
+    560,
+    -208
+   ],
+   "id": "189d6c18-aa9b-453c-8e2f-84b8601440a6",
+   "name": "Respond to Webhook"
+  },
+  {
+   "parameters": {
+    "url": "https://lkphk2vdrfegucqmr3mdog.c0.europe-west3.gcp.weaviate.cloud/v1/objects",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpBearerAuth",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "tenant",
+       "value": "=user_{{ $('Fetch User').item.json.user_id }}"
+      },
+      {
+       "name": "limit",
+       "value": "250"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.3,
+   "position": [
+    -272,
+    -160
+   ],
+   "id": "418e152a-0b95-49a4-89fd-ab8931dcb475",
+   "name": "HTTP Request",
+   "credentials": {
+    "httpBearerAuth": {
+     "id": "ZQNh2zCdoMHYMOyC",
+     "name": "Bearer Auth account"
+    },
+    "httpHeaderAuth": {
+     "id": "MIbDEFser5i6V964",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nlet files = {};\nfor (const list of $input.all()) {\n  for(const item of list.json.objects){\n    let i = item.properties.document_id;\n    if(i == null) continue;\n    if(files[i] == null) { \n      files[i] = {};\n      files[i]['chunks'] = 0;\n    }\n    files[i]['id'] = item.properties.document_id;\n    files[i]['title'] = item.properties.document_title;\n    files[i]['date'] = item.creationTimeUnix;\n    files[i]['visibility'] = item.properties.visibility;\n    files[i]['canDelete'] = (item.properties.uploaded_by == $('Fetch User').first().json.user_id) ? \"true\" : \"false\";\n    files[i]['tenant'] = item.tenant;\n    files[i]['chunks'] = files[i]['chunks'] + 1;\n    files[i]['cluster'] = item.properties.cluster;\n}}\n\nreturn files;"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    384,
+    -208
+   ],
+   "id": "33c87e4f-64fe-41a8-bd98-e1a83c33f272",
+   "name": "Code in JavaScript"
+  },
+  {
+   "parameters": {
+    "url": "https://lkphk2vdrfegucqmr3mdog.c0.europe-west3.gcp.weaviate.cloud/v1/objects",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpBearerAuth",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "tenant",
+       "value": "=client_{{ $('Fetch User').item.json.client }}"
+      },
+      {
+       "name": "limit",
+       "value": "250"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.3,
+   "position": [
+    -272,
+    -288
+   ],
+   "id": "0d7d77c2-14c1-457e-83ec-b77c6b7dfa34",
+   "name": "HTTP Request1",
+   "credentials": {
+    "httpBearerAuth": {
+     "id": "ZQNh2zCdoMHYMOyC",
+     "name": "Bearer Auth account"
+    },
+    "httpHeaderAuth": {
+     "id": "MIbDEFser5i6V964",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "parameters": {},
+   "type": "n8n-nodes-base.merge",
+   "typeVersion": 3.2,
+   "position": [
+    192,
+    -208
+   ],
+   "id": "ff638e95-7bb5-49b9-806c-521fd038f0e3",
+   "name": "Merge"
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": []
+    },
+    "includeOtherFields": true,
+    "include": "selected",
+    "includeFields": "objects",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    -64,
+    -288
+   ],
+   "id": "960a06c0-55e1-4a46-88d6-2457bc66fff2",
+   "name": "Edit Fields"
+  },
+  {
+   "parameters": {
+    "includeOtherFields": true,
+    "include": "selected",
+    "includeFields": "objects",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    -64,
+    -160
+   ],
+   "id": "8cf1d07a-6fa5-4093-a8c9-7c58357e9102",
+   "name": "Edit Fields1"
+  }
+ ],
+ "connections": {
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "HTTP Request1",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "HTTP Request",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "HTTP Request": {
+   "main": [
+    [
+     {
+      "node": "Edit Fields1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Code in JavaScript": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "HTTP Request1": {
+   "main": [
+    [
+     {
+      "node": "Edit Fields",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Merge": {
+   "main": [
+    [
+     {
+      "node": "Code in JavaScript",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Edit Fields": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Edit Fields1": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 1
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "WcVFtGTpHFPiIWWZ",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2025-12-08T21:17:47.669Z",
+   "updatedAt": "2025-12-08T21:17:47.669Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "8c3c4ce6-1b66-4e8f-9062-c263ebdded41",
+  "workflowId": "WcVFtGTpHFPiIWWZ",
+  "nodes": [
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "value": "dbf8RGXgL1Up2KzF",
+      "mode": "list",
+      "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+      "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "fbe08606-9832-4b05-b787-88d0b04bc6ac",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -560,
+     -144
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "path": "knowledge-base-list",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 2.1,
+    "position": [
+     -848,
+     -64
+    ],
+    "id": "04cf0086-6e3c-4fa0-bb24-79cdedc3fdad",
+    "name": "Webhook",
+    "webhookId": "0b88d4bc-4399-4228-b4be-9edf5ec4e09c"
+   },
+   {
+    "parameters": {
+     "respondWith": "allIncomingItems",
+     "options": {
+      "responseCode": 200
+     }
+    },
+    "type": "n8n-nodes-base.respondToWebhook",
+    "typeVersion": 1.4,
+    "position": [
+     560,
+     -208
+    ],
+    "id": "189d6c18-aa9b-453c-8e2f-84b8601440a6",
+    "name": "Respond to Webhook"
+   },
+   {
+    "parameters": {
+     "url": "https://lkphk2vdrfegucqmr3mdog.c0.europe-west3.gcp.weaviate.cloud/v1/objects",
+     "authentication": "genericCredentialType",
+     "genericAuthType": "httpBearerAuth",
+     "sendQuery": true,
+     "queryParameters": {
+      "parameters": [
+       {
+        "name": "tenant",
+        "value": "=user_{{ $('Fetch User').item.json.user_id }}"
+       },
+       {
+        "name": "limit",
+        "value": "250"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.3,
+    "position": [
+     -272,
+     -160
+    ],
+    "id": "418e152a-0b95-49a4-89fd-ab8931dcb475",
+    "name": "HTTP Request",
+    "credentials": {
+     "httpBearerAuth": {
+      "id": "ZQNh2zCdoMHYMOyC",
+      "name": "Bearer Auth account"
+     },
+     "httpHeaderAuth": {
+      "id": "MIbDEFser5i6V964",
+      "name": "Header Auth account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nlet files = {};\nfor (const list of $input.all()) {\n  for(const item of list.json.objects){\n    let i = item.properties.document_id;\n    if(i == null) continue;\n    if(files[i] == null) { \n      files[i] = {};\n      files[i]['chunks'] = 0;\n    }\n    files[i]['id'] = item.properties.document_id;\n    files[i]['title'] = item.properties.document_title;\n    files[i]['date'] = item.creationTimeUnix;\n    files[i]['visibility'] = item.properties.visibility;\n    files[i]['canDelete'] = (item.properties.uploaded_by == $('Fetch User').first().json.user_id) ? \"true\" : \"false\";\n    files[i]['tenant'] = item.tenant;\n    files[i]['chunks'] = files[i]['chunks'] + 1;\n    files[i]['cluster'] = item.properties.cluster;\n}}\n\nreturn files;"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+     384,
+     -208
+    ],
+    "id": "33c87e4f-64fe-41a8-bd98-e1a83c33f272",
+    "name": "Code in JavaScript"
+   },
+   {
+    "parameters": {
+     "url": "https://lkphk2vdrfegucqmr3mdog.c0.europe-west3.gcp.weaviate.cloud/v1/objects",
+     "authentication": "genericCredentialType",
+     "genericAuthType": "httpBearerAuth",
+     "sendQuery": true,
+     "queryParameters": {
+      "parameters": [
+       {
+        "name": "tenant",
+        "value": "=client_{{ $('Fetch User').item.json.client }}"
+       },
+       {
+        "name": "limit",
+        "value": "250"
+       }
+      ]
+     },
+     "options": {}
+    },
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.3,
+    "position": [
+     -272,
+     -288
+    ],
+    "id": "0d7d77c2-14c1-457e-83ec-b77c6b7dfa34",
+    "name": "HTTP Request1",
+    "credentials": {
+     "httpBearerAuth": {
+      "id": "ZQNh2zCdoMHYMOyC",
+      "name": "Bearer Auth account"
+     },
+     "httpHeaderAuth": {
+      "id": "MIbDEFser5i6V964",
+      "name": "Header Auth account"
+     }
+    }
+   },
+   {
+    "parameters": {},
+    "type": "n8n-nodes-base.merge",
+    "typeVersion": 3.2,
+    "position": [
+     192,
+     -208
+    ],
+    "id": "ff638e95-7bb5-49b9-806c-521fd038f0e3",
+    "name": "Merge"
+   },
+   {
+    "parameters": {
+     "assignments": {
+      "assignments": []
+     },
+     "includeOtherFields": true,
+     "include": "selected",
+     "includeFields": "objects",
+     "options": {}
+    },
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "position": [
+     -64,
+     -288
+    ],
+    "id": "960a06c0-55e1-4a46-88d6-2457bc66fff2",
+    "name": "Edit Fields"
+   },
+   {
+    "parameters": {
+     "includeOtherFields": true,
+     "include": "selected",
+     "includeFields": "objects",
+     "options": {}
+    },
+    "type": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "position": [
+     -64,
+     -160
+    ],
+    "id": "8cf1d07a-6fa5-4093-a8c9-7c58357e9102",
+    "name": "Edit Fields1"
+   }
+  ],
+  "connections": {
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "HTTP Request1",
+       "type": "main",
+       "index": 0
+      },
+      {
+       "node": "HTTP Request",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "HTTP Request": {
+    "main": [
+     [
+      {
+       "node": "Edit Fields1",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Code in JavaScript": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "HTTP Request1": {
+    "main": [
+     [
+      {
+       "node": "Edit Fields",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Merge": {
+    "main": [
+     [
+      {
+       "node": "Code in JavaScript",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Edit Fields": {
+    "main": [
+     [
+      {
+       "node": "Merge",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Edit Fields1": {
+    "main": [
+     [
+      {
+       "node": "Merge",
+       "type": "main",
+       "index": 1
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-01-26T10:40:08.621Z",
+  "updatedAt": "2026-01-26T10:40:08.621Z",
+  "workflowPublishHistory": [
+   {
+    "id": 555,
+    "workflowId": "WcVFtGTpHFPiIWWZ",
+    "versionId": "8c3c4ce6-1b66-4e8f-9062-c263ebdded41",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-01-26T10:40:08.743Z"
+   }
+  ]
+ }
+}

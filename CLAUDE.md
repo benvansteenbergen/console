@@ -94,7 +94,7 @@ console/
 │   │   ├── library/           # Content Library (Drive output browser)
 │   │   ├── radar/             # Radar: feed (page), scouts/ (overview, new, [id]), components/, shared.ts
 │   │   ├── release-notes/     # "What's new" page (from lib/releases.ts), reached via the version badge
-│   │   ├── company-private-storage/ # Knowledge base document uploads
+│   │   ├── company-private-storage/ # Knowledge base: folders, documents, upload
 │   │   ├── settings/          # Settings (+ agents/ legacy)
 │   │   ├── live/              # (legacy) LiveChat
 │   │   ├── content/[...path]/ # (legacy) Drive folder navigation
@@ -135,8 +135,7 @@ console/
 │   ├── BrandingProvider.tsx   # Client context for multi-brand theming
 │   ├── AuthGate.tsx           # Protected route wrapper
 │   ├── Sidebar.tsx            # Main navigation
-│   ├── DocumentLibrary.tsx    # KB document list with cluster organization
-│   ├── KnowledgeBaseOverview.tsx # KB quality overview by cluster
+│   ├── knowledge-base/        # KB page: FolderNav, DocumentList, UploadPanel, types
 │   ├── FolderGrid.tsx         # Drive thumbnail grid with delete/move/dates
 │   ├── NavigationProgress.tsx # Page transition progress bar
 │   ├── ErrorBoundary.tsx      # React error boundary component
@@ -148,6 +147,7 @@ console/
 │   ├── utils.ts               # Utility functions (cn for Tailwind merge)
 │   ├── api-utils.ts           # API helpers (safeJsonParse, fetchFromN8n)
 │   ├── contentFormatQuestions.ts # Content format questionnaire configurations
+│   ├── kbFiles.ts             # KB file types + Word-to-text extraction (server side)
 │   └── releases.ts            # Release notes + CURRENT_VERSION (see "Releases & versioning")
 ├── middleware.ts              # Edge middleware for session-based route protection
 ├── tests/                     # Vitest: smoke, api/{auth-me,credits,content-storage}, lib/{branding,utils}
@@ -232,11 +232,12 @@ Automated content scheduling cycle powered by an n8n planner agent.
 
 Document-powered context for AI conversations and content generation.
 
-- **Storage:** Weaviate vector database
-- **Upload:** PDF, DOCX text extraction via `mammoth`, `pdf-parse`
-- **Organization:** Predefined clusters (general_company_info, product_sheets, pricing_sales, documentation, marketing_materials, case_studies, technical_specs, training_materials)
-- **Quality tiers:** Based on chunk count per cluster (0 = unavailable, <51 = limited, <201 = good, 201+ = excellent)
-- **Components:** `DocumentLibrary.tsx` (list/manage), `KnowledgeBaseOverview.tsx` (quality dashboard)
+- **Storage:** Weaviate class `Documents`, multi-tenant: `user_<id>` (private) and `client_<client>` (shared with the team). Chunks carry `document_id`, `document_title`, `description`, `visibility`, `uploaded_by`, `folder_id`, `file_type` (+ legacy `cluster`). No Postgres registry.
+- **Folders:** per user, in `portal_user.settings.kb.folders`; documents are tagged with `folder_id` on every chunk. Colleagues' shared documents show as "Shared by colleagues".
+- **Upload:** PDF goes to n8n as-is; Word (.docx via `mammoth`, .doc via `word-extractor`) is converted to text in `lib/kbFiles.ts` and sent as a `.txt` file.
+- **Page:** `/company-private-storage` ("Knowledge base"): folder column, search/sort, compact rows, bulk move/delete, multi-file upload panel (`components/knowledge-base/*`).
+- **Studio:** `components/studio/KnowledgePicker.tsx` picks All / folders / Off; sent as `knowledgeBase` and enforced in n8n via `searchFilterJson` on both KB tools.
+- **Full detail:** `docs/n8n/knowledge-base.md`. Legacy clusters are only used by the old LiveChat.
 
 ### Credits & Usage Tracking
 
@@ -367,9 +368,12 @@ A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it w
 |----------|--------|---------|
 | `/api/knowledge-base/upload` | POST | Upload documents to Weaviate |
 | `/api/knowledge-base/analyze` | POST | Analyze uploaded documents |
-| `/api/knowledge-base/extract-text` | POST | Extract text from PDF/DOCX |
-| `/api/knowledge-base/documents` | GET | List knowledge base documents |
-| `/api/knowledge-base/documents/[id]` | DELETE | Delete specific document |
+| `/api/knowledge-base/extract-text` | POST | Extract text (PDF via n8n, Word locally) |
+| `/api/knowledge-base/library` | GET | Documents + folders for the KB page |
+| `/api/knowledge-base/folders` | GET, POST | List / create / rename / delete folders |
+| `/api/knowledge-base/move` | POST | Move documents to a folder |
+| `/api/knowledge-base/documents` | GET | (legacy, LiveChat) List knowledge base documents |
+| `/api/knowledge-base/documents/[id]` | DELETE | Delete own document (all chunks) |
 | `/api/knowledge-base/live` | POST | Live knowledge base operations |
 
 ### Data Sources (legacy)
@@ -485,13 +489,9 @@ A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it w
   - Branding-aware (logo, colors)
   - Navigation progress integration
 
-### DocumentLibrary & KnowledgeBaseOverview
-- **Files:** `components/DocumentLibrary.tsx`, `components/KnowledgeBaseOverview.tsx`
-- **Purpose:** Knowledge base document management and quality dashboard
-- **Features:**
-  - Cluster-based organization with predefined labels
-  - Chunk-based quality scoring per cluster
-  - Document upload, delete operations
+### Knowledge base page
+- **Files:** `app/(protected)/company-private-storage/page.tsx`, `components/knowledge-base/` (`FolderNav`, `DocumentList`, `UploadPanel`, `types`)
+- **Features:** per-user folders (create / rename / delete), search + sort, compact rows with file type and visibility, bulk move / delete, multi-file upload (PDF, .docx, .doc) with per-file status and an AI-suggested description. Data from `/api/knowledge-base/library`.
 
 ---
 
@@ -790,6 +790,9 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `studio-message` | `axdg9OFz7eAMM5dU` | `POST /webhook/studio-message` | AI content creation chat |
 | `studio-save` | `qhWScWiAyoKpgZKX` | `POST /webhook/studio-save` | Save content to Google Drive |
 | `jwt-validation` | `dbf8RGXgL1Up2KzF` | (sub-workflow) | Validate JWT, return user info |
+| `knowledge-base-documents` | `PSAF03N894oBvzMe` | `GET /webhook/knowledge-base-documents` | KB documents + folders (see `docs/n8n/knowledge-base.md`) |
+| `knowledge-base-folders` | `IL7fZQ9Qu10ANyKB` | `GET`/`POST /webhook/knowledge-base-folders` | Per-user KB folders |
+| `knowledge-base-move` | `T8e744RM9KSHH6hh` | `POST /webhook/knowledge-base-move` | Move KB documents between folders |
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation (per scout) |
 | `radar-scouts-list` | `ptpGArBVb6SoepAz` | `GET /webhook/radar-scouts-list` | List the user's scouts + counts |
 | `radar-scout-manage` | `EucvLcyWLtZYyfbd` | `POST /webhook/radar-scout-manage` | Rename / pause / resume / archive a scout |

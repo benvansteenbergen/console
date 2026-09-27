@@ -22,6 +22,8 @@ This folder holds two things for the n8n workflows we edit from the console repo
 
 4. **`radar-scouts/` + `radar-scouts-pre/`** — the multi-scout change (2026-09). `radar-scouts-pre/` holds GET snapshots of all 10 touched workflows taken right before (rollback: PUT them back). `radar-scouts/n8n_deploy.py` is a small shared helper (backup load, safe PUT payload, re-register, verify); `deploy_pipeline.py` patches the sweep chain SQL, `deploy_api.py` patches the list/action/priorities/scout workflows (uses `scout/*.js` + `system_message.txt`) and creates `radar-scouts-list` + `radar-scout-manage`. Both support `--dry-run`. The DB migration is `../migrations/2026-09-radar-scouts.sql`.
 
+5. **`kb-folders/` + `kb-folders-pre/`** — knowledge base folders (2026-09). `kb-folders-pre/` holds snapshots of the KB workflows + studio-message taken before the change. `kb-folders/*.js` are the Code-node sources, `deploy_kb.py` builds/deploys (`--dry-run`, `new` for the three new workflows, `existing` for upload/delete/studio-message), and `workflow-ids.json` records the new workflow ids. Details: `../knowledge-base.md`.
+
 ## Deploy workflow (how to edit a Code node safely)
 
 ```bash

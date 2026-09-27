@@ -1,0 +1,334 @@
+{
+ "id": "hmMoelKHvso4LOBb",
+ "name": "knowledge-base-extract-text",
+ "description": null,
+ "active": true,
+ "activeVersionId": "2dfab128-27da-456f-a04f-f1398d9bd850",
+ "createdAt": "2025-12-16T12:23:00.338Z",
+ "updatedAt": "2026-01-03T20:53:26.319Z",
+ "isArchived": false,
+ "versionId": "2dfab128-27da-456f-a04f-f1398d9bd850",
+ "versionCounter": 145,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "value": "dbf8RGXgL1Up2KzF",
+     "mode": "list",
+     "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+     "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "13e8513a-7e19-4e53-9084-4eaefde011af",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -560,
+    -144
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "knowledge-base-extract-text",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2.1,
+   "position": [
+    -848,
+    -64
+   ],
+   "id": "496c29e5-b2e3-456d-aabd-00667289e0d2",
+   "name": "Webhook",
+   "webhookId": "5a9efc77-550d-4ffc-ba60-8f44c575b715"
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={\n  \"success\": \"true\",\n  \"text\":{{ $json.text.toJsonString() ?? \"\" }}\n}",
+    "options": {
+     "responseCode": 200
+    }
+   },
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.4,
+   "position": [
+    32,
+    -160
+   ],
+   "id": "8b5ba086-c3cf-4a11-a8e8-b7ab912220aa",
+   "name": "Respond to Webhook"
+  },
+  {
+   "parameters": {
+    "operation": "pdf",
+    "binaryPropertyName": "={{ $('Webhook').item.binary.file }}",
+    "options": {
+     "maxPages": 5
+    }
+   },
+   "type": "n8n-nodes-base.extractFromFile",
+   "typeVersion": 1.1,
+   "position": [
+    -256,
+    -160
+   ],
+   "id": "f6d16964-84bc-4ce7-8d7e-18d20928be6e",
+   "name": "Extract from File"
+  }
+ ],
+ "connections": {
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "Extract from File",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Extract from File": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "hmMoelKHvso4LOBb",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2025-12-16T12:23:00.338Z",
+   "updatedAt": "2025-12-16T12:23:00.338Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "2dfab128-27da-456f-a04f-f1398d9bd850",
+  "workflowId": "hmMoelKHvso4LOBb",
+  "nodes": [
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "value": "dbf8RGXgL1Up2KzF",
+      "mode": "list",
+      "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+      "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "13e8513a-7e19-4e53-9084-4eaefde011af",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -560,
+     -144
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "httpMethod": "POST",
+     "path": "knowledge-base-extract-text",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 2.1,
+    "position": [
+     -848,
+     -64
+    ],
+    "id": "496c29e5-b2e3-456d-aabd-00667289e0d2",
+    "name": "Webhook",
+    "webhookId": "5a9efc77-550d-4ffc-ba60-8f44c575b715"
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "={\n  \"success\": \"true\",\n  \"text\":{{ $json.text.toJsonString() ?? \"\" }}\n}",
+     "options": {
+      "responseCode": 200
+     }
+    },
+    "type": "n8n-nodes-base.respondToWebhook",
+    "typeVersion": 1.4,
+    "position": [
+     32,
+     -160
+    ],
+    "id": "8b5ba086-c3cf-4a11-a8e8-b7ab912220aa",
+    "name": "Respond to Webhook"
+   },
+   {
+    "parameters": {
+     "operation": "pdf",
+     "binaryPropertyName": "={{ $('Webhook').item.binary.file }}",
+     "options": {
+      "maxPages": 5
+     }
+    },
+    "type": "n8n-nodes-base.extractFromFile",
+    "typeVersion": 1.1,
+    "position": [
+     -256,
+     -160
+    ],
+    "id": "f6d16964-84bc-4ce7-8d7e-18d20928be6e",
+    "name": "Extract from File"
+   }
+  ],
+  "connections": {
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "Extract from File",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Extract from File": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-01-03T20:53:26.323Z",
+  "updatedAt": "2026-01-03T20:53:26.323Z",
+  "workflowPublishHistory": [
+   {
+    "id": 312,
+    "workflowId": "hmMoelKHvso4LOBb",
+    "versionId": "2dfab128-27da-456f-a04f-f1398d9bd850",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-01-03T20:53:26.399Z"
+   }
+  ]
+ }
+}

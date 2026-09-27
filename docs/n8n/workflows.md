@@ -92,12 +92,17 @@ See [radar.md](./radar.md) for the full pipeline (sweep / concepter / researcher
 
 | Webhook | Method | Console Route | Purpose |
 |---------|--------|---------------|---------|
-| `/webhook/knowledge-base-list` | GET | `/api/knowledge-base/documents` | List KB documents |
-| `/webhook/knowledge-base-upload` | POST | `/api/knowledge-base/upload` | Upload document to KB |
-| `/webhook/knowledge-base-delete` | DELETE | `/api/knowledge-base/documents/[id]` | Delete KB document |
+| `/webhook/knowledge-base-documents` | GET | `/api/knowledge-base/library` | Documents + the user's folders (KB page) |
+| `/webhook/knowledge-base-folders` | GET/POST | `/api/knowledge-base/folders` | List / create / rename / delete folders |
+| `/webhook/knowledge-base-move` | POST | `/api/knowledge-base/move` | Move documents to a folder |
+| `/webhook/knowledge-base-list` | GET | `/api/knowledge-base/documents` | (legacy, LiveChat) List KB documents |
+| `/webhook/knowledge-base-upload` | POST | `/api/knowledge-base/upload` | Upload PDF (or Word, converted to text by the console) with folder |
+| `/webhook/knowledge-base-delete` | DELETE | `/api/knowledge-base/documents/[id]` | Delete own KB document (all chunks) |
 | `/webhook/knowledge-base-analyze` | POST | `/api/knowledge-base/analyze` | Analyze document |
 | `/webhook/knowledge-base-extract-text` | POST | `/api/knowledge-base/extract-text` | Extract text from file |
-| `/webhook/knowledge-base-live` | GET | `/api/knowledge-base/live` | Live KB updates |
+| `/webhook/knowledge-base-live` | POST | `/api/knowledge-base/live` | (legacy, inactive) Live KB chat |
+
+Full KB detail (tenants, folders, Studio filter): [knowledge-base.md](./knowledge-base.md).
 
 ### Data Sources (LinkedIn, Website)
 
