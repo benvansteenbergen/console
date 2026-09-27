@@ -1,5 +1,7 @@
 # Wingsuite Console: Product Refocus Plan
 
+> **Status (2026-09-27):** Phases 1–3 shipped (`/profile`, `/studio`, `/library`). Phase 4 (legacy removal + redirects) has **not** been done — `/live`, `/create`, `/editor`, `/content` and their API routes are still live and linked. Deviations from this plan: draft marker is `===DRAFT===` (plus `===CHOICES===`), not `---DRAFT---`; Studio uses its own `studio-message` workflow rather than a branch in `live-message`; Radar was kept and grew into a main pillar (see `docs/n8n/radar.md`).
+
 ## Context
 
 Wingsuite has 7 paying customers acquired through agency partner Emotion. Usage is low (max once/week). The current product spreads across too many surfaces: dashboard with grids, form-based content creation, a separate editor, live chat with sandbox/planning modes, knowledge base management, LinkedIn/website data extraction, agent management, and content scheduling. None of these go deep enough to be indispensable. Users can get similar (or better) results by talking to ChatGPT directly.
@@ -628,4 +630,4 @@ New workflows are safe — they don't affect existing functionality until the co
 ---
 
 *Created: 2026-05-09*
-*Status: Awaiting approval for Phase 1 execution*
+*Status: Phases 1–3 shipped, Phase 4 open (see top)*

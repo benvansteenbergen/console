@@ -14,6 +14,37 @@ All webhooks called from the Next.js console, organized by category.
 | `/webhook/portal-usage` | GET | `/api/credits` | Get credit usage stats |
 | `/webhook/portal-settings` | GET | `/api/settings` | Get user/client settings |
 
+### Company Profile
+
+| Webhook | Method | Console Route | Purpose |
+|---------|--------|---------------|---------|
+| `/webhook/company-profile` | GET/PUT | `/api/company-profile` | Fetch / save profile summary + status |
+| `/webhook/company-profile-interview` | POST | `/api/company-profile/interview` | AI brand interview turn |
+| `/webhook/website-scan` | GET/POST | `/api/company-profile/scan` | Website scan + recommendations |
+
+### Content Studio
+
+| Webhook | Method | Console Route | Purpose |
+|---------|--------|---------------|---------|
+| `/webhook/studio-message` | POST | `/api/studio/message` | Studio AI turn |
+| `/webhook/studio-save` | POST | `/api/studio/save` | Save draft to Google Drive |
+| `/webhook/studio-conversations` | GET | `/api/studio/conversations` | List studio conversations |
+| `/webhook/studio-formats` | GET | `/api/studio/formats` | Content format templates |
+
+### Radar
+
+See [radar.md](./radar.md) for the full pipeline (sweep / concepter / researcher / digest are cron or sub-workflows).
+
+| Webhook | Method | Console Route | Purpose |
+|---------|--------|---------------|---------|
+| `/webhook/radar-scout` | POST | `/api/radar/scout` | Scout chat + source curation |
+| `/webhook/radar-sources-list` | GET | `/api/radar/sources` | List sources |
+| `/webhook/radar-source-action` | POST | `/api/radar/sources/action` | Follow / drop / naylist |
+| `/webhook/radar-concepts-list` | GET | `/api/radar/concepts` | List concepts |
+| `/webhook/radar-concept-action` | POST | `/api/radar/concepts/action` | Save / drop / mark-seen |
+| `/webhook/radar-priorities` | GET/PUT | `/api/radar/priorities` | Priorities doc |
+| `/webhook/radar-digest-pref` | GET/POST | `/api/radar/digest` | Weekly digest opt-out |
+
 ### Agents & Content Types
 
 | Webhook | Method | Console Route | Purpose |
@@ -21,7 +52,7 @@ All webhooks called from the Next.js console, organized by category.
 | `/webhook/portal-agents` | GET | `/api/content-writers`, `/api/content-forms`, `/api/portal-agents` | List available agents |
 | `/webhook/portal-automations` | GET | `/api/content-automations` | List automation agents |
 | `/webhook/content-formats` | GET | `/api/content-formats` | List content format options |
-| `/webhook/toggle-agent-enabled` | POST | `/api/admin/toggle-agent` | Enable/disable agent |
+| `/webhook/toggle-agent-enabled` | POST | `/api/settings/toggle-agent` | Enable/disable agent |
 
 ### Google Drive Operations
 
@@ -34,13 +65,13 @@ All webhooks called from the Next.js console, organized by category.
 | `/webhook/create-folder` | POST | `/api/create-folder` | Create new folder |
 | `/webhook/delete-document` | POST | `/api/delete-document` | Delete document |
 
-### Content Scheduling
+### Content Scheduling (legacy)
 
 | Webhook | Method | Console Route | Purpose |
 |---------|--------|---------------|---------|
 | `/webhook/content-sessions` | GET | `/api/content-sessions` | List pending content sessions (queries `live_conversations WHERE status = 'pending'`) |
 
-### Live Chat / Conversations
+### Live Chat / Conversations (legacy)
 
 | Webhook | Method | Console Route | Purpose |
 |---------|--------|---------------|---------|

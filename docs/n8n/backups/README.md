@@ -6,6 +6,7 @@ This folder holds two things for the n8n workflows we edit from the console repo
    - `radar-scout-20260608-211907.json` — pre-rework Scout
    - `radar-sweep-20260608-213841.json` — pre-rework sweep ingestion
    - `studio-message-20260608-203633.json` — pre-edit Studio prompt
+   - `sweep/radar-sweep-backup-2026-09-08.json` — sweep snapshot 2026-09-08
 
 2. **Editable node sources** — `scout/` and `sweep/`: the Code-node JS and the agent system prompt as plain files, plus an `assemble.py`. These are the **source of truth** for what those Code nodes currently run.
 
