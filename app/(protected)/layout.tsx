@@ -4,6 +4,7 @@ import { SessionProvider } from '@/components/SessionProvider';
 import { NavigationProgressProvider } from '@/components/NavigationProgress';
 import Sidebar from "@/components/Sidebar";
 import AuthGate from "@/components/AuthGate";
+import VersionBadge from "@/components/VersionBadge";
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
     return (
@@ -18,6 +19,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
                         {/* main scrollable area */}
                         <main className="flex-1 overflow-auto md:ml-10">{children}</main>
                     </div>
+                    <VersionBadge />
                 </NavigationProgressProvider>
             </AuthGate>
         </SessionProvider>
