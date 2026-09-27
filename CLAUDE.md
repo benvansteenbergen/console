@@ -768,6 +768,17 @@ The studio AI uses text markers in its output that the frontend parses and rende
 - **Dedupe sources by URL, not name.** A site can legitimately appear several times with different URLs (business vs consumer, two products each with a blog). Only identical normalised URLs are true duplicates.
 - **Ingestion (`radar-sweep`):** RSS/Atom autodiscovery first; fall back to **Jina Reader** (`https://r.jina.ai/<url>`) for JS-rendered / no-RSS / blocked pages. Parse RSS 2.0 + Atom + RDF + sitemap; from Jina markdown extract same-site, article-shaped links. Reuse one HTTP node as the generic fetcher (timeout ≥30 s for Jina). Avoid em/en-dashes in agent prompts — they are an AI tell.
 
+#### Weaviate + knowledge base gotchas (learned 2026-09-27)
+
+- **`searchFilterJson` on `vectorStoreWeaviate` v1.3:** when there is no filter the expression must evaluate to **`undefined`** (`... ? filter.toJsonString() : undefined`). `"{}"` crashes the node ("Cannot read properties of undefined (reading '0')") and `''` fails validation ("Invalid input for field 'Search Filters'"). This broke all Studio KB searches for a moment.
+- **n8n's Weaviate filter format** is its own: a single `{path, operator, valueString}` or `{OR: [...]}` / `{AND: [...]}`. **`NotEqual` is not supported** ("Unsupported operator"). `Equal` on uuid properties (`document_id`, `uploaded_by`) works with `valueString`.
+- **Weaviate 1.39 MMR (diversity) and Boost are gRPC-only.** GraphQL/REST (what n8n can call) support hybrid search but not those; `kb-search-v2` does recency + MMR in a Code node instead.
+- **Weaviate REST/GraphQL from n8n:** HTTP node with credential `Bearer Auth account` (`ZQNh2zCdoMHYMOyC`). The vector-store nodes use `Weaviate Credentials (document-store)` (`lI7IxbqgzQDQr8Tv`). The key exists nowhere else, so schema changes go through an n8n HTTP node.
+- **Filtering on a property that doesn't exist errors**; add new properties to class `Documents` first (`POST /v1/schema/Documents/properties`). PATCHing a chunk's properties keeps its vector.
+- **Test node behaviour on the real node** before relying on it: a throwaway run with the exact expression + a stand-in `Build Prompt` Code node caught both filter bugs above.
+- **Sub-workflows must be active ("published")** before a workflow that calls them can be activated.
+- **The n8n API key cannot delete workflows** (403). Reuse one scratch workflow instead of creating throwaway ones; Ben deletes leftovers in the UI.
+
 #### Credentials
 
 | Credential | ID | Name |
@@ -992,4 +1003,4 @@ pnpm test:coverage     # Generate coverage report
 ---
 
 **This file is for machine agents to understand the project architecture and contribute safely.**
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-27 (Radar scouts, release notes, KB folders + Ask, search v2)*
