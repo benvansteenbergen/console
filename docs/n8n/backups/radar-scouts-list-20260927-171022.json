@@ -1,0 +1,430 @@
+{
+ "id": "ptpGArBVb6SoepAz",
+ "name": "radar-scouts-list",
+ "description": null,
+ "active": true,
+ "activeVersionId": "e0810afb-f18c-40c7-8ccb-e4093777e1a9",
+ "createdAt": "2026-09-27T14:46:02.690Z",
+ "updatedAt": "2026-09-27T14:46:03.061Z",
+ "isArchived": false,
+ "versionId": "e0810afb-f18c-40c7-8ccb-e4093777e1a9",
+ "versionCounter": 1,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "GET",
+    "path": "radar-scouts-list",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "id": "e5793ff0-314c-44be-9cd9-e771bf877ffa",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "position": [
+    -416,
+    96
+   ],
+   "webhookId": "f55c5887-2a27-437c-9d46-b369cbde35f3",
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "value": "dbf8RGXgL1Up2KzF",
+     "mode": "list",
+     "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+     "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "dae3b7b7-ba92-4dc5-afad-eb1ab4a992cb",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -208,
+    96
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "{\n  \"valid\": \"false\"\n}",
+    "options": {}
+   },
+   "id": "7275a9c3-5a7f-47c6-9cf1-2ad87823a52e",
+   "name": "Respond to Webhook (Error)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    0,
+    176
+   ],
+   "typeVersion": 1.4
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT sc.id, sc.name, sc.status, sc.created_at, sc.updated_at,\n  (sc.priorities_markdown <> '') AS has_priorities,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'followed')::int AS sources_followed,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'proposed')::int AS sources_proposed,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'followed'\n     AND left(ltrim(COALESCE(s.notes, '')), 1) = '{' AND (s.notes::jsonb #>> '{health,status}') = 'failed')::int AS sources_failing,\n  (SELECT count(*) FROM radar_concepts c WHERE c.scout_id = sc.id AND c.status IN ('active', 'saved')\n     AND c.created_at > now() - interval '7 days')::int AS finds_week,\n  (SELECT max(c.created_at) FROM radar_concepts c WHERE c.scout_id = sc.id AND c.status IN ('active', 'saved')) AS last_find_at\nFROM radar_scouts sc\nWHERE sc.user_id = '{{ $json.user_id }}'::uuid AND sc.status <> 'archived'\nORDER BY sc.created_at",
+    "options": {}
+   },
+   "id": "62c59b98-3d52-466e-b72b-bd36d365bf82",
+   "name": "Query",
+   "type": "n8n-nodes-base.postgres",
+   "position": [
+    208,
+    0
+   ],
+   "typeVersion": 2.6,
+   "alwaysOutputData": true,
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const scouts = $input.all().map(function (i) { return i.json; }).filter(function (s) { return s.id; });\nreturn [{ json: { success: true, scouts: scouts } }];"
+   },
+   "id": "b50213c8-c73b-4c5c-a741-a9bd02ded2cb",
+   "name": "Format Response",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    416,
+    0
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "respondWith": "allIncomingItems",
+    "options": {}
+   },
+   "id": "6a581302-3a5f-4b14-82ae-9748ce545d26",
+   "name": "Respond to Webhook (Success)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    624,
+    0
+   ],
+   "typeVersion": 1.4
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "Query",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Respond to Webhook (Error)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Query": {
+   "main": [
+    [
+     {
+      "node": "Format Response",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Format Response": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook (Success)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": null,
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "ptpGArBVb6SoepAz",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-09-27T14:46:03.028Z",
+   "updatedAt": "2026-09-27T14:46:03.028Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "e0810afb-f18c-40c7-8ccb-e4093777e1a9",
+  "workflowId": "ptpGArBVb6SoepAz",
+  "nodes": [
+   {
+    "parameters": {
+     "httpMethod": "GET",
+     "path": "radar-scouts-list",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "id": "e5793ff0-314c-44be-9cd9-e771bf877ffa",
+    "name": "Webhook",
+    "type": "n8n-nodes-base.webhook",
+    "position": [
+     -416,
+     96
+    ],
+    "webhookId": "f55c5887-2a27-437c-9d46-b369cbde35f3",
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "value": "dbf8RGXgL1Up2KzF",
+      "mode": "list",
+      "cachedResultUrl": "/workflow/dbf8RGXgL1Up2KzF",
+      "cachedResultName": "Wingsuite Root Folder \u2014 jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "dae3b7b7-ba92-4dc5-afad-eb1ab4a992cb",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -208,
+     96
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "{\n  \"valid\": \"false\"\n}",
+     "options": {}
+    },
+    "id": "7275a9c3-5a7f-47c6-9cf1-2ad87823a52e",
+    "name": "Respond to Webhook (Error)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     0,
+     176
+    ],
+    "typeVersion": 1.4
+   },
+   {
+    "parameters": {
+     "operation": "executeQuery",
+     "query": "SELECT sc.id, sc.name, sc.status, sc.created_at, sc.updated_at,\n  (sc.priorities_markdown <> '') AS has_priorities,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'followed')::int AS sources_followed,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'proposed')::int AS sources_proposed,\n  (SELECT count(*) FROM radar_sources s WHERE s.scout_id = sc.id AND s.status = 'followed'\n     AND left(ltrim(COALESCE(s.notes, '')), 1) = '{' AND (s.notes::jsonb #>> '{health,status}') = 'failed')::int AS sources_failing,\n  (SELECT count(*) FROM radar_concepts c WHERE c.scout_id = sc.id AND c.status IN ('active', 'saved')\n     AND c.created_at > now() - interval '7 days')::int AS finds_week,\n  (SELECT max(c.created_at) FROM radar_concepts c WHERE c.scout_id = sc.id AND c.status IN ('active', 'saved')) AS last_find_at\nFROM radar_scouts sc\nWHERE sc.user_id = '{{ $json.user_id }}'::uuid AND sc.status <> 'archived'\nORDER BY sc.created_at",
+     "options": {}
+    },
+    "id": "62c59b98-3d52-466e-b72b-bd36d365bf82",
+    "name": "Query",
+    "type": "n8n-nodes-base.postgres",
+    "position": [
+     208,
+     0
+    ],
+    "typeVersion": 2.6,
+    "alwaysOutputData": true,
+    "credentials": {
+     "postgres": {
+      "id": "HY5nJozYRhfP29Se",
+      "name": "Postgres account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "jsCode": "const scouts = $input.all().map(function (i) { return i.json; }).filter(function (s) { return s.id; });\nreturn [{ json: { success: true, scouts: scouts } }];"
+    },
+    "id": "b50213c8-c73b-4c5c-a741-a9bd02ded2cb",
+    "name": "Format Response",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     416,
+     0
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "respondWith": "allIncomingItems",
+     "options": {}
+    },
+    "id": "6a581302-3a5f-4b14-82ae-9748ce545d26",
+    "name": "Respond to Webhook (Success)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     624,
+     0
+    ],
+    "typeVersion": 1.4
+   }
+  ],
+  "connections": {
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "Query",
+       "type": "main",
+       "index": 0
+      }
+     ],
+     [
+      {
+       "node": "Respond to Webhook (Error)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Query": {
+    "main": [
+     [
+      {
+       "node": "Format Response",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Format Response": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook (Success)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-09-27T14:46:02.690Z",
+  "updatedAt": "2026-09-27T14:46:02.690Z",
+  "workflowPublishHistory": [
+   {
+    "id": 1294,
+    "workflowId": "ptpGArBVb6SoepAz",
+    "versionId": "e0810afb-f18c-40c7-8ccb-e4093777e1a9",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-09-27T14:46:03.448Z"
+   }
+  ]
+ }
+}
