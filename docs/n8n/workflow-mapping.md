@@ -21,7 +21,7 @@ This document maps console API routes → n8n webhooks → n8n workflow names, p
 | `/api/portal-agents` | `portal-agents` | portal-agents | webhook, postgres, respondToWebhook |
 | `/api/content-automations` | `portal-automations` | portal-automations | webhook, postgres, respondToWebhook |
 | `/api/content-formats` | `content-formats` | content-formats | webhook, googleDrive, code, respondToWebhook |
-| `/api/admin/toggle-agent` | `toggle-agent-enabled` | toggle-agent | webhook, postgres, respondToWebhook |
+| `/api/settings/toggle-agent` | `toggle-agent-enabled` | toggle-agent | webhook, postgres, respondToWebhook |
 
 ### Google Drive Operations
 

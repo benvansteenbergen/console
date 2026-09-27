@@ -65,112 +65,91 @@ pnpm test:coverage   # Run tests with coverage report
 
 ## File Structure
 
+> **Product state:** the refocus (see `docs/PRODUCT_REFOCUS_PLAN.md`) shipped the new pillars (**Profile, Studio, Library, Radar**) but legacy surfaces were never removed (Phase 4). Items marked *(legacy)* are still live and linked from the sidebar; don't extend them without asking.
+
 ```
 console/
 ├── .husky/                    # Git hooks (pre-commit, etc.)
-├── adr/                       # Architecture Decision Records
 ├── docs/                      # Detailed documentation
 │   ├── OVERVIEW.md            # Project overview
-│   ├── RATE_LIMITING.md       # Rate limiting documentation
-│   ├── N8N_LIVE_CHAT_INTEGRATION.md  # Chat integration guide
+│   ├── PRODUCT_REFOCUS_PLAN.md # 3-pillar refocus plan (Phases 1–3 shipped)
+│   ├── RATE_LIMITING.md       # Rate limiting options
+│   ├── design/                # Design briefs (interview screen)
+│   ├── archive/               # Historical docs, NOT current state
 │   └── n8n/                   # n8n integration docs
 │       ├── README.md          # Integration overview
 │       ├── database-schema.md # PostgreSQL table definitions
-│       ├── workflow-mapping.md# Workflow mapping
-│       ├── workflows.md       # Key n8n workflow documentation
-│       └── scheduler-agent-prompt.md # Scheduler agent system prompt & tool def
+│       ├── workflow-mapping.md# Console route → webhook → workflow
+│       ├── workflows.md       # Webhook reference
+│       ├── radar.md           # Radar pipeline (deployed state)
+│       ├── queue-mode-setup.md + railway/ # n8n queue-mode runbook
+│       ├── scheduler-agent-prompt.md # Scheduler agent system prompt & tool def
+│       └── backups/           # Workflow rollback snapshots + editable Code-node sources
 ├── app/                       # Next.js 15 App Router
-│   ├── (public)/              # Unauthenticated routes
-│   │   └── login/             # Login page with branding
+│   ├── (public)/login/        # Login page with branding
 │   ├── (protected)/           # Authenticated routes (requires SessionProvider)
-│   │   ├── dashboard/         # User home: credits, agents, content tiles
-│   │   ├── content/[...path]/ # Google Drive folder navigation (nested subfolders)
-│   │   ├── editor/[fileId]/   # Document editor with DocCanvas + ChatPane
-│   │   ├── live/              # LiveChat AI assistant page
-│   │   ├── settings/          # Settings hub
-│   │   │   └── agents/        # Agent management (toggle on/off)
+│   │   ├── dashboard/         # User home
+│   │   ├── profile/           # Company profile: brand interview / identity view / website scan
+│   │   ├── studio/            # Content Studio (template picker + conversation + DraftCard)
+│   │   ├── library/           # Content Library (Drive output browser)
+│   │   ├── radar/             # Radar feed (+ scout/, sources/, components/)
 │   │   ├── company-private-storage/ # Knowledge base document uploads
-│   │   └── create/[type]/     # Workflow creation flow (form → progress)
-│   │       ├── page.tsx       # Form iframe embed
-│   │       └── progress/      # JourneyCard polling view
-│   ├── api/                   # API Routes (~44 endpoints)
+│   │   ├── settings/          # Settings (+ agents/ legacy)
+│   │   ├── live/              # (legacy) LiveChat
+│   │   ├── content/[...path]/ # (legacy) Drive folder navigation
+│   │   ├── editor/[fileId]/   # (legacy) DocCanvas + ChatPane editor
+│   │   └── create/[type]/     # (legacy) form iframe → progress (JourneyCard)
+│   ├── api/                   # API Routes (~57 endpoints)
 │   │   ├── auth/              # login, logout, me
-│   │   ├── chat/              # POST: AI chat streaming
+│   │   ├── company-profile/   # GET/PUT profile, interview (POST), scan (GET/POST website scan)
+│   │   ├── studio/            # message, save, conversations, formats
+│   │   ├── radar/             # scout, concepts(+action), sources(+action), priorities, digest
 │   │   ├── credits/           # GET: usage stats
-│   │   ├── content-sessions/  # GET: pending content sessions from scheduler
 │   │   ├── content-storage/   # GET: Google Drive files by folder
-│   │   ├── content-forms/     # GET: available form types
-│   │   ├── content-formats/   # GET: available content formats
-│   │   ├── content-writers/   # GET: available writer agents
-│   │   ├── content-automations/ # GET: available automation agents
-│   │   ├── create-folder/     # POST: create Drive folder
-│   │   ├── delete-document/   # POST: delete Drive document
-│   │   ├── move-file/         # POST: move file between folders
 │   │   ├── drive/             # file (GET), commit (POST)
-│   │   ├── datasources/       # LinkedIn & website data extraction (8 routes)
+│   │   ├── create-folder/ delete-document/ move-file/  # Drive operations
 │   │   ├── knowledge-base/    # Weaviate KB: upload, analyze, documents, extract-text, live
-│   │   ├── live/              # LiveChat: conversations, messages, brief, archive, production, assistant-profile, unread-count
-│   │   ├── live-executions/   # Execution tracking: list, [id] detail
-│   │   ├── portal-agents/     # GET: list available agents
 │   │   ├── settings/          # GET settings, POST toggle-agent
-│   │   └── tone-of-voice/     # GET: tone of voice settings
+│   │   ├── live/              # (legacy) LiveChat: conversations, messages, brief, archive, production, assistant-profile, unread-count, mark-read
+│   │   ├── live-executions/   # (legacy) execution tracking for JourneyCard
+│   │   ├── chat/              # (legacy) editor AI chat
+│   │   ├── content-sessions/  # (legacy) pending scheduler sessions
+│   │   ├── content-forms/ content-formats/ content-writers/ content-automations/ portal-agents/  # (legacy) agent/form lists
+│   │   ├── datasources/       # (legacy) LinkedIn & website extraction (8 routes)
+│   │   └── tone-of-voice/     # (legacy)
 │   ├── layout.tsx             # Root layout with BrandingProvider
 │   ├── error.tsx              # Error boundary
 │   └── global-error.tsx       # Global error handler
 ├── components/
-│   ├── ui/                    # Reusable UI primitives
-│   │   ├── button.tsx
-│   │   ├── separator.tsx
-│   │   ├── textarea.tsx
-│   │   ├── close-window-button.tsx
-│   │   └── PageLoader.tsx     # Full-page loading state
-│   ├── Agents/                # Agent grid display components
-│   │   ├── ContentwriterGrid.tsx
-│   │   ├── ContentformGrid.tsx
-│   │   └── ContentautomationGrid.tsx
-│   ├── editor/                # Editor-specific components
-│   │   ├── DocCanvas.tsx      # Markdown renderer with diff preview
-│   │   └── ChatPane.tsx       # AI chat sidebar for document editing
+│   ├── ui/                    # Reusable UI primitives (button, separator, textarea, close-window-button, PageLoader)
+│   ├── studio/                # TemplatePicker, DraftCard, StudioHistory
+│   ├── library/               # ContentPreview
+│   ├── ContentStudio.tsx      # Studio core
+│   ├── LibraryView.tsx        # Library grid + filters
+│   ├── BrandInterview.tsx     # Company profile interview
+│   ├── BrandIdentityView.tsx  # Completed profile view
+│   ├── WebsiteScanView.tsx    # Website scan results
+│   ├── RadarBanner.tsx        # Dashboard banner for new Radar concepts
 │   ├── SessionProvider.tsx    # Client context for auth state (SWR)
 │   ├── BrandingProvider.tsx   # Client context for multi-brand theming
 │   ├── AuthGate.tsx           # Protected route wrapper
-│   ├── Sidebar.tsx            # Main navigation sidebar with collapsible sections
-│   ├── JourneyCard.tsx        # Animated workflow trace timeline
-│   ├── ContentSessionBanner.tsx # Dashboard banner for pending content sessions
-│   ├── FolderGrid.tsx         # Google Drive thumbnail grid with delete/move/dates
-│   ├── LiveChat.tsx           # Full-featured AI chat interface (supports deep-linking)
-│   ├── DocumentLibrary.tsx    # Knowledge base document list with cluster organization
+│   ├── Sidebar.tsx            # Main navigation
+│   ├── DocumentLibrary.tsx    # KB document list with cluster organization
 │   ├── KnowledgeBaseOverview.tsx # KB quality overview by cluster
-│   ├── CreateFolderButton.tsx # Folder creation modal
+│   ├── FolderGrid.tsx         # Drive thumbnail grid with delete/move/dates
 │   ├── NavigationProgress.tsx # Page transition progress bar
 │   ├── ErrorBoundary.tsx      # React error boundary component
-│   └── GlassLoader.tsx        # Animated loading overlay
+│   ├── GlassLoader.tsx        # Animated loading overlay
+│   └── (legacy) LiveChat.tsx, ContentSessionBanner.tsx, JourneyCard.tsx, CreateFolderButton.tsx, Agents/, editor/
 ├── lib/
 │   ├── branding.ts            # Brand detection and config (wingsuite, emotion)
 │   ├── utils.ts               # Utility functions (cn for Tailwind merge)
 │   ├── api-utils.ts           # API helpers (safeJsonParse, fetchFromN8n)
 │   └── contentFormatQuestions.ts # Content format questionnaire configurations
 ├── middleware.ts              # Edge middleware for session-based route protection
-├── tests/                     # Vitest test files
-│   ├── smoke.test.ts
-│   ├── api/
-│   │   ├── auth-me.test.ts
-│   │   ├── credits.test.ts
-│   │   └── content-storage.test.ts
-│   └── lib/
-│       ├── branding.test.ts
-│       └── utils.test.ts
-├── public/
-│   ├── wingsuite/             # Wingsuite brand assets
-│   ├── emotion/               # AI Motion brand assets
-│   └── forms/                 # Static form assets
-├── package.json
-├── tsconfig.json              # TypeScript config (strict: true)
-├── next.config.js             # Next.js configuration
-├── vitest.config.mts          # Vitest configuration
-├── tailwind.config.js         # Tailwind CSS configuration
-├── eslint.config.mjs          # ESLint configuration
-├── postcss.config.js          # PostCSS configuration
+├── tests/                     # Vitest: smoke, api/{auth-me,credits,content-storage}, lib/{branding,utils}
+├── public/                    # Brand assets (wingsuite/, emotion/), forms/
+├── AGENTS.md                  # Pointer to this file for non-Claude agents
 └── CLAUDE.md                  # This file
 ```
 
@@ -191,7 +170,7 @@ console/
 - **File:** `middleware.ts`
 - Checks for `session` cookie on protected routes
 - Redirects to `/login?returnTo={originalPath}` if missing (preserves deep-links)
-- **Protected routes:** `/dashboard/*`, `/editor/*`, `/content/*`, `/live/*`, `/settings/*`, `/create/*`, `/company-private-storage/*`
+- **Protected routes:** `/dashboard/*`, `/profile/*`, `/studio/*`, `/library/*`, `/radar/*`, `/settings/*`, `/company-private-storage/*`, plus legacy `/editor/*`, `/content/*`, `/live/*`, `/create/*`
 
 #### Deep-Link Support
 - Middleware passes `returnTo` query param to login page when redirecting unauthenticated users
@@ -217,9 +196,9 @@ interface SessionData {
 const { loading, unauth, data } = useSession();
 ```
 
-### LiveChat System
+### LiveChat System (legacy)
 
-The primary AI interaction surface. Users have conversations with an AI assistant that can access the knowledge base.
+The original AI interaction surface, superseded by Content Studio but still live. Users have conversations with an AI assistant that can access the knowledge base.
 
 - **Component:** `components/LiveChat.tsx`
 - **Modes:** `sandbox` (free chat) and `planning` (structured content creation)
@@ -236,7 +215,7 @@ The primary AI interaction surface. Users have conversations with an AI assistan
   - Conversation archive and unread counts
   - Production workflow for generating final content
 
-### Content Scheduling
+### Content Scheduling (legacy)
 
 Automated content scheduling cycle powered by an n8n planner agent.
 
@@ -300,7 +279,7 @@ LinkedIn and website data extraction for AI personalization.
 
 ### Radar (Content Discovery)
 
-A twice-daily scanning system: it watches user-curated sources, filters new articles against the user's priorities, and surfaces editorial concepts with fact-checks. *(Added after this file's original draft — full detail in `docs/n8n/radar.md`.)*
+A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it watches user-curated sources, filters new articles against the user's priorities, and surfaces editorial concepts with fact-checks. Full detail in `docs/n8n/radar.md`.
 
 - **Surface:** `app/(protected)/radar/` (single page, feed/scout toggle). API routes under `app/api/radar/*`.
 - **Scout** (`radar-scout`): an AI discovery chat that **stands on the company profile** (it consumes `profile_context`, no re-interview), runs 1–2 short refine turns (or "just go"), then curates a generous, independent-voice-biased source list with literal "Because you mentioned…" quotes. Sources land in `radar_sources` (status `proposed`); the user follows them. Vendor penalty hits resellers/agencies, **not** the primary maker/lab (OpenAI, Anthropic).
@@ -320,7 +299,33 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 | `/api/auth/logout` | POST | Clear session cookie |
 | `/api/auth/me` | GET | Validate session, return user info |
 
-### Content Sessions & Scheduling
+### Company Profile
+| Endpoint | Method | n8n webhook | Purpose |
+|----------|--------|-------------|---------|
+| `/api/company-profile` | GET, PUT | `company-profile` | Fetch / save profile summary + status |
+| `/api/company-profile/interview` | POST | `company-profile-interview` | AI brand interview turn |
+| `/api/company-profile/scan` | GET, POST | `website-scan` | Website scan (recommendations feed Radar Scout) |
+
+### Content Studio
+| Endpoint | Method | n8n webhook | Purpose |
+|----------|--------|-------------|---------|
+| `/api/studio/message` | POST | `studio-message` | Studio AI turn (`===DRAFT===` / `===CHOICES===` markers) |
+| `/api/studio/save` | POST | `studio-save` | Save draft as styled Google Doc |
+| `/api/studio/conversations` | GET | `studio-conversations` | List studio conversations |
+| `/api/studio/formats` | GET | `studio-formats` | Content format templates |
+
+### Radar
+| Endpoint | Method | n8n webhook | Purpose |
+|----------|--------|-------------|---------|
+| `/api/radar/scout` | POST | `radar-scout` | Scout discovery chat + source curation |
+| `/api/radar/sources` | GET | `radar-sources-list` | List sources by status (incl. health in `notes`) |
+| `/api/radar/sources/action` | POST | `radar-source-action` | Follow / drop / naylist a source |
+| `/api/radar/concepts` | GET | `radar-concepts-list` | List concepts (`active` / `saved`) |
+| `/api/radar/concepts/action` | POST | `radar-concept-action` | Save / drop / mark-seen a concept |
+| `/api/radar/priorities` | GET, PUT | `radar-priorities` | Read/write the priorities doc |
+| `/api/radar/digest` | GET, PUT | `radar-digest-pref` | Weekly digest opt-out flag |
+
+### Content Sessions & Scheduling (legacy)
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/content-sessions` | GET | List pending content sessions (from scheduler) |
@@ -329,17 +334,17 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/content-storage` | GET | List Drive files by folder |
-| `/api/content-forms` | GET | Available form types |
-| `/api/content-formats` | GET | Available content formats |
-| `/api/content-writers` | GET | Available writer agents |
-| `/api/content-automations` | GET | Available automation agents |
+| `/api/content-forms` | GET | (legacy) Available form types |
+| `/api/content-formats` | GET | (legacy) Available content formats |
+| `/api/content-writers` | GET | (legacy) Available writer agents |
+| `/api/content-automations` | GET | (legacy) Available automation agents |
 | `/api/create-folder` | POST | Create new Drive folder |
 | `/api/delete-document` | POST | Delete Drive document |
 | `/api/move-file` | POST | Move file between folders |
 | `/api/drive/file` | GET | Fetch single Drive file metadata |
 | `/api/drive/commit` | POST | Commit document changes |
 
-### LiveChat
+### LiveChat (legacy)
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/live/conversations` | GET | List conversations |
@@ -361,7 +366,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 | `/api/knowledge-base/documents/[id]` | DELETE | Delete specific document |
 | `/api/knowledge-base/live` | POST | Live knowledge base operations |
 
-### Data Sources
+### Data Sources (legacy)
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/datasources/linkedin-profile` | GET | Get LinkedIn profile data |
@@ -378,22 +383,34 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 |----------|--------|---------|
 | `/api/settings` | GET | Get user settings |
 | `/api/settings/toggle-agent` | POST | Toggle agent on/off |
-| `/api/portal-agents` | GET | List available agents |
-| `/api/tone-of-voice` | GET | Get tone of voice settings |
+| `/api/portal-agents` | GET | (legacy) List available agents |
+| `/api/tone-of-voice` | GET | (legacy) Get tone of voice settings |
 
 ### Other
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/credits` | GET | Fetch credit usage stats |
-| `/api/chat` | POST | AI chat streaming (editor) |
-| `/api/live-executions` | GET | List recent executions |
-| `/api/live-executions/[id]` | GET | Get execution trace with customData |
+| `/api/chat` | POST | (legacy) AI chat for the editor |
+| `/api/live-executions` | GET | (legacy) List recent executions |
+| `/api/live-executions/[id]` | GET | (legacy) Get execution trace with customData |
 
 ---
 
 ## Key Components
 
-### ContentSessionBanner
+### ContentStudio
+- **File:** `components/ContentStudio.tsx` (+ `components/studio/`)
+- **Purpose:** The daily content-creation tool — template picker → conversation → draft
+- **Features:**
+  - Parses `===DRAFT===` into a `DraftCard` (Copy / Save to Drive / Refine) and `===CHOICES===` into buttons (`|`-delimited)
+  - `useKnowledgeBase` / `usePersonalVoice` toggles passed to `studio-message` (both default `true`)
+  - Save shows an inline "Open in Drive" link (no `window.open` after `await` — popup-blocked)
+
+### Radar UI
+- **Files:** `app/(protected)/radar/` (`page.tsx`, `scout/`, `sources/`, `components/`), `components/RadarBanner.tsx`
+- **Purpose:** Feed of concepts, Scout chat, source management. `?concept=<id>` deep-link opens `RadarConceptOverlay` (falls back to `status=saved`). See `docs/n8n/radar.md`.
+
+### ContentSessionBanner (legacy)
 - **File:** `components/ContentSessionBanner.tsx`
 - **Purpose:** Dashboard banner for pending content gathering sessions
 - **Features:**
@@ -402,7 +419,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
   - Links to `/live?conversation={id}` for deep-linking
   - Returns `null` when no sessions (graceful degradation)
 
-### LiveChat
+### LiveChat (legacy)
 - **File:** `components/LiveChat.tsx`
 - **Purpose:** Full-featured AI conversation interface
 - **Features:**
@@ -415,7 +432,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
   - Deep-linking via `?conversation={id}` URL parameter
   - Streaming responses with ReactMarkdown rendering
 
-### DocCanvas
+### DocCanvas (legacy)
 - **File:** `components/editor/DocCanvas.tsx`
 - **Purpose:** Markdown document viewer with diff preview
 - **Features:**
@@ -424,7 +441,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
   - Preview mode for suggested edits (yellow highlights)
   - Loading overlay with spinner
 
-### ChatPane
+### ChatPane (legacy)
 - **File:** `components/editor/ChatPane.tsx`
 - **Purpose:** AI-powered document editing assistant
 - **Features:**
@@ -444,7 +461,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
   - Subfolder navigation support (folderId + parentFolderId)
   - Delete and move file operations
 
-### JourneyCard
+### JourneyCard (legacy)
 - **File:** `components/JourneyCard.tsx`
 - **Purpose:** Animated workflow execution timeline
 - **Features:**
@@ -555,7 +572,7 @@ A twice-daily scanning system: it watches user-curated sources, filters new arti
 > - `docs/n8n/workflow-mapping.md` - Workflow mapping
 > - `docs/n8n/workflows.md` - Key workflow documentation
 > - `docs/n8n/scheduler-agent-prompt.md` - Scheduler agent system prompt & tool definition
-> - `docs/N8N_LIVE_CHAT_INTEGRATION.md` - LiveChat integration guide
+> - `docs/n8n/radar.md` - Radar pipeline (deployed state)
 
 ### Authentication Header Pattern
 All API routes pass JWT to n8n using the helper in `lib/api-utils.ts`:
@@ -934,7 +951,7 @@ pnpm test:coverage     # Generate coverage report
 ## Additional Resources
 
 ### Internal Documentation
-- **ADR folder:** `/adr/` contains Architecture Decision Records
+- **Archive:** `docs/archive/` holds historical docs (not current state)
 - **Docs folder:** `/docs/` contains integration guides and schema docs
 - **Package.json:** See `scripts` section for available commands
 
@@ -947,4 +964,4 @@ pnpm test:coverage     # Generate coverage report
 ---
 
 **This file is for machine agents to understand the project architecture and contribute safely.**
-*Last updated: 2026-06-08*
+*Last updated: 2026-09-27*

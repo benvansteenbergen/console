@@ -1,5 +1,7 @@
 # Wingsuite Console — Overview
 
+> **Note (2026-09):** the "How It Works" flows below (forms → writer agents, Live Chat) are now *legacy*. The current product is Company Profile → Content Studio → Content Library, plus Radar. See `CLAUDE.md` and `docs/PRODUCT_REFOCUS_PLAN.md`.
+
 ## Purpose
 
 Wingsuite Console is a **white-label AI content platform** that enables marketing teams to generate, review, and manage content (blog posts, social media, newsletters) using AI agents. It serves multiple clients (Emotion, Wingsuite, Harper & Yve, etc.) from a single codebase with brand-specific theming.
@@ -145,3 +147,4 @@ The variability is at the **edges** (input forms + storage), the **core** (AI wr
 - [Database Schema](./n8n/database-schema.md) - PostgreSQL table definitions
 - [Workflows](./n8n/workflows.md) - Webhook reference and response formats
 - [Workflow Mapping](./n8n/workflow-mapping.md) - Console API → Webhook → Workflow mapping
+- [Radar](./n8n/radar.md) - Radar pipeline (deployed state)
