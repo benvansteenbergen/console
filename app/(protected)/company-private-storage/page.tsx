@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate as globalMutate } from 'swr';
-import { ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useBranding } from '@/components/BrandingProvider';
 import DocumentList from '@/components/knowledge-base/DocumentList';
 import FolderNav from '@/components/knowledge-base/FolderNav';
 import UploadPanel from '@/components/knowledge-base/UploadPanel';
+import AskPanel, { type AskScope } from '@/components/knowledge-base/AskPanel';
 import {
   FOLDERS_KEY,
   LIBRARY_KEY,
@@ -27,6 +28,7 @@ export default function KnowledgeBasePage() {
   const [sort, setSort] = useState<Sort>('newest');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [askScope, setAskScope] = useState<AskScope | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -139,14 +141,28 @@ export default function KnowledgeBasePage() {
               Documents Content Studio can use. Put them in folders to point Studio at the right ones.
             </p>
           </div>
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: branding.primaryColor }}
-          >
-            <ArrowUpTrayIcon className="h-4 w-4" />
-            Add documents
-          </button>
+          <div className="flex items-center gap-2">
+            {documents.length > 0 && (
+              <button
+                onClick={() => {
+                  const folder = folders.find((f) => f.id === activeView);
+                  setAskScope(folder ? { mode: 'folders', folderIds: [folder.id], folderNames: [folder.name] } : { mode: 'all' });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                Ask
+              </button>
+            )}
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              <ArrowUpTrayIcon className="h-4 w-4" />
+              Add documents
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
@@ -250,6 +266,7 @@ export default function KnowledgeBasePage() {
                   onToggleAll={(ids) => setSelected(new Set(ids))}
                   onMove={moveDocuments}
                   onDelete={deleteDocuments}
+                  onAsk={(doc) => setAskScope({ mode: 'document', documentId: doc.document_id, documentTitle: doc.title })}
                   busy={busy}
                 />
               )}
@@ -262,6 +279,8 @@ export default function KnowledgeBasePage() {
           </section>
         </div>
       </div>
+
+      {askScope && <AskPanel scope={askScope} onClose={() => setAskScope(null)} />}
 
       {uploadOpen && (
         <UploadPanel

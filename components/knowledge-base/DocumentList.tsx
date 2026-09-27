@@ -14,6 +14,7 @@ interface DocumentListProps {
   onToggleAll: (ids: string[]) => void;
   onMove: (ids: string[], folderId: string) => Promise<void>;
   onDelete: (ids: string[]) => Promise<void>;
+  onAsk: (doc: KbDocument) => void;
   busy: boolean;
 }
 
@@ -79,6 +80,7 @@ export default function DocumentList({
   onToggleAll,
   onMove,
   onDelete,
+  onAsk,
   busy,
 }: DocumentListProps) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -206,8 +208,7 @@ export default function DocumentList({
                 {meta.length > 0 && <p className="mt-0.5 text-xs text-gray-400">{meta.join(' · ')}</p>}
               </div>
 
-              {doc.mine && (
-                <div className="relative flex-shrink-0">
+              <div className="relative flex-shrink-0">
                   <button
                     onClick={() => setMenuFor((m) => (m === doc.document_id ? null : doc.document_id))}
                     className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -218,25 +219,38 @@ export default function DocumentList({
                   {menuFor === doc.document_id && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
-                      <div className="absolute right-0 z-20 mt-1 w-40 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+                      <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
                         <button
                           onClick={() => {
                             setMenuFor(null);
-                            setMoveFor(doc.document_id);
+                            onAsk(doc);
                           }}
                           className="block w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          Move to…
+                          Ask about this document
                         </button>
-                        <button
-                          onClick={() => {
-                            setMenuFor(null);
-                            setConfirmDelete([doc.document_id]);
-                          }}
-                          className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-                        >
-                          Delete
-                        </button>
+                        {doc.mine && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setMenuFor(null);
+                                setMoveFor(doc.document_id);
+                              }}
+                              className="block w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              Move to…
+                            </button>
+                            <button
+                              onClick={() => {
+                                setMenuFor(null);
+                                setConfirmDelete([doc.document_id]);
+                              }}
+                              className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     </>
                   )}
@@ -251,8 +265,7 @@ export default function DocumentList({
                       }}
                     />
                   )}
-                </div>
-              )}
+              </div>
             </li>
           );
         })}

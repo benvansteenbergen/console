@@ -236,6 +236,7 @@ Document-powered context for AI conversations and content generation.
 - **Folders:** per user, in `portal_user.settings.kb.folders`; documents are tagged with `folder_id` on every chunk. Colleagues' shared documents show as "Shared by colleagues".
 - **Upload:** PDF goes to n8n as-is; Word (.docx via `mammoth`, .doc via `word-extractor`) is converted to text in `lib/kbFiles.ts` and sent as a `.txt` file.
 - **Page:** `/company-private-storage` ("Knowledge base"): folder column, search/sort, compact rows, bulk move/delete, multi-file upload panel (`components/knowledge-base/*`).
+- **Ask:** `components/knowledge-base/AskPanel.tsx` + `kb-chat` answer questions from the documents (all, a folder, or one document), with sources.
 - **Studio:** `components/studio/KnowledgePicker.tsx` picks All / folders / Off; sent as `knowledgeBase` and enforced in n8n via `searchFilterJson` on both KB tools.
 - **Full detail:** `docs/n8n/knowledge-base.md`. Legacy clusters are only used by the old LiveChat.
 
@@ -372,6 +373,7 @@ A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it w
 | `/api/knowledge-base/library` | GET | Documents + folders for the KB page |
 | `/api/knowledge-base/folders` | GET, POST | List / create / rename / delete folders |
 | `/api/knowledge-base/move` | POST | Move documents to a folder |
+| `/api/knowledge-base/chat` | POST | Ask your knowledge base (all / folders / one document) |
 | `/api/knowledge-base/documents` | GET | (legacy, LiveChat) List knowledge base documents |
 | `/api/knowledge-base/documents/[id]` | DELETE | Delete own document (all chunks) |
 | `/api/knowledge-base/live` | POST | Live knowledge base operations |
@@ -793,6 +795,8 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `knowledge-base-documents` | `PSAF03N894oBvzMe` | `GET /webhook/knowledge-base-documents` | KB documents + folders (see `docs/n8n/knowledge-base.md`) |
 | `knowledge-base-folders` | `IL7fZQ9Qu10ANyKB` | `GET`/`POST /webhook/knowledge-base-folders` | Per-user KB folders |
 | `knowledge-base-move` | `T8e744RM9KSHH6hh` | `POST /webhook/knowledge-base-move` | Move KB documents between folders |
+| `kb-chat` | `loC7ZytBXIwLpuDe` | `POST /webhook/kb-chat` | "Ask your knowledge base" (document chat) |
+| `kb-search-v2` | `OurcbqOHrgNAE0F5` | (sub-workflow) | Hybrid + diversity searcher, kept as backup (not used in production) |
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation (per scout) |
 | `radar-scouts-list` | `ptpGArBVb6SoepAz` | `GET /webhook/radar-scouts-list` | List the user's scouts + counts |
 | `radar-scout-manage` | `EucvLcyWLtZYyfbd` | `POST /webhook/radar-scout-manage` | Rename / pause / resume / archive a scout |

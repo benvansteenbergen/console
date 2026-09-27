@@ -13,6 +13,7 @@ import { POST as moveDocs } from '@/app/api/knowledge-base/move/route';
 import { POST as upload } from '@/app/api/knowledge-base/upload/route';
 import { GET as library } from '@/app/api/knowledge-base/library/route';
 import { POST as studioMessage } from '@/app/api/studio/message/route';
+import { POST as kbChat } from '@/app/api/knowledge-base/chat/route';
 
 type CookieStore = ReturnType<typeof cookies> extends Promise<infer T> ? T : never;
 
@@ -126,5 +127,23 @@ describe('API: /api/studio/message', () => {
     const scope = { mode: 'folders', folderIds: ['f1'], folderNames: ['Pricing'] };
     await studioMessage(jsonPost('http://localhost/x', { message: 'hi', useKnowledgeBase: true, knowledgeBase: scope }));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).knowledgeBase).toEqual(scope);
+  });
+});
+
+describe('API: /api/knowledge-base/chat', () => {
+  it('requires a message', async () => {
+    expect((await kbChat(jsonPost('http://localhost/x', { message: '  ' }))).status).toBe(400);
+  });
+
+  it('forwards message, trimmed history and scope; unwraps the answer', async () => {
+    const fetchMock = mockN8n([{ success: true, answer: 'Rw 38 to 48 dB.', sources: ['Monoblock'] }]);
+    const history = Array.from({ length: 14 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `m${i}` }));
+    const scope = { mode: 'document', documentId: 'd1', documentTitle: 'Monoblock' };
+    const res = await kbChat(jsonPost('http://localhost/x', { message: 'Geluidsisolatie?', history, scope }));
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://test-n8n.example.com/webhook/kb-chat');
+    expect(sent.scope).toEqual(scope);
+    expect(sent.history).toHaveLength(10);
+    expect((await res.json()).answer).toBe('Rw 38 to 48 dB.');
   });
 });
