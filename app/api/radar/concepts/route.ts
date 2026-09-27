@@ -10,11 +10,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const status = request.nextUrl.searchParams.get('status');
-  const unseen = request.nextUrl.searchParams.get('unseen');
-
-  let qs = status ? `?status=${encodeURIComponent(status)}` : '';
-  if (unseen === 'true') qs += `${qs ? '&' : '?'}unseen=true`;
+  const params = new URLSearchParams();
+  for (const key of ['status', 'scout_id']) {
+    const value = request.nextUrl.searchParams.get(key);
+    if (value) params.set(key, value);
+  }
+  if (request.nextUrl.searchParams.get('unseen') === 'true') params.set('unseen', 'true');
+  const query = params.toString();
+  const qs = query ? `?${query}` : '';
 
   const res = await fetchFromN8n(`/webhook/radar-concepts-list${qs}`, jwt);
   let data = await safeJsonParse(res, 'radar-concepts-list');

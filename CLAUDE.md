@@ -92,7 +92,7 @@ console/
 │   │   ├── profile/           # Company profile: brand interview / identity view / website scan
 │   │   ├── studio/            # Content Studio (template picker + conversation + DraftCard)
 │   │   ├── library/           # Content Library (Drive output browser)
-│   │   ├── radar/             # Radar feed (+ scout/, sources/, components/)
+│   │   ├── radar/             # Radar: feed (page), scouts/ (overview, new, [id]), components/, shared.ts
 │   │   ├── company-private-storage/ # Knowledge base document uploads
 │   │   ├── settings/          # Settings (+ agents/ legacy)
 │   │   ├── live/              # (legacy) LiveChat
@@ -103,7 +103,7 @@ console/
 │   │   ├── auth/              # login, logout, me
 │   │   ├── company-profile/   # GET/PUT profile, interview (POST), scan (GET/POST website scan)
 │   │   ├── studio/            # message, save, conversations, formats
-│   │   ├── radar/             # scout, concepts(+action), sources(+action), priorities, digest
+│   │   ├── radar/             # scouts(+manage), scout, concepts(+action), sources(+action), priorities, digest
 │   │   ├── credits/           # GET: usage stats
 │   │   ├── content-storage/   # GET: Google Drive files by folder
 │   │   ├── drive/             # file (GET), commit (POST)
@@ -282,9 +282,10 @@ LinkedIn and website data extraction for AI personalization.
 A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it watches user-curated sources, filters new articles against the user's priorities, and surfaces editorial concepts with fact-checks. Full detail in `docs/n8n/radar.md`.
 
 - **Surface:** `app/(protected)/radar/` (single page, feed/scout toggle). API routes under `app/api/radar/*`.
+- **Scouts (topics):** a user runs several scouts, each a named topic with its own priorities doc + sources (`radar_scouts` table). One feed with topic filter at `/radar`; overview at `/radar/scouts` (rename / pause / remove / adjust); per-scout sources + "Copy to…" at `/radar/scouts/[id]`. Remove = soft delete (`archived`). Dedupe is per scout.
 - **Scout** (`radar-scout`): an AI discovery chat that **stands on the company profile** (it consumes `profile_context`, no re-interview), runs 1–2 short refine turns (or "just go"), then curates a generous, independent-voice-biased source list with literal "Because you mentioned…" quotes. Sources land in `radar_sources` (status `proposed`); the user follows them. Vendor penalty hits resellers/agencies, **not** the primary maker/lab (OpenAI, Anthropic).
 - **Sweep → Concepter → Researcher:** `radar-sweep` (cron) fetches followed sources (RSS/Atom + **Jina Reader** for JS / no-RSS / blocked pages), relevance-filters, and hands passing articles to `radar-concepter` → `radar-researcher`, which write `radar_concepts` (status `active`) shown in the Feed + dashboard banner (`components/RadarBanner.tsx`).
-- **Priorities doc:** `portal_user.settings.radar.priorities_markdown`. Everything is user-scoped.
+- **Priorities doc:** per scout, `radar_scouts.priorities_markdown` (the old `portal_user.settings.radar.priorities_markdown` is no longer read). Everything is user-scoped.
 - **Weekly digest:** `radar-weekly-digest` emails all users their last-7-days finds every Monday 10:00 (Gmail, Slack-digest style, headline → `/radar?concept=<id>` deep-link). Opt-out flag `portal_user.settings.radar.weekly_digest` via `radar-digest-pref` + Settings toggle. Empty week = no email. Full detail in `docs/n8n/radar.md`.
 - **Principle:** silence is a feature — empty output is valid; no "we checked for you" noise.
 
@@ -317,9 +318,11 @@ A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it w
 ### Radar
 | Endpoint | Method | n8n webhook | Purpose |
 |----------|--------|-------------|---------|
-| `/api/radar/scout` | POST | `radar-scout` | Scout discovery chat + source curation |
+| `/api/radar/scouts` | GET | `radar-scouts-list` | List scouts (topics) + counts |
+| `/api/radar/scouts/manage` | POST | `radar-scout-manage` | Rename / pause / resume / archive a scout |
+| `/api/radar/scout` | POST | `radar-scout` | Scout discovery chat + source curation (`scout_id` / `new_scout`) |
 | `/api/radar/sources` | GET | `radar-sources-list` | List sources by status (incl. health in `notes`) |
-| `/api/radar/sources/action` | POST | `radar-source-action` | Follow / drop / naylist a source |
+| `/api/radar/sources/action` | POST | `radar-source-action` | Follow / drop / naylist a source, or copy it to another scout |
 | `/api/radar/concepts` | GET | `radar-concepts-list` | List concepts (`active` / `saved`) |
 | `/api/radar/concepts/action` | POST | `radar-concept-action` | Save / drop / mark-seen a concept |
 | `/api/radar/priorities` | GET, PUT | `radar-priorities` | Read/write the priorities doc |
@@ -770,7 +773,7 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | Google Drive | `rH9X3hwyo6ibVgIA` | Google Drive account |
 | Gmail | `krcZdwTx8MGIxuEr` | Gmail account |
 
-**Note:** The Postgres user does NOT have DDL permissions (CREATE TABLE, ALTER TABLE). Tables must be created manually by the database owner.
+**Note:** The Postgres user (`n8n`) does NOT have DDL permissions (CREATE TABLE, ALTER TABLE); confirmed 2026-09-27, tables are owned by `railway`. Tables must be created manually by the database owner. Keep migrations in `docs/n8n/migrations/` and include `GRANT ... TO n8n` for new tables. The API key also cannot delete workflows (403), so don't create throwaway workflows via the API.
 
 #### Active Workflow Registry
 
@@ -784,7 +787,10 @@ The studio AI uses text markers in its output that the frontend parses and rende
 | `studio-message` | `axdg9OFz7eAMM5dU` | `POST /webhook/studio-message` | AI content creation chat |
 | `studio-save` | `qhWScWiAyoKpgZKX` | `POST /webhook/studio-save` | Save content to Google Drive |
 | `jwt-validation` | `dbf8RGXgL1Up2KzF` | (sub-workflow) | Validate JWT, return user info |
-| `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
+| `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation (per scout) |
+| `radar-scouts-list` | `ptpGArBVb6SoepAz` | `GET /webhook/radar-scouts-list` | List the user's scouts + counts |
+| `radar-scout-manage` | `EucvLcyWLtZYyfbd` | `POST /webhook/radar-scout-manage` | Rename / pause / resume / archive a scout |
+| `radar-sweep-articles` | `BzDPtmgKdIvstt64` | (sub-workflow) | Per-article dedupe + relevance filter + concepter call |
 | `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron (per-user TZ) | Fetch + relevance filter per article |
 | `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron Monday 10:00 (Europe/Amsterdam) | Weekly "What's on your Radar" email (Gmail) |
 | `radar-digest-pref` | `J6l3k9c7jriY5cco` | `GET`/`POST /webhook/radar-digest-pref` | Weekly digest opt-out flag |

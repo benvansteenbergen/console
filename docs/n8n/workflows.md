@@ -37,12 +37,14 @@ See [radar.md](./radar.md) for the full pipeline (sweep / concepter / researcher
 
 | Webhook | Method | Console Route | Purpose |
 |---------|--------|---------------|---------|
-| `/webhook/radar-scout` | POST | `/api/radar/scout` | Scout chat + source curation |
-| `/webhook/radar-sources-list` | GET | `/api/radar/sources` | List sources |
-| `/webhook/radar-source-action` | POST | `/api/radar/sources/action` | Follow / drop / naylist |
-| `/webhook/radar-concepts-list` | GET | `/api/radar/concepts` | List concepts |
+| `/webhook/radar-scouts-list` | GET | `/api/radar/scouts` | The user's scouts (topics) + counts |
+| `/webhook/radar-scout-manage` | POST | `/api/radar/scouts/manage` | Rename / pause / resume / archive a scout |
+| `/webhook/radar-scout` | POST | `/api/radar/scout` | Scout chat + source curation (`scout_id` or `new_scout`) |
+| `/webhook/radar-sources-list` | GET | `/api/radar/sources` | List sources (`status`, `scout_id`) |
+| `/webhook/radar-source-action` | POST | `/api/radar/sources/action` | Follow / drop / naylist, or `copy` + `target_scout_id` |
+| `/webhook/radar-concepts-list` | GET | `/api/radar/concepts` | List concepts (`status`, `scout_id`, `unseen`) |
 | `/webhook/radar-concept-action` | POST | `/api/radar/concepts/action` | Save / drop / mark-seen |
-| `/webhook/radar-priorities` | GET/PUT | `/api/radar/priorities` | Priorities doc |
+| `/webhook/radar-priorities` | GET/POST | `/api/radar/priorities` | A scout's priorities doc (`scout_id`) |
 | `/webhook/radar-digest-pref` | GET/POST | `/api/radar/digest` | Weekly digest opt-out |
 
 ### Agents & Content Types

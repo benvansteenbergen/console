@@ -5,6 +5,6 @@ import { useRouter } from 'next/navigation';
 
 export default function RadarScoutRedirect() {
   const router = useRouter();
-  useEffect(() => { router.replace('/radar'); }, [router]);
+  useEffect(() => { router.replace('/radar/scouts'); }, [router]);
   return null;
 }

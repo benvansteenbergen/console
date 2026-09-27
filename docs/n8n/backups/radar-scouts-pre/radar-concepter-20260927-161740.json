@@ -1,0 +1,849 @@
+{
+ "id": "xXNTbqWtzRTWSRs9",
+ "name": "radar-concepter",
+ "description": null,
+ "active": true,
+ "activeVersionId": "b1070490-0496-4299-920a-8883d7d30435",
+ "createdAt": "2026-04-21T14:05:26.133Z",
+ "updatedAt": "2026-04-21T14:05:26.133Z",
+ "isArchived": false,
+ "versionId": "b1070490-0496-4299-920a-8883d7d30435",
+ "versionCounter": 4,
+ "sourceWorkflowId": null,
+ "triggerCount": 0,
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "c9726c2f-a73c-439e-919a-4c0fa22321f9",
+   "name": "Execute Workflow Trigger",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "position": [
+    -1328,
+    80
+   ],
+   "typeVersion": 1
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT headline, concept_body FROM radar_concepts WHERE user_id = '{{ $json.user_id }}'::uuid AND source_id = '{{ $json.source_id }}'::uuid AND status = 'dropped' ORDER BY created_at DESC LIMIT 20",
+    "options": {}
+   },
+   "id": "c662a37f-4d88-4ed0-ba1c-2e0acc4d32ed",
+   "name": "Read Pruned",
+   "type": "n8n-nodes-base.postgres",
+   "position": [
+    -1104,
+    80
+   ],
+   "typeVersion": 2.6,
+   "alwaysOutputData": true,
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst prunedItems = $input.all().map(i => i.json);\nconst prunedList = prunedItems.filter(p => p.headline).map(p => '- ' + p.headline).join('\\n') || 'None';\n\nreturn [{ json: {\n  ...input,\n  prunedList,\n  query: 'Article from ' + input.source_name + ':\\nURL: ' + input.article_url + '\\nTitle: ' + input.article_title + '\\n\\n' + input.article_text\n}}];"
+   },
+   "id": "6ed8d9d5-a14c-4782-95e1-2f914a45605f",
+   "name": "Build Context",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    -880,
+    80
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "model": {
+     "__rl": true,
+     "mode": "list",
+     "value": "claude-sonnet-4-5-20250929",
+     "cachedResultName": "Claude Sonnet 4.5"
+    },
+    "options": {}
+   },
+   "id": "9607cd64-d938-4e3f-a452-587ecc321809",
+   "name": "Anthropic Chat Model",
+   "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+   "typeVersion": 1.3,
+   "position": [
+    -656,
+    288
+   ],
+   "credentials": {
+    "anthropicApi": {
+     "id": "zvfIJSmp6pElXMtZ",
+     "name": "Anthropic account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.query }}",
+    "options": {
+     "systemMessage": "=You are the Concepter, an editorial agent. You receive one article that passed relevance filtering. Decide if a clean editorial concept exists. If yes, write it. If not, output silence.\n\nRULES:\n1. ONE concept, ONE angle. No variants. Can't commit \u2192 silence.\n2. Silence is legitimate. No clean angle \u2192 output {\"silence\": true}.\n3. Check pruned list. Same article/topic already dropped \u2192 silence.\n4. LITERAL QUOTE ALIGNMENT: cite ONE priority phrase using user's exact words in quotation marks. No quote fits \u2192 silence.\n5. Newspaper-column voice. 60-100 words for concept_body.\n6. Three beats: headline (one editorial line), concept_body (60-100 words arguing the angle), alignment (literal quote + why).\n7. No CTA. No \"audit this\" or \"write about this.\"\n8. Respect allergies from priorities doc.\n9. Write in user's register but never write user's opinions for them.\n10. Never sound like AI. Ban: \"fascinating insight,\" \"it's interesting to note,\" \"in today's fast-paced landscape,\" \"leveraging,\" \"unlock.\"\n\nPRIORITIES DOC:\n{{ $json.priorities }}\n\nPRUNED LIST (recently dropped concepts from this source):\n{{ $json.prunedList }}\n\nRADAR'S RATIONALE FOR PASSING THIS ARTICLE:\nPriority match: {{ $json.matched_priority }}\nRationale: {{ $json.rationale }}\n\nOUTPUT \u2014 valid JSON only, no code fences:\nConcept: {\"headline\": \"editorial framing, one line\", \"concept_body\": \"60-100 words, newspaper voice\", \"alignment_quote\": \"literal phrase from priorities doc\", \"alignment_priority\": \"which priority line\", \"alignment_why\": \"one sentence\"}\nSilence: {\"silence\": true}"
+    }
+   },
+   "id": "4b930bac-517e-4d94-956c-42e76ff878c0",
+   "name": "Concepter Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 3,
+   "position": [
+    -656,
+    80
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "let raw = $input.first().json.output;\nconst prev = $('Build Context').first().json;\n\nlet parsed;\nif (typeof raw === 'object' && raw !== null) {\n  parsed = raw;\n} else {\n  let text = String(raw || '').trim();\n  text = text.replace(/^```(?:json)?\\s*\\n?/, '').replace(/\\n?\\s*```\\s*$/, '').trim();\n  try {\n    parsed = JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\"(?:headline|silence)\"[\\s\\S]*\\}$/);\n    if (match) {\n      try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }\n    }\n    if (!parsed) {\n      parsed = { silence: true };\n    }\n  }\n}\n\nreturn [{ json: { ...prev, ...parsed, hasConcept: !parsed.silence && !!parsed.headline } }];"
+   },
+   "id": "c76b9b5b-2d4c-48d7-be32-62194ebb12ee",
+   "name": "Parse Output",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    -448,
+    80
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 3
+     },
+     "conditions": [
+      {
+       "id": "concepter-has-concept-check",
+       "leftValue": "={{ $json.hasConcept }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "ae7dff3b-8d81-4b30-b4ed-0bdf2693c8a2",
+   "name": "Has Concept",
+   "type": "n8n-nodes-base.if",
+   "position": [
+    -224,
+    80
+   ],
+   "typeVersion": 2.3
+  },
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "ZfpkY2M0dMdhA5Le",
+     "cachedResultName": "radar-researcher"
+    },
+    "workflowInputs": {
+     "value": {
+      "article_url": "={{ $json.article_url }}",
+      "article_title": "={{ $json.article_title }}",
+      "article_text": "={{ $json.article_text }}",
+      "article_hash": "={{ $json.article_hash }}",
+      "source_name": "={{ $json.source_name }}",
+      "source_id": "={{ $json.source_id }}",
+      "user_id": "={{ $json.user_id }}",
+      "priorities": "={{ $json.priorities }}",
+      "headline": "={{ $json.headline }}",
+      "concept_body": "={{ $json.concept_body }}",
+      "alignment_quote": "={{ $json.alignment_quote }}",
+      "alignment_priority": "={{ $json.alignment_priority }}",
+      "alignment_why": "={{ $json.alignment_why }}"
+     },
+     "schema": [
+      {
+       "id": "article_url",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "article_url",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "article_title",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "article_title",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "article_text",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "article_text",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "article_hash",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "article_hash",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source_name",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source_name",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "source_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "source_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "user_id",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "user_id",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "priorities",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "priorities",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "headline",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "headline",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "concept_body",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "concept_body",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "alignment_quote",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "alignment_quote",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "alignment_priority",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "alignment_priority",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      },
+      {
+       "id": "alignment_why",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "alignment_why",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "article_url"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "cf1501e6-5078-4c92-bc4e-53068a76fbc2",
+   "name": "Call Researcher",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    0,
+    0
+   ],
+   "typeVersion": 1.2
+  }
+ ],
+ "connections": {
+  "Execute Workflow Trigger": {
+   "main": [
+    [
+     {
+      "node": "Read Pruned",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Read Pruned": {
+   "main": [
+    [
+     {
+      "node": "Build Context",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Context": {
+   "main": [
+    [
+     {
+      "node": "Concepter Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Anthropic Chat Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Concepter Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Concepter Agent": {
+   "main": [
+    [
+     {
+      "node": "Parse Output",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Output": {
+   "main": [
+    [
+     {
+      "node": "Has Concept",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Has Concept": {
+   "main": [
+    [
+     {
+      "node": "Call Researcher",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1",
+  "binaryMode": "separate"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "xXNTbqWtzRTWSRs9",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-04-21T14:05:26.133Z",
+   "updatedAt": "2026-04-21T14:05:26.133Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "b1070490-0496-4299-920a-8883d7d30435",
+  "workflowId": "xXNTbqWtzRTWSRs9",
+  "nodes": [
+   {
+    "parameters": {},
+    "id": "c9726c2f-a73c-439e-919a-4c0fa22321f9",
+    "name": "Execute Workflow Trigger",
+    "type": "n8n-nodes-base.executeWorkflowTrigger",
+    "position": [
+     -1328,
+     80
+    ],
+    "typeVersion": 1
+   },
+   {
+    "parameters": {
+     "operation": "executeQuery",
+     "query": "SELECT headline, concept_body FROM radar_concepts WHERE user_id = '{{ $json.user_id }}'::uuid AND source_id = '{{ $json.source_id }}'::uuid AND status = 'dropped' ORDER BY created_at DESC LIMIT 20",
+     "options": {}
+    },
+    "id": "c662a37f-4d88-4ed0-ba1c-2e0acc4d32ed",
+    "name": "Read Pruned",
+    "type": "n8n-nodes-base.postgres",
+    "position": [
+     -1104,
+     80
+    ],
+    "typeVersion": 2.6,
+    "alwaysOutputData": true,
+    "credentials": {
+     "postgres": {
+      "id": "HY5nJozYRhfP29Se",
+      "name": "Postgres account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst prunedItems = $input.all().map(i => i.json);\nconst prunedList = prunedItems.filter(p => p.headline).map(p => '- ' + p.headline).join('\\n') || 'None';\n\nreturn [{ json: {\n  ...input,\n  prunedList,\n  query: 'Article from ' + input.source_name + ':\\nURL: ' + input.article_url + '\\nTitle: ' + input.article_title + '\\n\\n' + input.article_text\n}}];"
+    },
+    "id": "6ed8d9d5-a14c-4782-95e1-2f914a45605f",
+    "name": "Build Context",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     -880,
+     80
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "model": {
+      "__rl": true,
+      "mode": "list",
+      "value": "claude-sonnet-4-5-20250929",
+      "cachedResultName": "Claude Sonnet 4.5"
+     },
+     "options": {}
+    },
+    "id": "9607cd64-d938-4e3f-a452-587ecc321809",
+    "name": "Anthropic Chat Model",
+    "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+    "typeVersion": 1.3,
+    "position": [
+     -656,
+     288
+    ],
+    "credentials": {
+     "anthropicApi": {
+      "id": "zvfIJSmp6pElXMtZ",
+      "name": "Anthropic account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "promptType": "define",
+     "text": "={{ $json.query }}",
+     "options": {
+      "systemMessage": "=You are the Concepter, an editorial agent. You receive one article that passed relevance filtering. Decide if a clean editorial concept exists. If yes, write it. If not, output silence.\n\nRULES:\n1. ONE concept, ONE angle. No variants. Can't commit \u2192 silence.\n2. Silence is legitimate. No clean angle \u2192 output {\"silence\": true}.\n3. Check pruned list. Same article/topic already dropped \u2192 silence.\n4. LITERAL QUOTE ALIGNMENT: cite ONE priority phrase using user's exact words in quotation marks. No quote fits \u2192 silence.\n5. Newspaper-column voice. 60-100 words for concept_body.\n6. Three beats: headline (one editorial line), concept_body (60-100 words arguing the angle), alignment (literal quote + why).\n7. No CTA. No \"audit this\" or \"write about this.\"\n8. Respect allergies from priorities doc.\n9. Write in user's register but never write user's opinions for them.\n10. Never sound like AI. Ban: \"fascinating insight,\" \"it's interesting to note,\" \"in today's fast-paced landscape,\" \"leveraging,\" \"unlock.\"\n\nPRIORITIES DOC:\n{{ $json.priorities }}\n\nPRUNED LIST (recently dropped concepts from this source):\n{{ $json.prunedList }}\n\nRADAR'S RATIONALE FOR PASSING THIS ARTICLE:\nPriority match: {{ $json.matched_priority }}\nRationale: {{ $json.rationale }}\n\nOUTPUT \u2014 valid JSON only, no code fences:\nConcept: {\"headline\": \"editorial framing, one line\", \"concept_body\": \"60-100 words, newspaper voice\", \"alignment_quote\": \"literal phrase from priorities doc\", \"alignment_priority\": \"which priority line\", \"alignment_why\": \"one sentence\"}\nSilence: {\"silence\": true}"
+     }
+    },
+    "id": "4b930bac-517e-4d94-956c-42e76ff878c0",
+    "name": "Concepter Agent",
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 3,
+    "position": [
+     -656,
+     80
+    ]
+   },
+   {
+    "parameters": {
+     "jsCode": "let raw = $input.first().json.output;\nconst prev = $('Build Context').first().json;\n\nlet parsed;\nif (typeof raw === 'object' && raw !== null) {\n  parsed = raw;\n} else {\n  let text = String(raw || '').trim();\n  text = text.replace(/^```(?:json)?\\s*\\n?/, '').replace(/\\n?\\s*```\\s*$/, '').trim();\n  try {\n    parsed = JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\"(?:headline|silence)\"[\\s\\S]*\\}$/);\n    if (match) {\n      try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }\n    }\n    if (!parsed) {\n      parsed = { silence: true };\n    }\n  }\n}\n\nreturn [{ json: { ...prev, ...parsed, hasConcept: !parsed.silence && !!parsed.headline } }];"
+    },
+    "id": "c76b9b5b-2d4c-48d7-be32-62194ebb12ee",
+    "name": "Parse Output",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     -448,
+     80
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "conditions": {
+      "options": {
+       "caseSensitive": true,
+       "leftValue": "",
+       "typeValidation": "strict",
+       "version": 3
+      },
+      "conditions": [
+       {
+        "id": "concepter-has-concept-check",
+        "leftValue": "={{ $json.hasConcept }}",
+        "rightValue": true,
+        "operator": {
+         "type": "boolean",
+         "operation": "true"
+        }
+       }
+      ],
+      "combinator": "and"
+     },
+     "options": {}
+    },
+    "id": "ae7dff3b-8d81-4b30-b4ed-0bdf2693c8a2",
+    "name": "Has Concept",
+    "type": "n8n-nodes-base.if",
+    "position": [
+     -224,
+     80
+    ],
+    "typeVersion": 2.3
+   },
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "ZfpkY2M0dMdhA5Le",
+      "cachedResultName": "radar-researcher"
+     },
+     "workflowInputs": {
+      "value": {
+       "article_url": "={{ $json.article_url }}",
+       "article_title": "={{ $json.article_title }}",
+       "article_text": "={{ $json.article_text }}",
+       "article_hash": "={{ $json.article_hash }}",
+       "source_name": "={{ $json.source_name }}",
+       "source_id": "={{ $json.source_id }}",
+       "user_id": "={{ $json.user_id }}",
+       "priorities": "={{ $json.priorities }}",
+       "headline": "={{ $json.headline }}",
+       "concept_body": "={{ $json.concept_body }}",
+       "alignment_quote": "={{ $json.alignment_quote }}",
+       "alignment_priority": "={{ $json.alignment_priority }}",
+       "alignment_why": "={{ $json.alignment_why }}"
+      },
+      "schema": [
+       {
+        "id": "article_url",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "article_url",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "article_title",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "article_title",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "article_text",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "article_text",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "article_hash",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "article_hash",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source_name",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source_name",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "source_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "source_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "user_id",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "user_id",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "priorities",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "priorities",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "headline",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "headline",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "concept_body",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "concept_body",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "alignment_quote",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "alignment_quote",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "alignment_priority",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "alignment_priority",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       },
+       {
+        "id": "alignment_why",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "alignment_why",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "article_url"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "cf1501e6-5078-4c92-bc4e-53068a76fbc2",
+    "name": "Call Researcher",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     0,
+     0
+    ],
+    "typeVersion": 1.2
+   }
+  ],
+  "connections": {
+   "Execute Workflow Trigger": {
+    "main": [
+     [
+      {
+       "node": "Read Pruned",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Read Pruned": {
+    "main": [
+     [
+      {
+       "node": "Build Context",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Build Context": {
+    "main": [
+     [
+      {
+       "node": "Concepter Agent",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Anthropic Chat Model": {
+    "ai_languageModel": [
+     [
+      {
+       "node": "Concepter Agent",
+       "type": "ai_languageModel",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Concepter Agent": {
+    "main": [
+     [
+      {
+       "node": "Parse Output",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Parse Output": {
+    "main": [
+     [
+      {
+       "node": "Has Concept",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Has Concept": {
+    "main": [
+     [
+      {
+       "node": "Call Researcher",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": "Version b1070490",
+  "description": "",
+  "autosaved": true,
+  "createdAt": "2026-04-21T14:05:26.133Z",
+  "updatedAt": "2026-04-21T14:05:34.555Z",
+  "workflowPublishHistory": [
+   {
+    "id": 728,
+    "workflowId": "xXNTbqWtzRTWSRs9",
+    "versionId": "b1070490-0496-4299-920a-8883d7d30435",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-04-21T14:05:34.547Z"
+   }
+  ]
+ }
+}
