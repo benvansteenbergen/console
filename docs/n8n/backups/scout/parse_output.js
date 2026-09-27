@@ -3,6 +3,7 @@ const sessionId = $('Build Prompt').first().json.sessionId;
 const userId = $('Build Prompt').first().json.userId;
 const clientId = $('Build Prompt').first().json.clientId;
 const forceClose = $('Build Prompt').first().json.forceClose === true;
+const scoutId = $('Build Prompt').first().json.scoutId || '';
 
 const CLOSE_LINE = 'go look for the voices you should be listening to';
 
@@ -48,6 +49,8 @@ return [{ json: {
   done: done,
   priorities: priorities,
   sources: sources,
+  topicName: String(parsed.topic_name || '').trim(),
+  scoutId: scoutId,
   sessionId: sessionId,
   userId: userId,
   clientId: clientId

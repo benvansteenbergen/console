@@ -154,6 +154,63 @@ Individual messages in LiveChat conversations.
 | `read` | boolean | NULL | `false` | Whether the user has read this message |
 | `metadata` | jsonb | NULL | - | Extra data (e.g., `{ sources: [...] }` for KB citations) |
 
+## Radar Tables
+
+Owned by the `railway` DB user; the `n8n` user has DML only (no DDL). Scouts added by `docs/n8n/migrations/2026-09-radar-scouts.sql`. Pipeline details: [radar.md](./radar.md).
+
+### radar_scouts
+
+One named topic a user watches. Each has its own priorities doc and sources.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | NOT NULL | `gen_random_uuid()` | **Primary key** |
+| `user_id` | uuid | NOT NULL | - | References `user.id` |
+| `client_id` | varchar | NULL | - | Client key |
+| `name` | varchar | NOT NULL | `'My Radar'` | Topic name (Scout suggests, user can rename) |
+| `priorities_markdown` | text | NOT NULL | `''` | Priorities doc used by the relevance filter + concepter |
+| `status` | varchar | NOT NULL | `'active'` | `active`, `paused` (not swept), `archived` (removed, soft delete) |
+| `created_at` / `updated_at` | timestamp | NULL | `now()` | |
+
+### radar_sources
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | uuid | NOT NULL | **Primary key** |
+| `user_id` | uuid | NOT NULL | Owner |
+| `scout_id` | uuid | NULL | References `radar_scouts.id` (backfilled for all rows) |
+| `client_id` | varchar | NULL | Historically always `''` |
+| `url` | varchar | NOT NULL | Not unique: the same URL may exist in several scouts |
+| `name`, `category`, `tone_tag` | varchar | NULL | From Scout curation |
+| `because_quote` | text | NULL | Literal quote justifying the source |
+| `status` | varchar | NOT NULL | `proposed`, `followed`, `naylisted`, `dropped` |
+| `viability` | varchar | NULL | Always `'unknown'` (unused) |
+| `notes` | text | NULL | JSON text: `{"health": {status, last_sweep, consecutive_failures, reason}}` |
+| `offered_at`, `action_at`, `created_at`, `updated_at` | timestamp | NULL | |
+
+Index: `(user_id, status)`, `(scout_id)`.
+
+### radar_concepts
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | uuid | NOT NULL | **Primary key** |
+| `user_id` | uuid | NOT NULL | Owner |
+| `source_id` | uuid | NULL | References `radar_sources.id` |
+| `scout_id` | uuid | NULL | References `radar_scouts.id` (derived from the source) |
+| `article_url`, `article_hash` | varchar | NOT NULL | `article_hash` = the article URL |
+| `headline`, `concept_body`, `alignment_quote`, `alignment_priority`, `alignment_why` | text | NOT NULL | Concept (empty strings for filter-dropped rows) |
+| `verdict` | varchar | NULL | Researcher verdict |
+| `verdict_body`, `verdict_writing_note` | text | NULL | |
+| `verdict_sources` | jsonb | NULL | |
+| `status` | varchar | NOT NULL | `active`, `saved`, `dropped` |
+| `banner_seen` | boolean | NULL | Never set to true yet |
+| `conversation_id` | uuid | NULL | Unused |
+| `client_id` | varchar | NULL | Unused |
+| `created_at`, `action_at` | timestamp | NULL | |
+
+Unique: `(scout_id, article_hash)` (per-scout dedupe; replaced `(user_id, article_hash)`).
+
 ## Chat Hub Tables (n8n built-in)
 
 n8n's built-in chat tables. The console primarily uses the `live_conversations`/`live_messages` tables above instead.
@@ -268,7 +325,12 @@ user (id) ───────────────┼──< portal_user (n
     │
     ├──< chat_hub_agents (ownerId)
     │
-    └──< assistant_profiles (user_id)
+    ├──< assistant_profiles (user_id)
+    │
+    └──< radar_scouts (user_id)
+              │
+              ├──< radar_sources (scout_id)
+              └──< radar_concepts (scout_id)   (also radar_concepts.source_id → radar_sources)
 ```
 
 ## Common Operations

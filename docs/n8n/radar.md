@@ -23,25 +23,51 @@ radar_concepts (status='active') ──► Feed + dashboard banner
 | Workflow | ID | Trigger | Role |
 |----------|----|---------|------|
 | `radar-scout` | `C4ClYsTCFsShycCm` | `POST /webhook/radar-scout` | Discovery chat + source curation |
-| `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron `0 0 9,12,17 * * *` (daily 09:00/12:00/17:00, workflow TZ Europe/Amsterdam) | Fetch + relevance filter per article |
+| `radar-sweep` | `0dGrOJHxBJZnmEK5` | Cron `0 0 9,12,17 * * *` (daily 09:00/12:00/17:00, workflow TZ Europe/Amsterdam) | Fetch each followed source of every active scout |
+| `radar-sweep-articles` | `BzDPtmgKdIvstt64` | sub-workflow (called per source by `radar-sweep`) | Per article: dedupe (per scout), relevance filter, call concepter |
 | `radar-concepter` | `xXNTbqWtzRTWSRs9` | sub-workflow | Editorial concept (one committed angle) |
 | `radar-researcher` | `ZfpkY2M0dMdhA5Le` | sub-workflow | Web-search fact-check + verdict |
 | `radar-nightly-cleanup` | `ynuHcxIFiHzLExqB` | Cron nightly | Drop concepts older than 14 days |
 | `radar-weekly-digest` | `T9KSWpREmoFZal0i` | Cron `0 0 10 * * 1` (Monday 10:00, Europe/Amsterdam) | Weekly "What's on your Radar" email digest |
 | `radar-digest-pref` | `J6l3k9c7jriY5cco` | `GET`/`POST /webhook/radar-digest-pref` | Read/write the weekly digest opt-out flag |
-| `radar-sources-list` | `0LLMN61MBi2aToI1` | `GET /webhook/radar-sources-list` | List sources by status |
-| `radar-source-action` | `f1sm4nyTxMkiT85E` | `POST /webhook/radar-source-action` | follow / drop / naylist a source |
-| `radar-concepts-list` | `yenAuwcHBBIuxbBg` | `GET /webhook/radar-concepts-list` | List concepts |
+| `radar-scouts-list` | `ptpGArBVb6SoepAz` | `GET /webhook/radar-scouts-list` | The user's scouts (non-archived) + counts |
+| `radar-scout-manage` | `EucvLcyWLtZYyfbd` | `POST /webhook/radar-scout-manage` | rename / pause / resume / archive a scout |
+| `radar-sources-list` | `0LLMN61MBi2aToI1` | `GET /webhook/radar-sources-list` | List sources by status (optional `scout_id`) |
+| `radar-source-action` | `f1sm4nyTxMkiT85E` | `POST /webhook/radar-source-action` | follow / drop / naylist a source, or `copy` it to another scout |
+| `radar-concepts-list` | `yenAuwcHBBIuxbBg` | `GET /webhook/radar-concepts-list` | List concepts (optional `scout_id`, returns `scout_name`) |
 | `radar-concept-action` | `aEpbAMHQzCXYf6Wz` | `POST /webhook/radar-concept-action` | save / drop / mark-seen a concept |
-| `radar-priorities-get` / `-set` | `JBmGUrGc...` / `TUOIEQbw...` | `/webhook/radar-priorities` | Read/write the priorities doc |
+| `radar-priorities-get` / `-set` | `JBmGUrGc9anyPLNQ` / `TUOIEQbwAOJ3idNm` | `/webhook/radar-priorities` | Read/write a scout's priorities doc (optional `scout_id`) |
 
-**Data:** `radar_sources` and `radar_concepts` tables; the priorities doc lives in `portal_user.settings.radar.priorities_markdown`. Everything is user-scoped (`user_id` + `client_id`).
+**Data:** `radar_scouts`, `radar_sources` and `radar_concepts` tables (see below). Everything is user-scoped (`user_id`), and sources + concepts also carry `scout_id`. The weekly-digest opt-out stays in `portal_user.settings.radar.weekly_digest`. The old per-user `settings.radar.priorities_markdown` is no longer read (kept for rollback only).
+
+---
+
+## Scouts (multiple topics per user) — since 2026-09
+
+A user runs several **scouts**. Each scout watches one named topic and has its **own priorities doc and its own sources**. All finds land in one feed, filterable by topic.
+
+**Tables** (migration `docs/n8n/migrations/2026-09-radar-scouts.sql`, run by the DB owner `railway`, since the `n8n` user has no DDL rights):
+- `radar_scouts (id, user_id, client_id, name, priorities_markdown, status active|paused|archived, created_at, updated_at)`
+- `radar_sources.scout_id`, `radar_concepts.scout_id` (FK to `radar_scouts`). Existing data was backfilled into one "My Radar" scout per user.
+- Dedupe is **per scout**: unique index `radar_concepts (scout_id, article_hash)` replaced the old `(user_id, article_hash)`. The same article can become a find in two topics, each judged against its own priorities.
+
+**How scout_id flows:** every source belongs to exactly one scout, so the pipeline derives `scout_id` from `source_id` inside SQL (`(SELECT scout_id FROM radar_sources WHERE id = …)`) in `Dedupe Check`, `Insert Dropped` (sweep-articles) and `Insert Concept` (researcher). No Code nodes had to thread it through.
+
+**Pause / remove:** `radar-sweep` / `Get Active Sources` joins `radar_scouts` and only takes `status = 'active'` scouts with a non-empty priorities doc. Paused = skipped. Remove = `archived` (soft delete): skipped, hidden from the overview, but its existing finds stay in the feed (normal 14-day cleanup) and saved finds stay.
+
+**Scout chat:** body `scout_id` = refine that scout; `new_scout: true` = create one. `Read Priorities` always returns one row (the scout, or nulls for a new one) plus `other_scouts` so a new scout avoids overlapping topics. On close, the agent returns `topic_name`; `Prepare Curation` generates the scout uuid, upserts `radar_scouts` (name only on insert, so user renames stick) and inserts proposed sources with `scout_id`, skipping URLs the scout already has. The response carries `scout_id`. Legacy callers without `scout_id` get the user's oldest active scout.
+
+**Copy a source:** `radar-source-action` with `action: 'copy'` + `target_scout_id` inserts a `followed` copy in the target scout (or revives a dropped / nay-listed row there). Response `{copied, already_there}`.
+
+**Input safety:** every radar list/action workflow now has a `Sanitize Input` Code node after `Fetch User` that whitelists `status` / `action` and validates UUIDs, so no raw user input reaches SQL (before, `radar-source-action` wrote `body.action` straight into the status column).
+
+**Console:** `/radar` = feed + topic chips (`?topic=<scout id>`), `/radar/scouts` = overview (rename, pause/resume, remove, adjust, sources), `/radar/scouts/new` = Scout chat for a new topic, `/radar/scouts/[id]` = Sources tab (suggestions, followed with "Copy to…", nay-list) + Refine tab (Scout chat). Deploy scripts + pre-change backups: `docs/n8n/backups/radar-scouts/` and `docs/n8n/backups/radar-scouts-pre/`.
 
 ---
 
 ## Scout (`radar-scout`) — current behaviour
 
-Console surface: `app/(protected)/radar/` (`page.tsx` feed/scout toggle, `components/ScoutChatPane.tsx`, `components/ScoutHabitatPane.tsx`). API route `app/api/radar/scout/route.ts` proxies to `/webhook/radar-scout`.
+Console surface: `app/(protected)/radar/scouts/new` and `scouts/[id]?tab=refine` (`components/ScoutChatPane.tsx`, `components/ScoutHabitatPane.tsx`). API route `app/api/radar/scout/route.ts` proxies to `/webhook/radar-scout`. Per-scout behaviour: see "Scouts" above.
 
 Node chain: `Webhook → Fetch User → Read Priorities → Read Sources → Build Prompt → Scout Agent (Anthropic) → Parse Output → Is Done → {Format Not Done | Prepare Curation → Write Priorities → Insert Sources → Format Done} → Respond`.
 
@@ -63,7 +89,7 @@ The Suggestion strip (`components/RadarSuggestionStrip.tsx`) also dedupes by URL
 
 ## `radar-sweep` — ingestion
 
-Node chain (per followed source, then per article): `Schedule Trigger → Get Active Sources → Filter Timezone → Loop Sources → Fetch Page → Get Feed URL → Should Fetch → Fetch RSS → Parse Articles → Loop Articles → Dedupe Check → Check New → Is New → Build Radar Context → Radar Agent → Parse Decision → Is Pass → {Call Concepter | Insert Dropped}`.
+Node chain, `radar-sweep` (per followed source): `Schedule Trigger → Get Active Sources → Filter Timezone → Loop Sources → Fetch Page → Get Feed URL → Should Fetch → Fetch RSS → Parse Articles → Has Article → {Mark Source Failed | Process Source Articles → Mark Source OK}`. `Process Source Articles` calls **`radar-sweep-articles`** (per article): `When Called → Loop Articles → Dedupe Check → Check New → Is New → Build Radar Context → Radar Agent → Parse Decision → Is Pass → {Call Concepter | Insert Dropped}`. The priorities doc used by the Radar Agent / Concepter is the scout's, joined in `Get Active Sources`.
 
 Ingestion strategy (current):
 

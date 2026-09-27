@@ -1,149 +1,54 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useBranding } from '@/components/BrandingProvider';
-import RadarSuggestionStrip from './components/RadarSuggestionStrip';
+import { cn } from '@/lib/utils';
 import RadarFeed from './components/RadarFeed';
 import RadarConceptOverlay from './components/RadarConceptOverlay';
-import RadarSourcesList from './components/RadarSourcesList';
-import ScoutChatPane from './components/ScoutChatPane';
-import ScoutHabitatPane from './components/ScoutHabitatPane';
+import { fetcher, SCOUTS_KEY, type RadarConcept, type RadarScout } from './shared';
 
-interface RadarSource {
-  id: string;
-  url: string;
-  name: string;
-  category: string;
-  tone_tag: string;
-  because_quote: string;
-  status: string;
-  created_at: string;
-}
-
-interface RadarConcept {
-  id: string;
-  source_id: string;
-  article_url: string;
-  headline: string;
-  concept_body: string;
-  alignment_quote: string;
-  alignment_priority: string;
-  alignment_why: string;
-  verdict: string | null;
-  verdict_body: string | null;
-  verdict_writing_note: string | null;
-  status: string;
-  banner_seen: boolean;
-  created_at: string;
-}
-
-interface ProfileSummary {
-  name?: string;
-  industry?: string;
-  tagline?: string;
-  audience?: string;
-  tone_keywords?: string[];
-  content_types?: string[];
-}
-
-interface ScoutRecommendation {
-  format?: string;
-  topic?: string;
-  reason?: string;
-}
-
-type ScoutProfile = ProfileSummary & {
-  recommendations?: ScoutRecommendation[];
-};
-
-const fetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-  });
-
-export default function RadarPage() {
+export default function RadarFeedPage() {
   const branding = useBranding();
-  const [view, setView] = useState<'feed' | 'scout'>('feed');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const topic = searchParams.get('topic');
+
   const [selectedConcept, setSelectedConcept] = useState<RadarConcept | null>(null);
   const [acting, setActing] = useState(false);
-  const [naylistOpen, setNaylistOpen] = useState(false);
 
-  // Scout state
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [, setIsConversationActive] = useState(false);
-  const [scoutComplete, setScoutComplete] = useState(false);
-
-  // SWR data fetches, shared across views
-  const { data: suggestionsData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    '/api/radar/sources?status=proposed',
-    fetcher,
-    { refreshInterval: 300_000 }
-  );
+  const { data: scoutsData } = useSWR<{ success: boolean; scouts: RadarScout[] }>(SCOUTS_KEY, fetcher);
+  const scouts = scoutsData?.scouts || [];
+  const activeTopic = topic && scouts.some((s) => s.id === topic) ? topic : null;
+  const scoutParam = activeTopic ? `&scout_id=${activeTopic}` : '';
 
   const { data: conceptsData, mutate: mutateConcepts } = useSWR<{ success: boolean; concepts: RadarConcept[] }>(
-    '/api/radar/concepts?status=active',
+    `/api/radar/concepts?status=active${scoutParam}`,
     fetcher,
     { refreshInterval: 300_000 }
   );
 
   // Saved concepts keep living here after the user saves them from the feed.
   const { data: savedData, mutate: mutateSaved } = useSWR<{ success: boolean; concepts: RadarConcept[] }>(
-    '/api/radar/concepts?status=saved',
+    `/api/radar/concepts?status=saved${scoutParam}`,
     fetcher,
     { refreshInterval: 300_000 }
   );
 
-  const { data: followedData, mutate: mutateFollowed } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    '/api/radar/sources?status=followed',
-    fetcher,
-    { refreshInterval: 300_000 }
-  );
-
-  const { data: naylistedData, mutate: mutateNaylisted } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    '/api/radar/sources?status=naylisted',
-    fetcher,
-    { refreshInterval: 300_000 }
-  );
-
-  const { data: prioritiesData } = useSWR<{ success: boolean; markdown: string }>(
-    '/api/radar/priorities',
-    fetcher
-  );
-
-  const { data: profileResp } = useSWR<{
-    profile_summary?: ProfileSummary;
-    website_scan?: { recommendations?: ScoutRecommendation[] };
-  }>('/api/company-profile', fetcher);
-
-  // The profile the user already gave during the brand interview. Scout stands on this.
-  const scoutProfile: ScoutProfile = {
-    ...(profileResp?.profile_summary || {}),
-    recommendations: profileResp?.website_scan?.recommendations || [],
-  };
-
-  const suggestions = suggestionsData?.sources || [];
   const concepts = conceptsData?.concepts || [];
   const savedConcepts = savedData?.concepts || [];
-  const followed = followedData?.sources || [];
-  const naylisted = naylistedData?.sources || [];
-  const hasPriorities = !!prioritiesData?.markdown;
-  const scoutMode = hasPriorities ? 'B' : 'A';
 
   // Handle deep-link to a specific concept via ?concept= (or legacy #concept=)
   const deepLinkHandled = useRef(false);
   useEffect(() => {
     if (deepLinkHandled.current || !conceptsData?.concepts) return;
-    const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash;
     const conceptId =
-      params.get('concept') || (hash.startsWith('#concept=') ? hash.replace('#concept=', '') : null);
-    if (!conceptId) {
-      deepLinkHandled.current = true;
-      return;
-    }
+      searchParams.get('concept') || (hash.startsWith('#concept=') ? hash.replace('#concept=', '') : null);
     deepLinkHandled.current = true;
+    if (!conceptId) return;
     const match = conceptsData.concepts.find((c) => c.id === conceptId);
     if (match) {
       setSelectedConcept(match);
@@ -157,7 +62,11 @@ export default function RadarPage() {
         if (saved) setSelectedConcept(saved);
       })
       .catch(() => {});
-  }, [conceptsData]);
+  }, [conceptsData, searchParams]);
+
+  const selectTopic = (scoutId: string | null) => {
+    router.replace(scoutId ? `/radar?topic=${scoutId}` : '/radar', { scroll: false });
+  };
 
   const handleConceptAction = async (conceptId: string, action: string) => {
     setActing(true);
@@ -176,150 +85,76 @@ export default function RadarPage() {
     }
   };
 
-  const handleSourceAction = async (sourceId: string, action: string) => {
-    await fetch('/api/radar/sources/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ source_id: sourceId, action }),
-    });
-    mutateFollowed();
-    mutateNaylisted();
-  };
-
-  // --- Scout view ---
-  if (view === 'scout') {
+  // No scouts yet: one clear next step.
+  if (scoutsData && scouts.length === 0) {
     return (
-      <div className="flex h-full flex-col">
-        {/* Scout header */}
-        <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
-          <button
-            onClick={() => setView('feed')}
-            className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <h3 className="mb-1 text-base font-semibold text-gray-900">Start your first scout</h3>
+          <p className="mb-5 text-sm text-gray-500">
+            A scout watches one topic for you and brings back fresh angles to write about. Tell it what to watch,
+            it finds the sources.
+          </p>
+          <Link
+            href="/radar/scouts/new"
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
+            style={{ backgroundColor: branding.primaryColor }}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-semibold text-gray-900">Scout</h1>
-        </div>
-
-        {/* Two-panel layout */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 lg:w-[65%]">
-            <ScoutChatPane
-              mode={scoutMode}
-              sessionId={sessionId}
-              onSessionId={setSessionId}
-              onConversationActive={setIsConversationActive}
-              onComplete={() => setScoutComplete(true)}
-              onBack={() => setView('feed')}
-              profileContext={scoutProfile}
-            />
-          </div>
-          <div className="hidden w-[35%] border-l border-gray-100 bg-gray-50/50 lg:block">
-            <ScoutHabitatPane profile={scoutProfile} isComplete={scoutComplete} />
-          </div>
+            Start a scout
+          </Link>
         </div>
       </div>
     );
   }
 
-  // --- Feed view ---
+  const topicName = scouts.find((s) => s.id === activeTopic)?.name;
+
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="border-b border-gray-200 px-6 py-6">
-        <h1 className="text-2xl font-bold text-gray-900">Radar</h1>
-      </div>
-
-      <div className="flex-1 overflow-auto p-6 space-y-8">
-        {/* Suggestion strip */}
-        <RadarSuggestionStrip sources={suggestions} />
-
-        {/* Feed */}
-        <RadarFeed concepts={concepts} onSelect={setSelectedConcept} />
-
-        {/* Saved concepts stay accessible after leaving the feed */}
-        {savedConcepts.length > 0 && (
-          <RadarFeed title="Saved" concepts={savedConcepts} onSelect={setSelectedConcept} />
+    <div className="h-full overflow-auto p-6">
+      <div className="space-y-8">
+        {/* Topic filter: only worth showing once there is more than one scout */}
+        {scouts.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {[{ id: null, name: 'All' } as { id: string | null; name: string }, ...scouts].map((s) => {
+              const active = (s.id ?? null) === activeTopic;
+              return (
+                <button
+                  key={s.id ?? 'all'}
+                  onClick={() => selectTopic(s.id)}
+                  className={cn(
+                    'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                    active ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                  )}
+                  style={active ? { backgroundColor: branding.primaryColor, borderColor: branding.primaryColor } : undefined}
+                >
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
         )}
 
-        {/* Sources section */}
-        {followed.length > 0 && (
-          <RadarSourcesList
-            title="On the Radar"
-            sources={followed}
-            actions={[{ label: 'Drop', action: 'dropped', variant: 'danger' }]}
-            onAction={handleSourceAction}
+        <RadarFeed
+          concepts={concepts}
+          onSelect={setSelectedConcept}
+          showTopic={activeTopic === null && scouts.length > 1}
+          emptyText={
+            topicName
+              ? `Nothing new for ${topicName} yet. Finds appear here after the next sweep.`
+              : undefined
+          }
+        />
+
+        {savedConcepts.length > 0 && (
+          <RadarFeed
+            title="Saved"
+            concepts={savedConcepts}
+            onSelect={setSelectedConcept}
+            showTopic={activeTopic === null && scouts.length > 1}
           />
         )}
-
-        {/* Naylisted, collapsible */}
-        {naylisted.length > 0 && (
-          <div>
-            <button
-              onClick={() => setNaylistOpen((prev) => !prev)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700"
-            >
-              <svg
-                className={`h-4 w-4 transition-transform ${naylistOpen ? 'rotate-90' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-              Nay-list ({naylisted.length})
-            </button>
-            {naylistOpen && (
-              <div className="mt-3">
-                <RadarSourcesList
-                  title=""
-                  sources={naylisted}
-                  actions={[{ label: 'Restore', action: 'followed', variant: 'default' }]}
-                  onAction={handleSourceAction}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Start Scout CTA */}
-        {hasPriorities ? (
-          <div className="flex justify-center pt-2">
-            <button
-              onClick={() => { setScoutComplete(false); setView('scout'); }}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-            >
-              Refine your Radar
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Set up your Radar</h3>
-            <p className="text-sm text-gray-500 mb-4 max-w-md mx-auto">
-              Tell Scout about your content interests and strategic priorities. We&apos;ll find sources worth following.
-            </p>
-            <button
-              onClick={() => { setScoutComplete(false); setView('scout'); }}
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: branding.primaryColor }}
-            >
-              Start Scout
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Concept overlay */}
       {selectedConcept && (
         <RadarConceptOverlay
           concept={selectedConcept}

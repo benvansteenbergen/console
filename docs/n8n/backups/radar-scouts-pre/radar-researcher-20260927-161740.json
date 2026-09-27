@@ -1,0 +1,433 @@
+{
+ "id": "ZfpkY2M0dMdhA5Le",
+ "name": "radar-researcher",
+ "description": null,
+ "active": true,
+ "activeVersionId": "4481f43a-4716-409c-9fff-361898e13499",
+ "createdAt": "2026-04-21T14:04:03.610Z",
+ "updatedAt": "2026-04-21T14:04:03.610Z",
+ "isArchived": false,
+ "versionId": "4481f43a-4716-409c-9fff-361898e13499",
+ "versionCounter": 4,
+ "sourceWorkflowId": null,
+ "triggerCount": 0,
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "d00e9977-d2c4-4e4c-854d-b64a0765d8ae",
+   "name": "Execute Workflow Trigger",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "position": [
+    0,
+    0
+   ],
+   "typeVersion": 1
+  },
+  {
+   "parameters": {
+    "jsCode": "const input = $input.first().json;\nreturn [{ json: {\n  query: `Fact-check this concept:\\nHeadline: ${input.headline}\\nBody: ${input.concept_body}\\nAlignment: \"${input.alignment_quote}\" \\u2014 ${input.alignment_why}\\n\\nSource article: ${input.article_title}\\nURL: ${input.article_url}\\n\\n${input.article_text}`,\n  ...input\n}}];"
+   },
+   "id": "028717c2-7a36-44be-ae11-73cc0f7a9b6d",
+   "name": "Build Context",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    224,
+    0
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "model": {
+     "__rl": true,
+     "mode": "list",
+     "value": "claude-sonnet-4-5-20250929",
+     "cachedResultName": "Claude Sonnet 4.5"
+    },
+    "options": {}
+   },
+   "id": "4d5a568a-617c-49fb-ab96-55908c61fcde",
+   "name": "Anthropic Chat Model",
+   "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+   "typeVersion": 1.3,
+   "position": [
+    448,
+    208
+   ],
+   "credentials": {
+    "anthropicApi": {
+     "id": "zvfIJSmp6pElXMtZ",
+     "name": "Anthropic account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.query }}",
+    "options": {
+     "systemMessage": "=You are the Researcher, a fact-checker. You receive a concept (headline + body + alignment) and the source article. Check if the claims hold up.\n\nRULES:\n1. Your value is external verification. If you can't verify externally from your training knowledge, say so plainly.\n2. Check claims that support the concept's angle, not every claim in the article.\n3. Verdict vocabulary (pick one or write your own in same register):\n   - \"Solid ground\" \u2014 claims independently verifiable, methodology disclosed\n   - \"Good story, own data\" \u2014 evidence is self-published/self-measured\n   - \"Good fundaments, weak vision\" \u2014 data real but conclusions are a stretch\n   - \"Good story, questionable fundaments\" \u2014 great narrative, shaky numbers\n   - \"Directionally right, don't quote it\" \u2014 trend real, specific figures shaky\n   - \"Vibes\" \u2014 no data, opinion piece wearing a lab coat\n4. Explain in 3-5 sentences: what you checked, what you found, what holds/doesn't.\n5. Writing note: one practical sentence for if user writes from this concept.\n6. You do NOT kill concepts. You label, not filter.\n7. No hedging. No \"further research recommended.\" Say what you found.\n8. Journalism fact-checking standard, not academic peer review.\n9. Never sound like AI. Ban: \"it's important to note,\" \"while promising,\" \"raises important questions,\" \"stakeholders should consider.\"\n\nOUTPUT \u2014 valid JSON only, no code fences:\n{\"verdict\": \"one-liner\", \"body\": \"3-5 sentences\", \"writing_note\": \"one sentence\", \"sources_checked\": [{\"query\": \"what you looked for\", \"found\": \"what you found\", \"relevant\": true}]}"
+    }
+   },
+   "id": "a037e885-d274-4a36-9501-31411563d530",
+   "name": "Researcher Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 3,
+   "position": [
+    448,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "let raw = $input.first().json.output;\nconst prev = $('Build Context').first().json;\n\nlet parsed;\nif (typeof raw === 'object' && raw !== null) {\n  parsed = raw;\n} else {\n  let text = String(raw || '').trim();\n  text = text.replace(/^```(?:json)?\\s*\\n?/, '').replace(/\\n?\\s*```\\s*$/, '').trim();\n  try {\n    parsed = JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\"verdict\"[\\s\\S]*\\}$/);\n    if (match) {\n      try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }\n    }\n    if (!parsed) {\n      parsed = { verdict: 'Unable to verify', body: text, writing_note: 'Treat source claims with caution.', sources_checked: [] };\n    }\n  }\n}\n\nreturn [{ json: { ...prev, ...parsed } }];"
+   },
+   "id": "299f2561-c9b3-427a-ae1e-5af8f772890d",
+   "name": "Parse Output",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    672,
+    0
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "jsCode": "const d = $input.first().json;\nconst esc = v => String(v || '').replace(/'/g, \"''\");\nreturn [{ json: {\n  ...d,\n  headline: esc(d.headline),\n  concept_body: esc(d.concept_body),\n  alignment_quote: esc(d.alignment_quote),\n  alignment_priority: esc(d.alignment_priority),\n  alignment_why: esc(d.alignment_why),\n  verdict: esc(d.verdict),\n  body: esc(d.body),\n  writing_note: esc(d.writing_note),\n  article_url: esc(d.article_url),\n  article_hash: esc(d.article_hash),\n  sources_checked_json: JSON.stringify(d.sources_checked || []).replace(/'/g, \"''\")\n}}];"
+   },
+   "id": "5c4756a3-b312-43b1-9409-24cd8bc425d1",
+   "name": "Escape Values",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    784,
+    0
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO radar_concepts (user_id, source_id, article_url, article_hash, headline, concept_body, alignment_quote, alignment_priority, alignment_why, verdict, verdict_body, verdict_writing_note, verdict_sources, status, banner_seen)\nVALUES (\n  '{{ $json.user_id }}'::uuid,\n  '{{ $json.source_id }}'::uuid,\n  '{{ $json.article_url }}',\n  '{{ $json.article_hash }}',\n  '{{ $json.headline }}',\n  '{{ $json.concept_body }}',\n  '{{ $json.alignment_quote }}',\n  '{{ $json.alignment_priority }}',\n  '{{ $json.alignment_why }}',\n  '{{ $json.verdict }}',\n  '{{ $json.body }}',\n  '{{ $json.writing_note }}',\n  '{{ $json.sources_checked_json }}'::jsonb,\n  'active',\n  false\n)",
+    "options": {}
+   },
+   "id": "e9dbbfa4-cc98-4875-93be-27790e189e5a",
+   "name": "Insert Concept",
+   "type": "n8n-nodes-base.postgres",
+   "position": [
+    880,
+    0
+   ],
+   "typeVersion": 2.6,
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Execute Workflow Trigger": {
+   "main": [
+    [
+     {
+      "node": "Build Context",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Context": {
+   "main": [
+    [
+     {
+      "node": "Researcher Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Anthropic Chat Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Researcher Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Researcher Agent": {
+   "main": [
+    [
+     {
+      "node": "Parse Output",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Output": {
+   "main": [
+    [
+     {
+      "node": "Escape Values",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Escape Values": {
+   "main": [
+    [
+     {
+      "node": "Insert Concept",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1",
+  "binaryMode": "separate"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "ZfpkY2M0dMdhA5Le",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-04-21T14:04:03.610Z",
+   "updatedAt": "2026-04-21T14:04:03.610Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "4481f43a-4716-409c-9fff-361898e13499",
+  "workflowId": "ZfpkY2M0dMdhA5Le",
+  "nodes": [
+   {
+    "parameters": {},
+    "id": "d00e9977-d2c4-4e4c-854d-b64a0765d8ae",
+    "name": "Execute Workflow Trigger",
+    "type": "n8n-nodes-base.executeWorkflowTrigger",
+    "position": [
+     0,
+     0
+    ],
+    "typeVersion": 1
+   },
+   {
+    "parameters": {
+     "jsCode": "const input = $input.first().json;\nreturn [{ json: {\n  query: `Fact-check this concept:\\nHeadline: ${input.headline}\\nBody: ${input.concept_body}\\nAlignment: \"${input.alignment_quote}\" \\u2014 ${input.alignment_why}\\n\\nSource article: ${input.article_title}\\nURL: ${input.article_url}\\n\\n${input.article_text}`,\n  ...input\n}}];"
+    },
+    "id": "028717c2-7a36-44be-ae11-73cc0f7a9b6d",
+    "name": "Build Context",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     224,
+     0
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "model": {
+      "__rl": true,
+      "mode": "list",
+      "value": "claude-sonnet-4-5-20250929",
+      "cachedResultName": "Claude Sonnet 4.5"
+     },
+     "options": {}
+    },
+    "id": "4d5a568a-617c-49fb-ab96-55908c61fcde",
+    "name": "Anthropic Chat Model",
+    "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+    "typeVersion": 1.3,
+    "position": [
+     448,
+     208
+    ],
+    "credentials": {
+     "anthropicApi": {
+      "id": "zvfIJSmp6pElXMtZ",
+      "name": "Anthropic account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "promptType": "define",
+     "text": "={{ $json.query }}",
+     "options": {
+      "systemMessage": "=You are the Researcher, a fact-checker. You receive a concept (headline + body + alignment) and the source article. Check if the claims hold up.\n\nRULES:\n1. Your value is external verification. If you can't verify externally from your training knowledge, say so plainly.\n2. Check claims that support the concept's angle, not every claim in the article.\n3. Verdict vocabulary (pick one or write your own in same register):\n   - \"Solid ground\" \u2014 claims independently verifiable, methodology disclosed\n   - \"Good story, own data\" \u2014 evidence is self-published/self-measured\n   - \"Good fundaments, weak vision\" \u2014 data real but conclusions are a stretch\n   - \"Good story, questionable fundaments\" \u2014 great narrative, shaky numbers\n   - \"Directionally right, don't quote it\" \u2014 trend real, specific figures shaky\n   - \"Vibes\" \u2014 no data, opinion piece wearing a lab coat\n4. Explain in 3-5 sentences: what you checked, what you found, what holds/doesn't.\n5. Writing note: one practical sentence for if user writes from this concept.\n6. You do NOT kill concepts. You label, not filter.\n7. No hedging. No \"further research recommended.\" Say what you found.\n8. Journalism fact-checking standard, not academic peer review.\n9. Never sound like AI. Ban: \"it's important to note,\" \"while promising,\" \"raises important questions,\" \"stakeholders should consider.\"\n\nOUTPUT \u2014 valid JSON only, no code fences:\n{\"verdict\": \"one-liner\", \"body\": \"3-5 sentences\", \"writing_note\": \"one sentence\", \"sources_checked\": [{\"query\": \"what you looked for\", \"found\": \"what you found\", \"relevant\": true}]}"
+     }
+    },
+    "id": "a037e885-d274-4a36-9501-31411563d530",
+    "name": "Researcher Agent",
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 3,
+    "position": [
+     448,
+     0
+    ]
+   },
+   {
+    "parameters": {
+     "jsCode": "let raw = $input.first().json.output;\nconst prev = $('Build Context').first().json;\n\nlet parsed;\nif (typeof raw === 'object' && raw !== null) {\n  parsed = raw;\n} else {\n  let text = String(raw || '').trim();\n  text = text.replace(/^```(?:json)?\\s*\\n?/, '').replace(/\\n?\\s*```\\s*$/, '').trim();\n  try {\n    parsed = JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\"verdict\"[\\s\\S]*\\}$/);\n    if (match) {\n      try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }\n    }\n    if (!parsed) {\n      parsed = { verdict: 'Unable to verify', body: text, writing_note: 'Treat source claims with caution.', sources_checked: [] };\n    }\n  }\n}\n\nreturn [{ json: { ...prev, ...parsed } }];"
+    },
+    "id": "299f2561-c9b3-427a-ae1e-5af8f772890d",
+    "name": "Parse Output",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     672,
+     0
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "jsCode": "const d = $input.first().json;\nconst esc = v => String(v || '').replace(/'/g, \"''\");\nreturn [{ json: {\n  ...d,\n  headline: esc(d.headline),\n  concept_body: esc(d.concept_body),\n  alignment_quote: esc(d.alignment_quote),\n  alignment_priority: esc(d.alignment_priority),\n  alignment_why: esc(d.alignment_why),\n  verdict: esc(d.verdict),\n  body: esc(d.body),\n  writing_note: esc(d.writing_note),\n  article_url: esc(d.article_url),\n  article_hash: esc(d.article_hash),\n  sources_checked_json: JSON.stringify(d.sources_checked || []).replace(/'/g, \"''\")\n}}];"
+    },
+    "id": "5c4756a3-b312-43b1-9409-24cd8bc425d1",
+    "name": "Escape Values",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     784,
+     0
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "operation": "executeQuery",
+     "query": "INSERT INTO radar_concepts (user_id, source_id, article_url, article_hash, headline, concept_body, alignment_quote, alignment_priority, alignment_why, verdict, verdict_body, verdict_writing_note, verdict_sources, status, banner_seen)\nVALUES (\n  '{{ $json.user_id }}'::uuid,\n  '{{ $json.source_id }}'::uuid,\n  '{{ $json.article_url }}',\n  '{{ $json.article_hash }}',\n  '{{ $json.headline }}',\n  '{{ $json.concept_body }}',\n  '{{ $json.alignment_quote }}',\n  '{{ $json.alignment_priority }}',\n  '{{ $json.alignment_why }}',\n  '{{ $json.verdict }}',\n  '{{ $json.body }}',\n  '{{ $json.writing_note }}',\n  '{{ $json.sources_checked_json }}'::jsonb,\n  'active',\n  false\n)",
+     "options": {}
+    },
+    "id": "e9dbbfa4-cc98-4875-93be-27790e189e5a",
+    "name": "Insert Concept",
+    "type": "n8n-nodes-base.postgres",
+    "position": [
+     880,
+     0
+    ],
+    "typeVersion": 2.6,
+    "credentials": {
+     "postgres": {
+      "id": "HY5nJozYRhfP29Se",
+      "name": "Postgres account"
+     }
+    }
+   }
+  ],
+  "connections": {
+   "Execute Workflow Trigger": {
+    "main": [
+     [
+      {
+       "node": "Build Context",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Build Context": {
+    "main": [
+     [
+      {
+       "node": "Researcher Agent",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Anthropic Chat Model": {
+    "ai_languageModel": [
+     [
+      {
+       "node": "Researcher Agent",
+       "type": "ai_languageModel",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Researcher Agent": {
+    "main": [
+     [
+      {
+       "node": "Parse Output",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Parse Output": {
+    "main": [
+     [
+      {
+       "node": "Escape Values",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Escape Values": {
+    "main": [
+     [
+      {
+       "node": "Insert Concept",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": "Version 4481f43a",
+  "description": "",
+  "autosaved": true,
+  "createdAt": "2026-04-21T14:04:03.610Z",
+  "updatedAt": "2026-04-21T14:04:07.744Z",
+  "workflowPublishHistory": [
+   {
+    "id": 727,
+    "workflowId": "ZfpkY2M0dMdhA5Le",
+    "versionId": "4481f43a-4716-409c-9fff-361898e13499",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-04-21T14:04:07.701Z"
+   }
+  ]
+ }
+}

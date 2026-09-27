@@ -7,7 +7,14 @@ if (sessionId === undefined || sessionId === null || sessionId === '') {
   sessionId = 'scout-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
 }
 const userId = $('Fetch User').item.json.user_id;
-const clientId = $('Fetch User').item.json.client_id;
+const clientId = $('Fetch User').item.json.client || '';
+
+// --- Which scout (topic) this chat is for. Read Priorities always returns one row. ---
+const scoutRow = $('Read Priorities').first().json;
+const scoutId = scoutRow.scout_id || '';
+const scoutName = scoutRow.scout_name || '';
+const otherScouts = scoutRow.other_scouts || '';
+const isNewScout = scoutId === '';
 
 // --- Company profile the user already gave during the brand interview ---
 const pc = body.profile_context || {};
@@ -42,7 +49,7 @@ if (hasProfile) {
 }
 
 // --- Existing radar state ---
-let priorities = $('Read Priorities').first().json.markdown || '';
+let priorities = scoutRow.markdown || '';
 if (priorities === '' && hasProfile) {
   priorities = [
     '## What they do',
@@ -59,7 +66,7 @@ if (priorities === '' && hasProfile) {
   ].join('\n');
 }
 
-const allSources = $('Read Sources').all().map(function (i) { return i.json; });
+const allSources = $('Read Sources').all().map(function (i) { return i.json; }).filter(function (s) { return s.id; });
 const followed = allSources.filter(function (s) { return s.status === 'followed'; });
 const naylisted = allSources.filter(function (s) { return s.status === 'naylisted'; });
 const followedStr = followed.length > 0
@@ -68,6 +75,18 @@ const followedStr = followed.length > 0
 const naylistedStr = naylisted.length > 0
   ? naylisted.map(function (s) { return '- ' + s.name + ' (' + s.url + ')'; }).join('\n')
   : 'None';
+
+// --- Scout (topic) framing ---
+const scoutLines = [];
+if (isNewScout) {
+  scoutLines.push('This is a NEW scout. The user can run several scouts, each watching one topic. Your first job is to learn which topic THIS scout should watch, then keep its priorities doc and sources focused on that topic.');
+} else {
+  scoutLines.push('You are refining the existing scout "' + scoutName + '". Keep it focused on that topic.');
+}
+if (otherScouts) {
+  scoutLines.push('Their other scouts already cover: ' + otherScouts + '. Do not duplicate those topics.');
+}
+const scoutBlock = scoutLines.join('\n');
 
 // --- Turn budget + "just go" escape hatch ---
 const priorUserTurns = (history.match(/\[user\]/g) || []).length;
@@ -89,6 +108,10 @@ return [{ json: {
   userId: userId,
   clientId: clientId,
   mode: mode,
+  scoutId: scoutId,
+  scoutName: scoutName,
+  isNewScout: isNewScout,
+  scoutBlock: scoutBlock,
   profileBlock: profileBlock,
   priorities: priorities,
   followedSources: followedStr,

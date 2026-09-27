@@ -4,46 +4,24 @@ import { useRef } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBranding } from '@/components/BrandingProvider';
-
-interface RadarSource {
-  id: string;
-  url: string;
-  name: string;
-  category: string;
-  tone_tag: string;
-  because_quote: string;
-  status: string;
-  created_at: string;
-}
+import { fetcher, sourcesKey, type RadarSource, type ScoutProfile } from '../shared';
 
 interface ScoutHabitatPaneProps {
-  profile?: {
-    name?: string;
-    industry?: string;
-    tagline?: string;
-    audience?: string;
-    tone_keywords?: string[];
-    content_types?: string[];
-    recommendations?: Array<{ format?: string; topic?: string; reason?: string }>;
-  };
+  profile?: ScoutProfile;
+  /** The scout whose proposed sources to reveal (known once Scout has closed). */
+  scoutId: string | null;
   /** True once Scout has closed the conversation and curation is running. */
   isComplete: boolean;
 }
 
-const fetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-  });
-
-export default function ScoutHabitatPane({ profile, isComplete }: ScoutHabitatPaneProps) {
+export default function ScoutHabitatPane({ profile, scoutId, isComplete }: ScoutHabitatPaneProps) {
   const branding = useBranding();
 
   // Only look for proposed sources once Scout has closed, polling until the first batch lands,
   // then stop. Also cap the polling so an abandoned/failed curation cannot poll forever.
   const pollsRef = useRef(0);
   const { data: proposedData } = useSWR<{ success: boolean; sources: RadarSource[] }>(
-    isComplete ? '/api/radar/sources?status=proposed' : null,
+    isComplete && scoutId ? sourcesKey(scoutId, 'proposed') : null,
     fetcher,
     {
       refreshInterval: (latest) => {

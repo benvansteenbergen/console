@@ -1,0 +1,428 @@
+{
+ "id": "TUOIEQbwAOJ3idNm",
+ "name": "radar-priorities-set",
+ "description": null,
+ "active": true,
+ "activeVersionId": "033a594d-39a8-457b-bd77-78899c2b195a",
+ "createdAt": "2026-04-20T20:19:50.208Z",
+ "updatedAt": "2026-04-20T20:56:43.747Z",
+ "isArchived": false,
+ "versionId": "033a594d-39a8-457b-bd77-78899c2b195a",
+ "versionCounter": 7,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "radar-priorities",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "id": "46037ba0-6c0b-4435-a41e-05ca5b372792",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "position": [
+    -416,
+    96
+   ],
+   "webhookId": "a4000001-0001-4000-8000-100000000001",
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "dbf8RGXgL1Up2KzF",
+     "cachedResultName": "jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "1a3ddd3b-5335-4e39-92f3-1ac2f7a9aeb0",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -208,
+    96
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "const markdown = $('Webhook').item.json.body.markdown || '';\nconst escaped = markdown.replace(/'/g, \"''\");\nreturn [{ json: { ...$input.first().json, escaped_markdown: escaped } }];"
+   },
+   "id": "dfc67857-54f1-4020-85b7-87d85bddb8f3",
+   "name": "Escape Input",
+   "type": "n8n-nodes-base.code",
+   "position": [
+    0,
+    0
+   ],
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE portal_user SET settings = jsonb_set( jsonb_set( COALESCE(settings, '{}'::jsonb), '{radar}', COALESCE(settings->'radar', '{}'::jsonb) ), '{radar,priorities_markdown}', to_jsonb('{{ $json.escaped_markdown }}'::text) ) WHERE n8n_user_id = '{{ $json.user_id }}'::uuid",
+    "options": {}
+   },
+   "id": "e0969292-83df-4f18-837f-a0895445ee61",
+   "name": "Write Priorities",
+   "type": "n8n-nodes-base.postgres",
+   "position": [
+    208,
+    0
+   ],
+   "typeVersion": 2.6,
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "{ \"success\": true }",
+    "options": {}
+   },
+   "id": "249f3259-3354-432a-8cf2-127c50f2a407",
+   "name": "Respond to Webhook (Success)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    416,
+    0
+   ],
+   "typeVersion": 1.4
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "{\n  \"valid\": \"false\"\n}",
+    "options": {}
+   },
+   "id": "a148539e-9280-4655-be01-23a1456d7f8e",
+   "name": "Respond to Webhook (Error)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    0,
+    176
+   ],
+   "typeVersion": 1.4
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "Escape Input",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Respond to Webhook (Error)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Escape Input": {
+   "main": [
+    [
+     {
+      "node": "Write Priorities",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Write Priorities": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook (Success)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "TUOIEQbwAOJ3idNm",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-04-20T20:19:50.208Z",
+   "updatedAt": "2026-04-20T20:19:50.208Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "033a594d-39a8-457b-bd77-78899c2b195a",
+  "workflowId": "TUOIEQbwAOJ3idNm",
+  "nodes": [
+   {
+    "parameters": {
+     "httpMethod": "POST",
+     "path": "radar-priorities",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "id": "46037ba0-6c0b-4435-a41e-05ca5b372792",
+    "name": "Webhook",
+    "type": "n8n-nodes-base.webhook",
+    "position": [
+     -416,
+     96
+    ],
+    "webhookId": "a4000001-0001-4000-8000-100000000001",
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "dbf8RGXgL1Up2KzF",
+      "cachedResultName": "jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "1a3ddd3b-5335-4e39-92f3-1ac2f7a9aeb0",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -208,
+     96
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "jsCode": "const markdown = $('Webhook').item.json.body.markdown || '';\nconst escaped = markdown.replace(/'/g, \"''\");\nreturn [{ json: { ...$input.first().json, escaped_markdown: escaped } }];"
+    },
+    "id": "dfc67857-54f1-4020-85b7-87d85bddb8f3",
+    "name": "Escape Input",
+    "type": "n8n-nodes-base.code",
+    "position": [
+     0,
+     0
+    ],
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "operation": "executeQuery",
+     "query": "UPDATE portal_user SET settings = jsonb_set( jsonb_set( COALESCE(settings, '{}'::jsonb), '{radar}', COALESCE(settings->'radar', '{}'::jsonb) ), '{radar,priorities_markdown}', to_jsonb('{{ $json.escaped_markdown }}'::text) ) WHERE n8n_user_id = '{{ $json.user_id }}'::uuid",
+     "options": {}
+    },
+    "id": "e0969292-83df-4f18-837f-a0895445ee61",
+    "name": "Write Priorities",
+    "type": "n8n-nodes-base.postgres",
+    "position": [
+     208,
+     0
+    ],
+    "typeVersion": 2.6,
+    "credentials": {
+     "postgres": {
+      "id": "HY5nJozYRhfP29Se",
+      "name": "Postgres account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "{ \"success\": true }",
+     "options": {}
+    },
+    "id": "249f3259-3354-432a-8cf2-127c50f2a407",
+    "name": "Respond to Webhook (Success)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     416,
+     0
+    ],
+    "typeVersion": 1.4
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "{\n  \"valid\": \"false\"\n}",
+     "options": {}
+    },
+    "id": "a148539e-9280-4655-be01-23a1456d7f8e",
+    "name": "Respond to Webhook (Error)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     0,
+     176
+    ],
+    "typeVersion": 1.4
+   }
+  ],
+  "connections": {
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "Escape Input",
+       "type": "main",
+       "index": 0
+      }
+     ],
+     [
+      {
+       "node": "Respond to Webhook (Error)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Escape Input": {
+    "main": [
+     [
+      {
+       "node": "Write Priorities",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Write Priorities": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook (Success)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-04-20T20:56:43.750Z",
+  "updatedAt": "2026-04-20T20:56:43.750Z",
+  "workflowPublishHistory": [
+   {
+    "id": 706,
+    "workflowId": "TUOIEQbwAOJ3idNm",
+    "versionId": "033a594d-39a8-457b-bd77-78899c2b195a",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-04-20T20:56:43.850Z"
+   }
+  ]
+ }
+}

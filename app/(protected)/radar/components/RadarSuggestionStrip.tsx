@@ -2,25 +2,17 @@
 
 import { useState } from 'react';
 import { useBranding } from '@/components/BrandingProvider';
-
-interface RadarSource {
-  id: string;
-  url: string;
-  name: string;
-  category: string;
-  tone_tag: string;
-  because_quote: string;
-  status: string;
-  created_at: string;
-}
+import type { RadarSource } from '../shared';
 
 interface RadarSuggestionStripProps {
   sources: RadarSource[];
+  /** Called after a follow / skip lands, so the parent can refresh its lists. */
+  onChanged?: () => void;
 }
 
 const COLLAPSED_COUNT = 6;
 
-export default function RadarSuggestionStrip({ sources }: RadarSuggestionStripProps) {
+export default function RadarSuggestionStrip({ sources, onChanged }: RadarSuggestionStripProps) {
   const branding = useBranding();
   const accent = branding.primaryColor;
   const [acting, setActing] = useState<string | null>(null);
@@ -59,6 +51,7 @@ export default function RadarSuggestionStrip({ sources }: RadarSuggestionStripPr
         body: JSON.stringify({ source_id: sourceId, action }),
       });
       if (res.ok === false) throw new Error('action failed');
+      onChanged?.();
     } catch {
       setHidden((h) => ({ ...h, [sourceId]: false })); // revert on failure
     } finally {

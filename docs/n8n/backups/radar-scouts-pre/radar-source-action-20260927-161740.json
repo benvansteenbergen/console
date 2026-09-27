@@ -1,0 +1,380 @@
+{
+ "id": "f1sm4nyTxMkiT85E",
+ "name": "radar-source-action",
+ "description": null,
+ "active": true,
+ "activeVersionId": "c8cf4fd9-6388-4211-8945-c62ab0853a11",
+ "createdAt": "2026-04-20T20:18:57.963Z",
+ "updatedAt": "2026-04-20T20:18:58.310Z",
+ "isArchived": false,
+ "versionId": "c8cf4fd9-6388-4211-8945-c62ab0853a11",
+ "versionCounter": 5,
+ "sourceWorkflowId": null,
+ "triggerCount": 1,
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "radar-source-action",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "id": "edc3a3f3-cf2f-4f0d-be15-f36b05177432",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "position": [
+    -416,
+    96
+   ],
+   "webhookId": "a2000001-0001-4000-8000-100000000001",
+   "typeVersion": 2
+  },
+  {
+   "parameters": {
+    "workflowId": {
+     "__rl": true,
+     "mode": "list",
+     "value": "dbf8RGXgL1Up2KzF",
+     "cachedResultName": "jwt-validation"
+    },
+    "workflowInputs": {
+     "value": {
+      "cookie": "={{ $json.headers.cookie }}"
+     },
+     "schema": [
+      {
+       "id": "cookie",
+       "type": "string",
+       "display": true,
+       "removed": false,
+       "required": false,
+       "displayName": "cookie",
+       "defaultMatch": false,
+       "canBeUsedToMatch": true
+      }
+     ],
+     "mappingMode": "defineBelow",
+     "matchingColumns": [
+      "cookie"
+     ],
+     "attemptToConvertTypes": false,
+     "convertFieldsToString": true
+    },
+    "options": {
+     "waitForSubWorkflow": true
+    }
+   },
+   "id": "86984348-d630-42cc-83bf-875db77fd431",
+   "name": "Fetch User",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "position": [
+    -208,
+    96
+   ],
+   "typeVersion": 1.2,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE radar_sources SET status = '{{ $('Webhook').item.json.body.action }}', action_at = now(), updated_at = now() WHERE id = '{{ $('Webhook').item.json.body.source_id }}'::uuid AND user_id = '{{ $json.user_id }}'::uuid RETURNING id, status",
+    "options": {}
+   },
+   "id": "f1e37c44-78d0-4c21-9104-147aa9ebf2ac",
+   "name": "Update Source",
+   "type": "n8n-nodes-base.postgres",
+   "position": [
+    0,
+    0
+   ],
+   "typeVersion": 2.6,
+   "credentials": {
+    "postgres": {
+     "id": "HY5nJozYRhfP29Se",
+     "name": "Postgres account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "{ \"success\": true }",
+    "options": {}
+   },
+   "id": "94d223d6-9ebc-4742-b196-134ca4a81c7c",
+   "name": "Respond to Webhook (Success)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    208,
+    0
+   ],
+   "typeVersion": 1.4
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "{\n  \"valid\": \"false\"\n}",
+    "options": {}
+   },
+   "id": "394f04bd-3401-4a8b-b2e3-ccac1eb40946",
+   "name": "Respond to Webhook (Error)",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "position": [
+    0,
+    176
+   ],
+   "typeVersion": 1.4
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Fetch User",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch User": {
+   "main": [
+    [
+     {
+      "node": "Update Source",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Respond to Webhook (Error)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update Source": {
+   "main": [
+    [
+     {
+      "node": "Respond to Webhook (Success)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "nodeGroups": [],
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "staticData": null,
+ "pinData": {},
+ "meta": null,
+ "tags": [],
+ "shared": [
+  {
+   "role": "workflow:owner",
+   "workflowId": "f1sm4nyTxMkiT85E",
+   "projectId": "5wB8K4Dwm33EnlQ1",
+   "project": {
+    "id": "5wB8K4Dwm33EnlQ1",
+    "name": "Wingsuite Root Folder",
+    "type": "team",
+    "icon": {
+     "type": "icon",
+     "value": "layer-group"
+    },
+    "description": "Wingsuite Roots",
+    "customTelemetryTags": [],
+    "creatorId": null,
+    "createdAt": "2025-06-12T18:54:37.299Z",
+    "updatedAt": "2025-07-21T19:35:37.093Z"
+   },
+   "createdAt": "2026-04-20T20:18:57.963Z",
+   "updatedAt": "2026-04-20T20:18:57.963Z"
+  }
+ ],
+ "activeVersion": {
+  "versionId": "c8cf4fd9-6388-4211-8945-c62ab0853a11",
+  "workflowId": "f1sm4nyTxMkiT85E",
+  "nodes": [
+   {
+    "parameters": {
+     "httpMethod": "POST",
+     "path": "radar-source-action",
+     "responseMode": "responseNode",
+     "options": {}
+    },
+    "id": "edc3a3f3-cf2f-4f0d-be15-f36b05177432",
+    "name": "Webhook",
+    "type": "n8n-nodes-base.webhook",
+    "position": [
+     -416,
+     96
+    ],
+    "webhookId": "a2000001-0001-4000-8000-100000000001",
+    "typeVersion": 2
+   },
+   {
+    "parameters": {
+     "workflowId": {
+      "__rl": true,
+      "mode": "list",
+      "value": "dbf8RGXgL1Up2KzF",
+      "cachedResultName": "jwt-validation"
+     },
+     "workflowInputs": {
+      "value": {
+       "cookie": "={{ $json.headers.cookie }}"
+      },
+      "schema": [
+       {
+        "id": "cookie",
+        "type": "string",
+        "display": true,
+        "removed": false,
+        "required": false,
+        "displayName": "cookie",
+        "defaultMatch": false,
+        "canBeUsedToMatch": true
+       }
+      ],
+      "mappingMode": "defineBelow",
+      "matchingColumns": [
+       "cookie"
+      ],
+      "attemptToConvertTypes": false,
+      "convertFieldsToString": true
+     },
+     "options": {
+      "waitForSubWorkflow": true
+     }
+    },
+    "id": "86984348-d630-42cc-83bf-875db77fd431",
+    "name": "Fetch User",
+    "type": "n8n-nodes-base.executeWorkflow",
+    "position": [
+     -208,
+     96
+    ],
+    "typeVersion": 1.2,
+    "onError": "continueErrorOutput"
+   },
+   {
+    "parameters": {
+     "operation": "executeQuery",
+     "query": "UPDATE radar_sources SET status = '{{ $('Webhook').item.json.body.action }}', action_at = now(), updated_at = now() WHERE id = '{{ $('Webhook').item.json.body.source_id }}'::uuid AND user_id = '{{ $json.user_id }}'::uuid RETURNING id, status",
+     "options": {}
+    },
+    "id": "f1e37c44-78d0-4c21-9104-147aa9ebf2ac",
+    "name": "Update Source",
+    "type": "n8n-nodes-base.postgres",
+    "position": [
+     0,
+     0
+    ],
+    "typeVersion": 2.6,
+    "credentials": {
+     "postgres": {
+      "id": "HY5nJozYRhfP29Se",
+      "name": "Postgres account"
+     }
+    }
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "{ \"success\": true }",
+     "options": {}
+    },
+    "id": "94d223d6-9ebc-4742-b196-134ca4a81c7c",
+    "name": "Respond to Webhook (Success)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     208,
+     0
+    ],
+    "typeVersion": 1.4
+   },
+   {
+    "parameters": {
+     "respondWith": "json",
+     "responseBody": "{\n  \"valid\": \"false\"\n}",
+     "options": {}
+    },
+    "id": "394f04bd-3401-4a8b-b2e3-ccac1eb40946",
+    "name": "Respond to Webhook (Error)",
+    "type": "n8n-nodes-base.respondToWebhook",
+    "position": [
+     0,
+     176
+    ],
+    "typeVersion": 1.4
+   }
+  ],
+  "connections": {
+   "Webhook": {
+    "main": [
+     [
+      {
+       "node": "Fetch User",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Fetch User": {
+    "main": [
+     [
+      {
+       "node": "Update Source",
+       "type": "main",
+       "index": 0
+      }
+     ],
+     [
+      {
+       "node": "Respond to Webhook (Error)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   },
+   "Update Source": {
+    "main": [
+     [
+      {
+       "node": "Respond to Webhook (Success)",
+       "type": "main",
+       "index": 0
+      }
+     ]
+    ]
+   }
+  },
+  "nodeGroups": [],
+  "authors": "Ben van Steenbergen",
+  "name": null,
+  "description": null,
+  "autosaved": false,
+  "createdAt": "2026-04-20T20:18:57.963Z",
+  "updatedAt": "2026-04-20T20:18:57.963Z",
+  "workflowPublishHistory": [
+   {
+    "id": 699,
+    "workflowId": "f1sm4nyTxMkiT85E",
+    "versionId": "c8cf4fd9-6388-4211-8945-c62ab0853a11",
+    "event": "activated",
+    "userId": "64e933f4-3ff2-4261-8186-b09ac50d85ed",
+    "createdAt": "2026-04-20T20:18:58.528Z"
+   }
+  ]
+ }
+}

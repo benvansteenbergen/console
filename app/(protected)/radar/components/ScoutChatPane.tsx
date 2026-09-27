@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useBranding } from '@/components/BrandingProvider';
 import { dispatchScoutEvents, ScoutResponse } from './ScoutResponseDispatcher';
+import type { ScoutProfile } from '../shared';
 
 interface Message {
   id: string;
@@ -14,29 +15,28 @@ interface Message {
 
 interface ScoutChatPaneProps {
   mode: 'A' | 'B';
+  /** The scout being refined; null when this chat creates a new scout. */
+  scoutId: string | null;
+  scoutName?: string;
   sessionId: string | null;
   onSessionId: (id: string) => void;
   onConversationActive: (active: boolean) => void;
-  onComplete?: () => void;
+  onComplete?: (result: ScoutResponse) => void;
   onBack: () => void;
-  profileContext?: {
-    name?: string;
-    industry?: string;
-    tagline?: string;
-    audience?: string;
-    tone_keywords?: string[];
-    content_types?: string[];
-    recommendations?: Array<{ format?: string; topic?: string; reason?: string }>;
-  };
+  backLabel?: string;
+  profileContext?: ScoutProfile;
 }
 
 export default function ScoutChatPane({
   mode,
+  scoutId,
+  scoutName,
   sessionId,
   onSessionId,
   onConversationActive,
   onComplete,
   onBack,
+  backLabel = 'View your sources',
   profileContext,
 }: ScoutChatPaneProps) {
   const branding = useBranding();
@@ -91,6 +91,8 @@ export default function ScoutChatPane({
           session_id: sessionId,
           history,
           profile_context: profileContext,
+          scout_id: scoutId,
+          new_scout: scoutId === null,
         }),
         signal: AbortSignal.timeout(60_000), // don't let a slow/hung curation freeze the chat
       });
@@ -116,7 +118,7 @@ export default function ScoutChatPane({
       if (result.done && hasText) {
         setIsDone(true);
         onConversationActive(false);
-        onComplete?.();
+        onComplete?.(result);
       }
     } catch {
       const errorMsg: Message = {
@@ -137,14 +139,14 @@ export default function ScoutChatPane({
   const knownTone = (p.tone_keywords || []).filter(Boolean).slice(0, 2).join(', ');
   const welcome =
     mode === 'B'
-      ? 'Welcome back. Want me to find new sources, fill a gap, or refine your priorities?'
+      ? `Welcome back${scoutName ? ` to ${scoutName}` : ''}. Want me to find new sources, fill a gap, or sharpen what this scout watches?`
       : (() => {
           const bits: string[] = [];
           if (knownName) bits.push(`You are ${knownName}`);
           if (knownAudience) bits.push(`you create content for ${knownAudience}`);
           if (knownTone) bits.push(`your tone is ${knownTone}`);
           const intro = bits.length ? `${bits.join(', ')}. ` : '';
-          return `${intro}I look for sources that inspire new content. Think of news to react to, or visions to share in your own words. Which topics or people should I keep an eye on?`;
+          return `${intro}Each scout watches one topic and finds sources that inspire new content, from news to react to to visions to share in your own words. Which topic should this scout watch?`;
         })();
 
   return (
@@ -238,7 +240,7 @@ export default function ScoutChatPane({
               onClick={onBack}
               className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              View your sources
+              {backLabel}
             </button>
             <Link
               href="/studio"
@@ -268,7 +270,7 @@ export default function ScoutChatPane({
                 }}
                 placeholder={
                   mode === 'A'
-                    ? 'Which topics matter for your company?'
+                    ? 'Which topic should this scout watch?'
                     : 'What has changed since last time?'
                 }
                 disabled={isGenerating}

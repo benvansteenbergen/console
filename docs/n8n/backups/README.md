@@ -8,7 +8,7 @@ This folder holds two things for the n8n workflows we edit from the console repo
    - `studio-message-20260608-203633.json` — pre-edit Studio prompt
    - `sweep/radar-sweep-backup-2026-09-08.json` — sweep snapshot 2026-09-08
 
-2. **Editable node sources** — `scout/` and `sweep/`: the Code-node JS and the agent system prompt as plain files, plus an `assemble.py`. These are the **source of truth** for what those Code nodes currently run.
+2. **Editable node sources** — `scout/` and `sweep/`: the Code-node JS and the agent system prompt as plain files, plus an `assemble.py`. These are the **source of truth** for what those Code nodes currently run. Since the multi-scout change, deploy `scout/` through `radar-scouts/deploy_api.py` (it also sets the scout-aware SQL and the `Sanitize Input` node). `scout/assemble.py` builds on the older pre-scout backup and would undo that; don't use it for the scout workflow anymore.
 
 3. **`radar-weekly-digest/`** — full PUT payloads (not extracted sources) for the weekly digest + opt-out endpoint, in deployment order:
    - `create-payload.json` — initial POST body (single recipient, article links)
@@ -19,6 +19,8 @@ This folder holds two things for the n8n workflows we edit from the console repo
    - `pref-create-payload.json` — `radar-digest-pref` opt-out endpoint (POST body)
    - `radar-weekly-digest-2026*.json` — GET snapshots after create/activate
    To change the digest: edit a copy of `put-v3-all-users.json`, PUT it (file-based, see below), deactivate+reactivate to re-register the cron, verify. There is no assemble.py here; the payloads are small enough to edit directly.
+
+4. **`radar-scouts/` + `radar-scouts-pre/`** — the multi-scout change (2026-09). `radar-scouts-pre/` holds GET snapshots of all 10 touched workflows taken right before (rollback: PUT them back). `radar-scouts/n8n_deploy.py` is a small shared helper (backup load, safe PUT payload, re-register, verify); `deploy_pipeline.py` patches the sweep chain SQL, `deploy_api.py` patches the list/action/priorities/scout workflows (uses `scout/*.js` + `system_message.txt`) and creates `radar-scouts-list` + `radar-scout-manage`. Both support `--dry-run`. The DB migration is `../migrations/2026-09-radar-scouts.sql`.
 
 ## Deploy workflow (how to edit a Code node safely)
 

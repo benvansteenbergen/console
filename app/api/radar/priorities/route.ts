@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromN8n, safeJsonParse } from '@/lib/api-utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const jwt = cookieStore.get('session')?.value;
 
@@ -10,7 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const res = await fetchFromN8n('/webhook/radar-priorities', jwt);
+  const scoutId = request.nextUrl.searchParams.get('scout_id');
+  const qs = scoutId ? `?scout_id=${encodeURIComponent(scoutId)}` : '';
+  const res = await fetchFromN8n(`/webhook/radar-priorities${qs}`, jwt);
   let data = await safeJsonParse(res, 'radar-priorities');
 
   if (!data) {
@@ -32,12 +34,12 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { markdown } = body;
+  const { markdown, scout_id } = body;
 
   const res = await fetchFromN8n('/webhook/radar-priorities', jwt, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ markdown }),
+    body: JSON.stringify({ markdown, scout_id }),
   });
 
   const data = await safeJsonParse(res, 'radar-priorities');
