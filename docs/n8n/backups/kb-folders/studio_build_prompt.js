@@ -33,8 +33,10 @@ if (kbMode === 'off') {
   kbFilter = { path: ['folder_id'], operator: 'Equal', valueString: '__off__' };
 } else if (kbMode === 'folders') {
   const parts = kbFolderIds.map(function (id) { return { path: ['folder_id'], operator: 'Equal', valueString: id }; });
+  // "Shared with your team" = every document shared with the team. (n8n's Weaviate filter
+  // translator has no NotEqual, so "shared by others only" is not expressible.)
   if (kbIncludeShared) {
-    parts.push({ path: ['uploaded_by'], operator: 'NotEqual', valueString: $('Fetch User').item.json.user_id });
+    parts.push({ path: ['visibility'], operator: 'Equal', valueString: 'shared' });
   }
   kbFilter = parts.length === 1 ? parts[0] : { OR: parts };
 }

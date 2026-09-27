@@ -1,0 +1,344 @@
+[
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "exact",
+  "query": "ROHAPECT DA Plus MGA reduction",
+  "target": "00371b2d-a086-b888-5301-f4d60e96decb"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "enzyme that clarifies juice and lowers monogalacturonic acid",
+  "target": "00371b2d-a086-b888-5301-f4d60e96decb"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "exact",
+  "query": "COROLASE 8000 fish oil",
+  "target": "bd6b9ba6-3778-7643-bc4d-2adf74568b8b"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "how to get more omega-3 oil out of fish by-products",
+  "target": "bd6b9ba6-3778-7643-bc4d-2adf74568b8b"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "exact",
+  "query": "ROHALASE FOS-UP",
+  "target": "05936c15-11b1-344b-5c00-f92e9d36ed57"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "producing fructo-oligosaccharides from sucrose",
+  "target": "05936c15-11b1-344b-5c00-f92e9d36ed57"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "make oat drinks sweeter and smoother",
+  "target": "3736a37c-07ec-5a14-4b1a-cc25cb9a1b9b"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "exact",
+  "query": "COROLASE VP wheat gluten calf milk replacer",
+  "target": "85423c38-3761-f9f5-5370-88d7ea099bdf"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "plant protein alternative for skimmed milk in calf feed",
+  "target": "85423c38-3761-f9f5-5370-88d7ea099bdf"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "firmer and more stable fruit fillings",
+  "target": "294e8c46-f875-6dae-5cff-47c5dd9016bc"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "exact",
+  "query": "ROHAVIN wine clarification",
+  "target": "9ce9dda9-03e1-3a88-d2c4-f0987dc5a995"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "enzymes for winemaking and must treatment",
+  "target": "9ce9dda9-03e1-3a88-d2c4-f0987dc5a995"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "collagen peptides production with enzymes",
+  "target": "a59f9808-10ce-5d74-dd71-42a3b14c8940"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "rendering meat by-products",
+  "target": "a2b78492-f289-9075-51ff-4dfce185d574"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "higher yield in gelatine extraction",
+  "target": "52d58b84-4f47-7659-756a-ce7b61df4c7c"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "tekst voor de slecht weer campagne regen bus",
+  "target": "73ffc897-4f7f-bc1c-4c4b-d6f7461fc7ce"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "briefing opdracht slechtweer campagne contactpersoon",
+  "target": "2b94476c-cfbc-58b1-9889-db6f95603ea7"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "subsidieaanvraag influencer marketing kostenverdeling provincie",
+  "target": "ff8f335b-aa6f-8880-a2d3-29f7a64cf1be"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "paraphrase",
+  "query": "hoeveel subsidie hebben we aangevraagd voor influencers",
+  "target": "ff8f335b-aa6f-8880-a2d3-29f7a64cf1be"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "evaluatie prijsperceptie aanbevelingen voor de toekomst",
+  "target": "7f27a16a-8783-7d66-88b1-d508189943cf"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "paraphrase",
+  "query": "resultaten van de facebook en instagram advertenties over de prijs van de bus",
+  "target": "1e31721a-844c-5bd4-f2a0-c7bf47723e2e"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "Bravo influencer event in de bus Armin van Buuren",
+  "target": "6872060c-575a-f5f5-0a39-4b2cb7571c30"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "paraphrase",
+  "query": "idee om reizigers te verrassen met een live optreden in het voertuig",
+  "target": "6872060c-575a-f5f5-0a39-4b2cb7571c30"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "exact",
+  "query": "Takkenweer strategie en doelgroep",
+  "target": "06af87de-b9f9-4b3b-122a-424829a6a8eb"
+ },
+ {
+  "tenant": "client_emotion",
+  "kind": "paraphrase",
+  "query": "interactief spel waar de doelgroep de prijs kan raden",
+  "target": "f55d630d-9ecc-8df5-e68f-a573a7d730e3"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "exact",
+  "query": "Vitrilight Wood houten uitstraling",
+  "target": "469e64f2-7923-8dd2-7661-e5f7450641f9"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "paraphrase",
+  "query": "metal stud wand met deurunits en glas naadloos geintegreerd",
+  "target": "5df85c95-0d90-c170-aed5-21836be95fba"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "exact",
+  "query": "Vitriline staalpanelen haarvoeg",
+  "target": "0cab10a6-00e9-dfe4-0842-ff2f97aecc48"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "exact",
+  "query": "Monoblock geluidsisolatie Rw 38 tot 48 dB",
+  "target": "692cb69a-4f86-07f8-e48f-64a2ea79ed45"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "paraphrase",
+  "query": "wand met modulering van 1200 mm en 0 mm haarvoeg",
+  "target": "cd25275b-5b2c-b08f-f48d-b1f3c336b721"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "exact",
+  "query": "Vitrivision akoestiek en transparantie",
+  "target": "9682672f-f0f6-b5f2-f714-2b92d89ce13d"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "paraphrase",
+  "query": "transparante glazen wand met slank U-profiel",
+  "target": "79608dfc-abbf-ad65-9bd6-3f98b5704e2d"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "paraphrase",
+  "query": "deur uitvoeringen draai schuif of taats",
+  "target": "692cb69a-4f86-07f8-e48f-64a2ea79ed45"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "paraphrase",
+  "query": "wand met natuurlijke houten look en weinig profiel",
+  "target": "469e64f2-7923-8dd2-7661-e5f7450641f9"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "exact",
+  "query": "Agent Reasoning Reward Model",
+  "target": "4c034b40-2576-9d77-fe1a-851831ea3694"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "paraphrase",
+  "query": "reward model that critiques reasoning traces and gives refinement guidance",
+  "target": "4c034b40-2576-9d77-fe1a-851831ea3694"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "exact",
+  "query": "OpenAI EU economic blueprint",
+  "target": "b97ad460-2ef5-5cfa-8ef7-b3cb9e1fae34"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "paraphrase",
+  "query": "how can European small businesses get productivity gains from AI",
+  "target": "b97ad460-2ef5-5cfa-8ef7-b3cb9e1fae34"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "paraphrase",
+  "query": "mijn werkervaring en profiel",
+  "target": "4599046a-6451-66d8-6da7-4790a2c029e3"
+ },
+ {
+  "tenant": "client_wingsuite",
+  "kind": "exact",
+  "query": "Malta ChatGPT Plus for all citizens",
+  "target": "c9c2a89b-69b8-0d96-3271-5af1842275a9"
+ },
+ {
+  "tenant": "client_wingsuite",
+  "kind": "paraphrase",
+  "query": "country giving every resident free access to an AI assistant",
+  "target": "c9c2a89b-69b8-0d96-3271-5af1842275a9"
+ },
+ {
+  "tenant": "user_6920d63e-04e1-4d4b-9fa9-1c7b34908dfb",
+  "kind": "exact",
+  "query": "kosten advies en strategie prijsperceptie 2025",
+  "target": "e2e08413-1ddd-f7cb-f775-87508963f35d"
+ },
+ {
+  "tenant": "user_6920d63e-04e1-4d4b-9fa9-1c7b34908dfb",
+  "kind": "paraphrase",
+  "query": "offerte met kosten voor de nieuwe prijscampagne",
+  "target": "e2e08413-1ddd-f7cb-f775-87508963f35d"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "enzymes for barley and wheat processing in grain",
+  "target": "cc809592-fe10-87da-6b17-3754ba12c62f"
+ },
+ {
+  "tenant": "client_ab-enzymes",
+  "kind": "paraphrase",
+  "query": "protein hydrolysates from pulses like peas",
+  "target": "d0afe57c-149d-1d77-727d-7e6aded81d15"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "real",
+  "query": "Agent Reasoning Reward Model research insights findings",
+  "target": "4c034b40-2576-9d77-fe1a-851831ea3694"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "real",
+  "query": "Agent Reasoning Reward Model",
+  "target": "4c034b40-2576-9d77-fe1a-851831ea3694"
+ },
+ {
+  "tenant": "user_64e933f4-3ff2-4261-8186-b09ac50d85ed",
+  "kind": "real",
+  "query": "Agent Reasoning Reward Model research insights",
+  "target": "4c034b40-2576-9d77-fe1a-851831ea3694"
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Vitriselect Melamine-G dichte wanden product eigenschappen specificaties",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "VitriVision dubbele beglazing glas product eigenschappen",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Vitrilight glazen wanden product eigenschappen licht doorzicht",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Vitriselect Melamine-G dichte wanden VitriVision dubbele beglazing Vitrilight aluminium kaderdeuren RVS beslag elektra specificaties",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Ropa Neede project kantoor RAL 9011 Vitriselect VitriVision Vitrilight aluminium deuren case study",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Vitrilight product eigenschappen kenmerken specificaties glazen wanden kantoor",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "Tone of Voice V2 brand voice instructies schrijfstijl richtlijnen",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "brand voice tone of voice instructies schrijfstijl richtlijnen",
+  "target": null
+ },
+ {
+  "tenant": "client_vitriwand",
+  "kind": "real",
+  "query": "geluidsisolatie akoestiek dB Rw waarde systeemwanden Vitrivision Vitriselect Vitriline Vitrilight",
+  "target": null
+ }
+]

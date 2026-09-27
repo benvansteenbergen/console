@@ -18,7 +18,7 @@ interface KnowledgePickerProps {
   onChange: (scope: KbScope) => void;
 }
 
-const SHARED_LABEL = 'Shared by colleagues';
+const SHARED_LABEL = 'Shared with your team';
 
 export function scopeLabel(scope: KbScope): string {
   if (scope.mode === 'off') return 'Knowledge base off';

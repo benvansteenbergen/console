@@ -32,6 +32,21 @@ export const UNRELEASED: ReleaseChange[] = [];
 
 export const RELEASES: Release[] = [
   {
+    version: '1.2.0',
+    date: '2026-09-27',
+    type: 'minor',
+    title: 'Ask your documents',
+    summary:
+      'Ask a question and get an answer straight from your own documents, with the sources it came from.',
+    changes: [
+      { kind: 'new', text: 'Ask your knowledge base: questions about all your documents or one folder, answered from the documents themselves.' },
+      { kind: 'new', text: 'Ask about one document from its menu, for a quick summary or a specific figure.' },
+      { kind: 'improved', text: 'Every answer shows which documents it is based on.' },
+      { kind: 'improved', text: 'In Content Studio, "Shared with your team" limits the knowledge base to documents shared with your team.' },
+      { kind: 'fixed', text: 'Content Studio finds your documents again when "All documents" is selected.' },
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-09-27',
     type: 'minor',

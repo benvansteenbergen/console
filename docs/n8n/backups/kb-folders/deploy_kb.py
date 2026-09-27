@@ -227,8 +227,11 @@ def patch_upload():
 def patch_studio():
     wf = backup('studio-message')
     node(wf, 'Build Prompt')['parameters']['jsCode'] = src('studio_build_prompt.js')
+    # No filter must evaluate to undefined. Tested on vectorStoreWeaviate v1.3: "{}" crashes
+    # ("Cannot read properties of undefined (reading '0')") and '' fails validation
+    # ("Invalid input for field 'Search Filters'"); undefined/null skip filtering.
     flt = ("={{ $('Build Prompt').first().json.kbFilter != null ? "
-           "$('Build Prompt').first().json.kbFilter.toJsonString() : {}.toJsonString() }}")
+           "$('Build Prompt').first().json.kbFilter.toJsonString() : undefined }}")
     for tool in ('Weaviate Vector Company KB', 'Weaviate Vector Private KB'):
         node(wf, tool)['parameters']['options']['searchFilterJson'] = flt
     agent = node(wf, 'AI Agent')['parameters']['options']
