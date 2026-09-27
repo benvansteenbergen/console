@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR, { mutate as globalMutate } from 'swr';
@@ -14,6 +14,39 @@ import ScoutHabitatPane from '../../components/ScoutHabitatPane';
 import { fetcher, SCOUTS_KEY, sourcesKey, useScoutProfile, type RadarScout, type RadarSource } from '../../shared';
 
 type SourcesResponse = { success: boolean; sources: RadarSource[] };
+
+function CollapsibleSection({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700"
+      >
+        <svg
+          className={`h-4 w-4 transition-transform ${open ? 'rotate-90' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+        {label}
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  );
+}
 
 export default function ScoutDetailPage() {
   const branding = useBranding();
@@ -43,8 +76,13 @@ export default function ScoutDetailPage() {
     sourcesKey(scoutId, 'naylisted'),
     fetcher
   );
+  const { data: suspendedData, mutate: mutateSuspended } = useSWR<SourcesResponse>(
+    sourcesKey(scoutId, 'suspended'),
+    fetcher
+  );
 
   const [naylistOpen, setNaylistOpen] = useState(false);
+  const [suspendedOpen, setSuspendedOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refineDone, setRefineDone] = useState(false);
   const profile = useScoutProfile();
@@ -53,6 +91,7 @@ export default function ScoutDetailPage() {
     mutateProposed();
     mutateFollowed();
     mutateNaylisted();
+    mutateSuspended();
     globalMutate(SCOUTS_KEY);
   };
 
@@ -104,6 +143,7 @@ export default function ScoutDetailPage() {
 
   const followed = followedData?.sources || [];
   const naylisted = naylistedData?.sources || [];
+  const suspended = suspendedData?.sources || [];
 
   return (
     <div className="flex h-full flex-col">
@@ -172,34 +212,40 @@ export default function ScoutDetailPage() {
             onCopy={handleCopy}
           />
 
+          {suspended.length > 0 && (
+            <CollapsibleSection
+              label={`Suspended (${suspended.length})`}
+              open={suspendedOpen}
+              onToggle={() => setSuspendedOpen((prev) => !prev)}
+            >
+              <p className="mb-3 text-xs text-gray-500">
+                Radar stopped checking these after 5 failed sweeps in a row. Resume one to give it a fresh try.
+              </p>
+              <RadarSourcesList
+                title=""
+                sources={suspended}
+                actions={[
+                  { label: 'Resume', action: 'followed', variant: 'default' },
+                  { label: 'Drop', action: 'dropped', variant: 'danger' },
+                ]}
+                onAction={handleSourceAction}
+              />
+            </CollapsibleSection>
+          )}
+
           {naylisted.length > 0 && (
-            <div>
-              <button
-                onClick={() => setNaylistOpen((prev) => !prev)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700"
-              >
-                <svg
-                  className={`h-4 w-4 transition-transform ${naylistOpen ? 'rotate-90' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-                Nay-list ({naylisted.length})
-              </button>
-              {naylistOpen && (
-                <div className="mt-3">
-                  <RadarSourcesList
-                    title=""
-                    sources={naylisted}
-                    actions={[{ label: 'Restore', action: 'followed', variant: 'default' }]}
-                    onAction={handleSourceAction}
-                  />
-                </div>
-              )}
-            </div>
+            <CollapsibleSection
+              label={`Nay-list (${naylisted.length})`}
+              open={naylistOpen}
+              onToggle={() => setNaylistOpen((prev) => !prev)}
+            >
+              <RadarSourcesList
+                title=""
+                sources={naylisted}
+                actions={[{ label: 'Restore', action: 'followed', variant: 'default' }]}
+                onAction={handleSourceAction}
+              />
+            </CollapsibleSection>
           )}
 
           <div className="flex justify-center pt-2">

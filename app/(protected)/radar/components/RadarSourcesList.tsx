@@ -8,6 +8,28 @@ interface SourceHealth {
   last_sweep?: string;
   consecutive_failures?: number;
   reason?: string;
+  /** Last (up to 10) sweep outcomes, oldest first. */
+  recent?: string[];
+}
+
+// 3 failures in a row is about a full day of sweeps: treat that as not fetching at all.
+const DOWN_AFTER = 3;
+
+function healthBadge(health: SourceHealth | null): { tone: 'down' | 'flaky'; label: string } | null {
+  if (!health) return null;
+  const consecutive = health.consecutive_failures ?? 0;
+  const recent = health.recent ?? [];
+  const fails = recent.filter((r) => r === 'fail').length;
+  if (health.status === 'failed' && consecutive >= DOWN_AFTER) {
+    return { tone: 'down', label: `Not fetching · ${consecutive} sweeps in a row` };
+  }
+  if (fails > 0 && recent.length > 1) {
+    return { tone: 'flaky', label: `Sometimes fails · ${fails} of last ${recent.length}` };
+  }
+  if (health.status === 'failed') {
+    return { tone: 'flaky', label: 'Failed last sweep' };
+  }
+  return null;
 }
 
 function parseHealth(notes?: string | null): SourceHealth | null {
@@ -78,6 +100,7 @@ export default function RadarSourcesList({
       <div className="space-y-2">
         {sources.map((source) => {
           const health = parseHealth(source.notes);
+          const badge = healthBadge(health);
           return (
           <div
             key={source.id}
@@ -98,18 +121,28 @@ export default function RadarSourcesList({
                     {source.tone_tag}
                   </span>
                 )}
-                {health?.status === 'failed' && (
+                {badge && (
                   <span
-                    className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 flex-shrink-0"
-                    title={health.reason}
+                    className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${
+                      badge.tone === 'down' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'
+                    }`}
+                    title={health?.reason}
                   >
-                    Fetch failing
-                    {health.consecutive_failures && health.consecutive_failures > 1
-                      ? ` (${health.consecutive_failures} sweeps)`
-                      : ''}
+                    {badge.label}
                   </span>
                 )}
               </div>
+              {source.url && (
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 block truncate text-xs text-gray-400 underline decoration-gray-300 underline-offset-2 hover:text-gray-600"
+                  title={source.url}
+                >
+                  {source.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '')}
+                </a>
+              )}
               {source.because_quote && (
                 <p className="text-xs text-gray-500 mt-1 truncate">
                   {source.because_quote}

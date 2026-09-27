@@ -10,6 +10,7 @@ export interface RadarScout {
   sources_followed?: number;
   sources_proposed?: number;
   sources_failing?: number;
+  sources_suspended?: number;
   finds_week?: number;
   last_find_at?: string | null;
 }

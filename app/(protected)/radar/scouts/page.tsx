@@ -112,11 +112,12 @@ export default function ScoutsOverviewPage() {
                     <p className="mt-1 text-xs text-gray-500">
                       {paused ? 'Paused' : 'Watching'} · {scout.sources_followed ?? 0} sources
                       {(scout.sources_proposed ?? 0) > 0 && ` · ${scout.sources_proposed} suggested`}
+                      {(scout.sources_suspended ?? 0) > 0 && ` · ${scout.sources_suspended} suspended`}
                     </p>
                   </div>
                   {(scout.sources_failing ?? 0) > 0 && (
                     <span className="flex-shrink-0 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-                      {scout.sources_failing} failing
+                      {scout.sources_failing} not fetching
                     </span>
                   )}
                 </div>

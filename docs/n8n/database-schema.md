@@ -183,7 +183,7 @@ One named topic a user watches. Each has its own priorities doc and sources.
 | `url` | varchar | NOT NULL | Not unique: the same URL may exist in several scouts |
 | `name`, `category`, `tone_tag` | varchar | NULL | From Scout curation |
 | `because_quote` | text | NULL | Literal quote justifying the source |
-| `status` | varchar | NOT NULL | `proposed`, `followed`, `naylisted`, `dropped` |
+| `status` | varchar | NOT NULL | `proposed`, `followed`, `naylisted`, `dropped`, `suspended` (auto, after 5 failed sweeps in a row) |
 | `viability` | varchar | NULL | Always `'unknown'` (unused) |
 | `notes` | text | NULL | JSON text: `{"health": {status, last_sweep, consecutive_failures, reason}}` |
 | `offered_at`, `action_at`, `created_at`, `updated_at` | timestamp | NULL | |
