@@ -16,7 +16,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Forward to n8n webhook
-    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/knowledge-base-delete?documentId=${id}`;
+    const n8nUrl = `${process.env.N8N_BASE_URL}/webhook/knowledge-base-delete?documentId=${encodeURIComponent(id)}`;
 
     const response = await fetch(n8nUrl, {
       method: 'DELETE',
@@ -34,7 +34,9 @@ export async function DELETE(
       }, { status: response.status });
     }
 
-    const result = await response.json();
+    let result = await response.json();
+    // n8n allIncomingItems returns an array — unwrap single item
+    if (Array.isArray(result)) result = result[0];
     return NextResponse.json(result);
   } catch (error) {
     console.error('Delete document error:', error);
