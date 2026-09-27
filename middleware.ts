@@ -33,5 +33,6 @@ export const config = {
     '/create/:path*',
     '/company-private-storage/:path*',
     '/radar/:path*',
+    '/release-notes/:path*',
   ],
 };

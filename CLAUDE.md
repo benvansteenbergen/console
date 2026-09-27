@@ -93,6 +93,7 @@ console/
 │   │   ├── studio/            # Content Studio (template picker + conversation + DraftCard)
 │   │   ├── library/           # Content Library (Drive output browser)
 │   │   ├── radar/             # Radar: feed (page), scouts/ (overview, new, [id]), components/, shared.ts
+│   │   ├── release-notes/     # "What's new" page (from lib/releases.ts), reached via the version badge
 │   │   ├── company-private-storage/ # Knowledge base document uploads
 │   │   ├── settings/          # Settings (+ agents/ legacy)
 │   │   ├── live/              # (legacy) LiveChat
@@ -140,12 +141,14 @@ console/
 │   ├── NavigationProgress.tsx # Page transition progress bar
 │   ├── ErrorBoundary.tsx      # React error boundary component
 │   ├── GlassLoader.tsx        # Animated loading overlay
+│   ├── VersionBadge.tsx       # Version number bottom-right, links to /release-notes
 │   └── (legacy) LiveChat.tsx, ContentSessionBanner.tsx, JourneyCard.tsx, CreateFolderButton.tsx, Agents/, editor/
 ├── lib/
 │   ├── branding.ts            # Brand detection and config (wingsuite, emotion)
 │   ├── utils.ts               # Utility functions (cn for Tailwind merge)
 │   ├── api-utils.ts           # API helpers (safeJsonParse, fetchFromN8n)
-│   └── contentFormatQuestions.ts # Content format questionnaire configurations
+│   ├── contentFormatQuestions.ts # Content format questionnaire configurations
+│   └── releases.ts            # Release notes + CURRENT_VERSION (see "Releases & versioning")
 ├── middleware.ts              # Edge middleware for session-based route protection
 ├── tests/                     # Vitest: smoke, api/{auth-me,credits,content-storage}, lib/{branding,utils}
 ├── public/                    # Brand assets (wingsuite/, emotion/), forms/
@@ -170,7 +173,7 @@ console/
 - **File:** `middleware.ts`
 - Checks for `session` cookie on protected routes
 - Redirects to `/login?returnTo={originalPath}` if missing (preserves deep-links)
-- **Protected routes:** `/dashboard/*`, `/profile/*`, `/studio/*`, `/library/*`, `/radar/*`, `/settings/*`, `/company-private-storage/*`, plus legacy `/editor/*`, `/content/*`, `/live/*`, `/create/*`
+- **Protected routes:** `/dashboard/*`, `/profile/*`, `/studio/*`, `/library/*`, `/radar/*`, `/release-notes/*`, `/settings/*`, `/company-private-storage/*`, plus legacy `/editor/*`, `/content/*`, `/live/*`, `/create/*`
 
 #### Deep-Link Support
 - Middleware passes `returnTo` query param to login page when redirecting unauthenticated users
@@ -854,6 +857,18 @@ The studio AI uses text markers in its output that the frontend parses and rende
 4. Deploy and configure DNS to point to Railway instance
 
 ---
+
+## Releases & versioning
+
+The console has a user-facing version (semver) and release notes page.
+
+- **Source of truth:** `lib/releases.ts`. `RELEASES` (newest first) drives the `/release-notes` page and the version badge in the bottom-right corner (`components/VersionBadge.tsx`, shows a dot until the user has seen the latest notes). `CURRENT_VERSION` = `RELEASES[0].version`. `package.json` has no version; don't add one.
+- **Every rollout / publish (PR merge to `main`, or a live n8n change users will notice): ask the user "Should we increase the version number?"** Sometimes they wait and bundle several rollouts into one bump.
+  - **No bump:** add the user-visible changes to `UNRELEASED` in `lib/releases.ts` (in the same PR), so nothing gets lost.
+  - **Bump:** propose patch / minor / major (patch = fixes and small tweaks, minor = new features, major = big shifts), then add a new entry at the top of `RELEASES` with today's date, the `UNRELEASED` items plus the new changes, and empty `UNRELEASED`.
+- **Writing style:** for end users, not developers. What changed for them, one line each, grouped as `new` / `improved` / `fixed`. No internal names (n8n, workflows, tables). No em/en-dashes.
+- **Guard:** `tests/lib/releases.test.ts` checks semver, ordering, dates and that `type` matches the actual bump.
+- **Future:** a "new version" email to users on **minor/major** releases (not patch). The `type` field on each release exists for that. Not built yet.
 
 ## Design Philosophy
 
