@@ -30,7 +30,7 @@ export default function RadarFeed({
   if (concepts.length === 0) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</h2>
         <p className="text-sm text-gray-500">{emptyText}</p>
       </div>
     );
@@ -38,12 +38,12 @@ export default function RadarFeed({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">{title}</h2>
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</h2>
       {/* One card, rows split by thin lines: the same reading rhythm as the weekly email */}
       <div className="rounded-xl border border-gray-200 bg-white px-6">
         {concepts.map((concept) => {
+          const topic = showTopic ? concept.scout_name : null;
           const meta = [
-            showTopic ? concept.scout_name : null,
             concept.article_url ? hostname(concept.article_url) : null,
             shortDate(concept.created_at),
           ]
@@ -63,7 +63,13 @@ export default function RadarFeed({
                   {concept.alignment_why || concept.concept_body}
                 </p>
               )}
-              {meta && <p className="mt-2 text-xs text-gray-400">{meta}</p>}
+              {(topic || meta) && (
+                <p className="mt-2 text-xs text-gray-400">
+                  {topic && <span className="font-medium text-gray-600">{topic}</span>}
+                  {topic && meta && ' · '}
+                  {meta}
+                </p>
+              )}
             </button>
           );
         })}

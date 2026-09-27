@@ -137,7 +137,7 @@ export default function RadarFeedPage() {
         <RadarFeed
           concepts={concepts}
           onSelect={setSelectedConcept}
-          showTopic={activeTopic === null && scouts.length > 1}
+          showTopic={activeTopic === null}
           emptyText={
             topicName
               ? `Nothing new for ${topicName} yet. Finds appear here after the next sweep.`
@@ -150,7 +150,7 @@ export default function RadarFeedPage() {
             title="Saved"
             concepts={savedConcepts}
             onSelect={setSelectedConcept}
-            showTopic={activeTopic === null && scouts.length > 1}
+            showTopic={activeTopic === null}
           />
         )}
       </div>
