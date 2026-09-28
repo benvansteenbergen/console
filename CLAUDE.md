@@ -777,6 +777,7 @@ The studio AI uses text markers in its output that the frontend parses and rende
 - **Filtering on a property that doesn't exist errors**; add new properties to class `Documents` first (`POST /v1/schema/Documents/properties`). PATCHing a chunk's properties keeps its vector.
 - **Test node behaviour on the real node** before relying on it: a throwaway run with the exact expression + a stand-in `Build Prompt` Code node caught both filter bugs above.
 - **Sub-workflows must be active ("published")** before a workflow that calls them can be activated.
+- **Gemini embeddings fail silently.** On any API error (e.g. 429 quota) the n8n Gemini embeddings node returns empty vectors instead of failing, so uploads "succeed" but can't be found. `knowledge-base-upload` now verifies vectors after insert. The key (project `751025103091`) was on the free tier (100/min, 1000/day) until 2026-09-28; it's on paid Tier 1 now. To see the real error, call the Gemini REST API from an HTTP node with the same credential. See `docs/n8n/knowledge-base.md`.
 - **The n8n API key cannot delete workflows** (403). Reuse one scratch workflow instead of creating throwaway ones; Ben deletes leftovers in the UI.
 
 #### Credentials
