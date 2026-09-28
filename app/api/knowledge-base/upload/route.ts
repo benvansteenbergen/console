@@ -68,9 +68,15 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('n8n upload error:', errorText);
+      let upstreamError: string | undefined;
+      try {
+        upstreamError = JSON.parse(errorText)?.error;
+      } catch {
+        // not JSON: keep the generic message
+      }
       return NextResponse.json({
         success: false,
-        error: 'Upload failed. Please try again.'
+        error: typeof upstreamError === 'string' && upstreamError ? upstreamError : 'Upload failed. Please try again.'
       }, { status: response.status });
     }
 

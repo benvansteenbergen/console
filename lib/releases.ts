@@ -28,7 +28,10 @@ export interface Release {
   changes: ReleaseChange[];
 }
 
-export const UNRELEASED: ReleaseChange[] = [];
+export const UNRELEASED: ReleaseChange[] = [
+  { kind: 'fixed', text: 'Documents added to your knowledge base can be found by Content Studio and Ask again.' },
+  { kind: 'improved', text: 'If a document cannot be processed, you now see it right away and can try again.' },
+];
 
 export const RELEASES: Release[] = [
   {

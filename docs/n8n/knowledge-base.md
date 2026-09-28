@@ -11,6 +11,7 @@ Documents users upload so Content Studio can use company facts. Since 2026-09 us
   `document_id` (uuid), `document_title`, `description`, `visibility`, `uploaded_by` (uuid), `cluster` (legacy), `tags`, **`folder_id`** (text, `''` = Unfiled), **`file_type`** (`pdf` | `docx` | `doc`).
   `folder_id` and `file_type` were added to the schema on 2026-09-27; older chunks have no value (treated as Unfiled / pdf).
 - **Folders** are per user, in Postgres: `portal_user.settings.kb.folders = [{id, name, created_at}]`. No table, no migration. Renaming touches settings only; deleting a folder removes it from settings and its documents show as Unfiled (their chunks keep the old id, which the list ignores).
+- **The Gemini embeddings node swallows API errors** and returns empty vectors; Weaviate stores those chunks without a vector, so they are never found (seen 2026-09-28, 14:20–14:26 UTC, 278 chunks). Hence the vector check after upload. Sources + deploy: `backups/kb-upload-check/`.
 - Embeddings: Google Gemini `models/gemini-embedding-001` (3072 dims) at upload; the Studio search tools use the node default, which matches (verified on live executions).
 - There is **no Postgres registry** of documents; Weaviate is the source of truth.
 
@@ -18,7 +19,7 @@ Documents users upload so Content Studio can use company facts. Since 2026-09 us
 
 | Workflow | ID | Webhook | What it does |
 |---|---|---|---|
-| `knowledge-base-upload` | `qRCuSrjefn0aFmsB` | `POST /webhook/knowledge-base-upload` | multipart `file, title, description, visibility, folder_id, file_type`. Default Data Loader (`loader: auto`, by MIME: PDF or text) → Gemini embeddings → Weaviate insert in `user_`/`client_` tenant. |
+| `knowledge-base-upload` | `qRCuSrjefn0aFmsB` | `POST /webhook/knowledge-base-upload` | multipart `file, title, description, visibility, folder_id, file_type`. Default Data Loader (`loader: auto`, by MIME: PDF or text) → Gemini embeddings → Weaviate insert in `user_`/`client_` tenant → **vector check**: if any chunk of the new document has no vector, its chunks are deleted and the webhook answers 502 `{success:false, error}` (shown in the upload panel). |
 | `knowledge-base-documents` | `PSAF03N894oBvzMe` | `GET /webhook/knowledge-base-documents` | One GraphQL `Get` over both tenants (limit 10000 each) → grouped per `document_id` → `{documents, folders, truncated}`. Colleagues' shared docs come back with `mine: false` and no folder. |
 | `knowledge-base-folders` | `IL7fZQ9Qu10ANyKB` | `GET`/`POST /webhook/knowledge-base-folders` | List, or `{action: create|rename|delete, folder_id?, name?}` on the settings JSON. Errors: `name_required`, `name_exists`, `not_found`. |
 | `knowledge-base-move` | `T8e744RM9KSHH6hh` | `POST /webhook/knowledge-base-move` | `{document_ids[], folder_id}`: finds the caller's OWN chunks (`document_id ContainsAny` + `uploaded_by`) in both tenants and PATCHes `folder_id` on each (PATCH keeps the vector). |
