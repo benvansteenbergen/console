@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 const TABS = [
   { href: '/radar', label: 'Feed' },
+  { href: '/radar/saved', label: 'Saved' },
   { href: '/radar/scouts', label: 'Scouts' },
 ];
 
@@ -19,7 +20,7 @@ export default function RadarLayout({ children }: { children: ReactNode }) {
     document.title = `${branding.name} - Radar`;
   }, [branding.name]);
 
-  const activeHref = pathname.startsWith('/radar/scouts') ? '/radar/scouts' : '/radar';
+  const activeHref = TABS.slice(1).find((t) => pathname.startsWith(t.href))?.href ?? '/radar';
 
   return (
     <div className="flex h-full flex-col">
