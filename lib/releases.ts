@@ -31,6 +31,7 @@ export interface Release {
 export const UNRELEASED: ReleaseChange[] = [
   { kind: 'fixed', text: 'Documents added to your knowledge base can be found by Content Studio and Ask again.' },
   { kind: 'improved', text: 'If a document cannot be processed, you now see it right away and can try again.' },
+  { kind: 'improved', text: 'Saved finds in Radar now have their own tab, so you no longer scroll past the feed to reach them.' },
 ];
 
 export const RELEASES: Release[] = [
