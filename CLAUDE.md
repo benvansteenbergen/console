@@ -92,7 +92,7 @@ console/
 │   │   ├── profile/           # Company profile: brand interview / identity view / website scan
 │   │   ├── studio/            # Content Studio (template picker + conversation + DraftCard)
 │   │   ├── library/           # Content Library (Drive output browser)
-│   │   ├── radar/             # Radar: feed (page), scouts/ (overview, new, [id]), components/, shared.ts
+│   │   ├── radar/             # Radar: feed (page), saved/, scouts/ (overview, new, [id]), components/, shared.ts
 │   │   ├── release-notes/     # "What's new" page (from lib/releases.ts), reached via the version badge
 │   │   ├── company-private-storage/ # Knowledge base: folders, documents, upload
 │   │   ├── settings/          # Settings (+ agents/ legacy)
@@ -286,7 +286,7 @@ LinkedIn and website data extraction for AI personalization.
 
 A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it watches user-curated sources, filters new articles against the user's priorities, and surfaces editorial concepts with fact-checks. Full detail in `docs/n8n/radar.md`.
 
-- **Surface:** `app/(protected)/radar/` (single page, feed/scout toggle). API routes under `app/api/radar/*`.
+- **Surface:** `app/(protected)/radar/`, tabs Feed (`/radar`) · Saved (`/radar/saved`) · Scouts (`/radar/scouts`). Feed and Saved are thin wrappers around `components/RadarConceptsView.tsx` (`view: 'feed' | 'saved'`). API routes under `app/api/radar/*`.
 - **Scouts (topics):** a user runs several scouts, each a named topic with its own priorities doc + sources (`radar_scouts` table). One feed with topic filter at `/radar`; overview at `/radar/scouts` (rename / pause / remove / adjust); per-scout sources + "Copy to…" at `/radar/scouts/[id]`. Remove = soft delete (`archived`). Dedupe is per scout.
 - **Scout** (`radar-scout`): an AI discovery chat that **stands on the company profile** (it consumes `profile_context`, no re-interview), runs 1–2 short refine turns (or "just go"), then curates a generous, independent-voice-biased source list with literal "Because you mentioned…" quotes. Sources land in `radar_sources` (status `proposed`); the user follows them. Vendor penalty hits resellers/agencies, **not** the primary maker/lab (OpenAI, Anthropic).
 - **Sweep → Concepter → Researcher:** `radar-sweep` (cron) fetches followed sources (RSS/Atom + **Jina Reader** for JS / no-RSS / blocked pages), relevance-filters, and hands passing articles to `radar-concepter` → `radar-researcher`, which write `radar_concepts` (status `active`) shown in the Feed + dashboard banner (`components/RadarBanner.tsx`).
@@ -419,8 +419,8 @@ A scanning system (sweep runs daily at 09:00/12:00/17:00 Europe/Amsterdam): it w
   - Save shows an inline "Open in Drive" link (no `window.open` after `await` — popup-blocked)
 
 ### Radar UI
-- **Files:** `app/(protected)/radar/` (`page.tsx`, `scout/`, `sources/`, `components/`), `components/RadarBanner.tsx`
-- **Purpose:** Feed of concepts, Scout chat, source management. `?concept=<id>` deep-link opens `RadarConceptOverlay` (falls back to `status=saved`). See `docs/n8n/radar.md`.
+- **Files:** `app/(protected)/radar/` (`page.tsx`, `saved/`, `scouts/`, `components/RadarConceptsView.tsx`), `components/RadarBanner.tsx`
+- **Purpose:** Feed of concepts, Saved tab, Scout chat, source management. `?concept=<id>` deep-link opens `RadarConceptOverlay` (falls back to `status=saved`). See `docs/n8n/radar.md`.
 
 ### ContentSessionBanner (legacy)
 - **File:** `components/ContentSessionBanner.tsx`
@@ -1003,4 +1003,4 @@ pnpm test:coverage     # Generate coverage report
 ---
 
 **This file is for machine agents to understand the project architecture and contribute safely.**
-*Last updated: 2026-09-27 (Radar scouts, release notes, KB folders + Ask, search v2)*
+*Last updated: 2026-09-30 (Radar Saved tab, KB shared-doc ownership note)*
